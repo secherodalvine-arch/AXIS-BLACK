@@ -20,6 +20,13 @@ class Settings:
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     JWT_EXPIRE_DAYS: int = int(os.getenv("JWT_EXPIRE_DAYS", "7"))
 
+    # CORS / Allowed Origins
+    ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,https://axis-black.onrender.com")
+
+    # Vercel Email API Configuration
+    EMAIL_API_URL: str = os.getenv("EMAIL_API_URL", "http://127.0.0.1:8000")
+    EMAIL_API_KEY: str = os.getenv("EMAIL_API_KEY", "axis_black_email_secret_key_2026")
+
     # Email / SMTP Configuration
     SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))

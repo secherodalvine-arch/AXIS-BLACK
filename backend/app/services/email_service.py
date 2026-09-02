@@ -1,18 +1,15 @@
 """
 services/email_service.py — Axis Black email delivery service.
-Sends emails via Gmail SMTP with automatic fallback to local logging.
+Dispatches emails via Vercel Serverless Email API.
 """
-import smtplib
+import json
 import logging
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import urllib.request
+import urllib.error
 from typing import Optional, List, Dict, Any
 from app.config import settings
 
 logger = logging.getLogger("axisblack.email")
-
-# In-memory log of sent emails (useful for local dev verification)
-sent_emails_log: List[Dict[str, Any]] = []
 
 _EMAIL_BASE_STYLE = """
   body { margin: 0; padding: 0; background-color: #080c14; font-family: 'Segoe UI', Arial, sans-serif; color: #e2e8f0; }
@@ -47,48 +44,47 @@ def send_email_notification(
     body_text: Optional[str] = None,
 ) -> bool:
     """
-    Sends an email via Gmail SMTP. Falls back to local logging if SMTP not available.
+    Sends an email directly via the Vercel Email API microservice.
     """
     to_email = to_email.strip().lower()
     if not body_text:
         import re
         body_text = re.sub(r"<[^>]+>", "", body_html).strip()
 
-    record: Dict[str, Any] = {
+    email_api_url = getattr(settings, "EMAIL_API_URL", "").rstrip("/")
+    email_api_key = getattr(settings, "EMAIL_API_KEY", "")
+
+    if not email_api_url or not email_api_key:
+        logger.error("[EMAIL API ERROR] EMAIL_API_URL or EMAIL_API_KEY is not configured in settings.")
+        return False
+
+    endpoint = f"{email_api_url}/send_email"
+    payload = {
         "to_email": to_email,
         "subject": subject,
-        "sent_via": "simulated",
+        "html": body_html,
+        "text": body_text,
     }
 
-    if settings.SMTP_HOST and settings.SMTP_USER and settings.SMTP_PASSWORD:
-        try:
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = subject
-            msg["From"] = f"{settings.EMAILS_FROM_NAME} <{settings.EMAILS_FROM_EMAIL}>"
-            msg["To"] = to_email
+    headers = {
+        "Authorization": f"Bearer {email_api_key}",
+        "Content-Type": "application/json",
+    }
 
-            msg.attach(MIMEText(body_text, "plain"))
-            msg.attach(MIMEText(body_html, "html"))
-
-            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as server:
-                server.ehlo()
-                if settings.SMTP_TLS:
-                    server.starttls()
-                    server.ehlo()
-                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-                server.sendmail(settings.EMAILS_FROM_EMAIL, [to_email], msg.as_string())
-
-            record["sent_via"] = "smtp"
-            logger.info(f"[SMTP] Email sent to {to_email} | Subject: {subject}")
-        except Exception as exc:
-            logger.error(f"[SMTP ERROR] Failed to send to {to_email}: {exc}")
-            record["sent_via"] = "smtp_failed"
-            record["error"] = str(exc)
-    else:
-        logger.warning(f"[EMAIL SIM] SMTP not configured. Would send to {to_email}: {subject}")
-
-    sent_emails_log.append(record)
-    return True
+    try:
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(endpoint, data=data, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            response_body = resp.read().decode("utf-8")
+            logger.info(f"[EMAIL API SUCCESS] Email sent to {to_email} | Subject: {subject} | Response: {response_body}")
+            return True
+    except urllib.error.HTTPError as http_err:
+        err_body = http_err.read().decode("utf-8") if http_err.fp else ""
+        logger.error(f"[EMAIL API HTTP ERROR {http_err.code}] Failed sending to {to_email}: {err_body}")
+        return False
+    except Exception as exc:
+        logger.error(f"[EMAIL API ERROR] Failed sending to {to_email}: {exc}")
+        return False
 
 
 def send_verification_email(to_email: str, user_name: str, verify_url: str) -> bool:

@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "axis-black-email-api"
+version = "1.0.0"
+description = "Vercel Serverless Email API for Axis Black"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.115.0",
+    "mangum>=0.17.0",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.0.0"
+]
