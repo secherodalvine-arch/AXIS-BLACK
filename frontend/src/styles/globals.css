@@ -1,0 +1,12 @@
+/* Import main design tokens and components */
+@import '../../styles/main.css';
+@import '../../styles/components.css';
+
+/* React specific helpers */
+button {
+  font-family: inherit;
+}
+
+input, select, textarea {
+  font-family: inherit;
+}
