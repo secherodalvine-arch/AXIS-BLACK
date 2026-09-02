@@ -171,8 +171,9 @@ export const App: React.FC = () => {
             window.history.replaceState({}, document.title, window.location.pathname);
           })
           .catch(err => {
-            showToast(err.message || 'Verification link expired or invalid.');
+            showToast(err.message || 'Verification link expired or invalid. Please request a new verification email.');
             setViewState('login');
+            window.history.replaceState({}, document.title, window.location.pathname);
           });
       } else if (isReset) {
         setResetToken(token);

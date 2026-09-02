@@ -67,13 +67,23 @@ def create_refresh_token(data: Dict[str, Any]) -> str:
 
 def create_reset_token(email: str, expire_hours: float = 0.25) -> str:
     """
-    Create a reset/verification JWT.
+    Create a password reset JWT.
     expire_hours: hours until expiry (default 0.25 = 15 minutes for password reset).
-    Use expire_hours=1 for email verification links.
     """
     expire = datetime.now(timezone.utc) + timedelta(hours=expire_hours)
     to_encode = {"sub": email, "type": "reset", "exp": expire}
     return jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
+def create_verification_token(email: str, expire_hours: float = 1.0) -> str:
+    """
+    Create an email verification JWT.
+    expire_hours: hours until expiry (default 1.0 hour).
+    """
+    expire = datetime.now(timezone.utc) + timedelta(hours=expire_hours)
+    to_encode = {"sub": email, "type": "email_verify", "exp": expire}
+    return jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
 
 
 def decode_token(token: str) -> Optional[Dict[str, Any]]:

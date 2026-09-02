@@ -32,6 +32,7 @@ from app.auth.security import (
     create_access_token,
     create_refresh_token,
     create_reset_token,
+    create_verification_token,
     decode_token,
 )
 from app.database import db_manager
@@ -147,8 +148,7 @@ async def register(payload: RegisterRequest):
         )
 
     # Generate verification token (1h)
-    verify_token_data = {"sub": email_lower, "type": "email_verify"}
-    verify_token = create_reset_token(email_lower, expire_hours=1)
+    verify_token = create_verification_token(email_lower, expire_hours=1)
 
     verify_url = f"{settings.FRONTEND_URL}/verify-email?token={verify_token}"
 
@@ -214,9 +214,11 @@ async def _do_verify_email(token: str) -> tuple[bool, str, str]:
     if not user:
         return False, "User account associated with this link was not found.", email
 
-    if record:
+    if record and record.get("expires_at"):
         try:
             exp_dt = datetime.datetime.fromisoformat(record["expires_at"])
+            if exp_dt.tzinfo is None:
+                exp_dt = exp_dt.replace(tzinfo=datetime.timezone.utc)
             if datetime.datetime.now(datetime.timezone.utc) > exp_dt:
                 return False, "Verification link has expired. Please request a new verification email.", email
         except Exception:
@@ -424,7 +426,7 @@ async def resend_verification(payload: ResendVerificationRequest):
         )
 
     now_str = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    verify_token = create_reset_token(email_lower, expire_hours=1)
+    verify_token = create_verification_token(email_lower, expire_hours=1)
     verify_url = f"{settings.FRONTEND_URL}/verify-email?token={verify_token}"
 
     verify_record = {
