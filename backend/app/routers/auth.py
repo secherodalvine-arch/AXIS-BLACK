@@ -7,7 +7,8 @@ import uuid
 import datetime
 import random
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
+from fastapi.responses import HTMLResponse
 
 from app.models.auth import (
     RegisterRequest,
@@ -183,91 +184,205 @@ async def register(payload: RegisterRequest):
     )
 
 
-# ── Verify Email ─────────────────────────────────────────────────────────────
-@router.post("/verify-email")
-async def verify_email(payload: VerifyEmailRequest):
-    """
-    Verify a user's email address using the token from the verification link.
-    """
-    decoded = decode_token(payload.token)
+async def _do_verify_email(token: str) -> tuple[bool, str, str]:
+    if not token or not token.strip():
+        return False, "Verification token is missing.", ""
+
+    decoded = decode_token(token.strip())
     if not decoded or decoded.get("type") != "reset":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired verification link. Please request a new one.",
-        )
+        return False, "Invalid or expired verification token. Please request a new verification email.", ""
 
     email = decoded.get("sub", "").lower()
+    if not email:
+        return False, "Invalid verification token payload.", ""
+
     now_str = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-    # Find the verification record
     if db_manager.is_connected:
+        user = await db_manager.db.users.find_one({"email": email})
         record = await db_manager.db.email_verifications.find_one({"email": email, "used": False})
     else:
+        user = next((u for u in db_manager.memory_store["users"].values() if u.get("email") == email), None)
         verifications = db_manager.memory_store.get("email_verifications", {})
         record = verifications.get(email)
         if record and record.get("used"):
             record = None
 
-    if not record:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Verification link is invalid or already used. Please register again or request a new link.",
-        )
+    if user and user.get("email_verified", False):
+        return True, "Your email address is already verified.", email
 
-    # Check expiry
-    exp_dt = datetime.datetime.fromisoformat(record["expires_at"])
-    if datetime.datetime.now(datetime.timezone.utc) > exp_dt:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Verification link has expired. Please request a new verification email.",
-        )
+    if not user:
+        return False, "User account associated with this link was not found.", email
 
-    # Mark user as verified
+    if record:
+        try:
+            exp_dt = datetime.datetime.fromisoformat(record["expires_at"])
+            if datetime.datetime.now(datetime.timezone.utc) > exp_dt:
+                return False, "Verification link has expired. Please request a new verification email.", email
+        except Exception:
+            pass
+
     if db_manager.is_connected:
-        res = await db_manager.db.users.update_one(
+        await db_manager.db.users.update_one(
             {"email": email},
             {"$set": {"email_verified": True, "updated_at": now_str}},
         )
-        if res.matched_count == 0:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
         await db_manager.db.email_verifications.update_one(
             {"email": email}, {"$set": {"used": True}}
         )
     else:
-        user = next(
-            (u for u in db_manager.memory_store["users"].values() if u.get("email") == email),
-            None,
-        )
-        if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
         user["email_verified"] = True
         user["updated_at"] = now_str
         verifications = db_manager.memory_store.get("email_verifications", {})
         if email in verifications:
             verifications[email]["used"] = True
 
-    # Fetch user name for welcome email
-    if db_manager.is_connected:
-        user_doc = await db_manager.db.users.find_one({"email": email})
-        user_name = user_doc.get("name", "") if user_doc else ""
-    else:
-        user_doc = next(
-            (u for u in db_manager.memory_store["users"].values() if u.get("email") == email),
-            None,
-        )
-        user_name = user_doc.get("name", "") if user_doc else ""
-
-    # Send welcome email
     try:
+        user_name = user.get("name", "") if user else ""
         send_welcome_email(email, user_name)
     except Exception:
         pass
 
+    return True, "Email verified successfully! You can now sign in to your Axis Black account.", email
+
+
+@router.post("/verify-email")
+async def verify_email_post(payload: VerifyEmailRequest):
+    """
+    Verify email via JSON API request.
+    """
+    success, message, email = await _do_verify_email(payload.token)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message,
+        )
     return {
         "verified": True,
-        "message": "Email verified successfully! You can now sign in to your Axis Black account.",
+        "message": message,
         "email": email,
     }
+
+
+@router.get("/verify-email", response_class=HTMLResponse)
+async def verify_email_get(token: Optional[str] = Query(None)):
+    """
+    Verify email when link is clicked directly in an email client.
+    Returns a responsive, dark-themed HTML verification response page.
+    """
+    success, message, email = await _do_verify_email(token or "")
+
+    frontend_login_url = f"{settings.FRONTEND_URL.rstrip('/')}/login"
+    status_class = "success" if success else "error"
+    icon_symbol = "&#10004;" if success else "&#10008;"
+    title = "Email Verified Successfully" if success else "Verification Failed"
+    button_text = "Proceed to Sign In" if success else "Back to Sign In"
+    email_display = f"<strong>{email}</strong>" if email else ""
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Axis Black &mdash; Email Verification</title>
+  <style>
+    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{
+      background-color: #080c14;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }}
+    .card {{
+      max-width: 480px;
+      width: 100%;
+      background: linear-gradient(145deg, #0f1829, #131e30);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      border-radius: 20px;
+      padding: 44px 36px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 30px rgba(0,212,255,0.1);
+    }}
+    .icon-ring {{
+      width: 76px;
+      height: 76px;
+      margin: 0 auto 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      font-weight: 900;
+    }}
+    .success .icon-ring {{
+      background: rgba(16, 185, 129, 0.15);
+      border: 2px solid #10b981;
+      color: #10b981;
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.3);
+    }}
+    .error .icon-ring {{
+      background: rgba(239, 68, 68, 0.15);
+      border: 2px solid #ef4444;
+      color: #ef4444;
+      box-shadow: 0 0 25px rgba(239, 68, 68, 0.3);
+    }}
+    h1 {{
+      font-size: 22px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 12px;
+    }}
+    p {{
+      font-size: 14px;
+      line-height: 1.6;
+      color: #94a3b8;
+      margin-bottom: 28px;
+    }}
+    p strong {{
+      color: #00d4ff;
+    }}
+    .btn {{
+      display: inline-block;
+      width: 100%;
+      padding: 14px 28px;
+      background: linear-gradient(135deg, #00d4ff, #7c5fe6);
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 700;
+      text-decoration: none;
+      border-radius: 12px;
+      letter-spacing: 0.5px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 15px rgba(0, 212, 255, 0.25);
+    }}
+    .btn:hover {{
+      opacity: 0.92;
+      transform: translateY(-1px);
+    }}
+    .brand {{
+      margin-top: 24px;
+      font-size: 11px;
+      color: #64748b;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }}
+  </style>
+</head>
+<body>
+  <div class="card {status_class}">
+    <div class="icon-ring">{icon_symbol}</div>
+    <h1>{title}</h1>
+    <p>{message} {email_display}</p>
+    <a href="{frontend_login_url}" class="btn">{button_text}</a>
+    <div class="brand">Axis Black &bull; Financial Intelligence</div>
+  </div>
+</body>
+</html>"""
+    return HTMLResponse(content=html_content)
 
 
 # ── Resend Verification ───────────────────────────────────────────────────────

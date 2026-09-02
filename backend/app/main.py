@@ -1,6 +1,7 @@
 import os
+from typing import Optional
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
@@ -82,12 +83,10 @@ async def serve_login():
     with open(path, "r", encoding="utf-8") as f:
         return HTMLResponse(content=f.read())
 
-@app.get("/register", response_class=HTMLResponse, tags=["Frontend"], include_in_schema=False)
-@app.get("/register.html", response_class=HTMLResponse, tags=["Frontend"], include_in_schema=False)
-async def serve_register():
-    path = os.path.join(FRONTEND_DIR, "register.html")
-    with open(path, "r", encoding="utf-8") as f:
-        return HTMLResponse(content=f.read())
+@app.get("/verify-email", response_class=HTMLResponse, tags=["Frontend"], include_in_schema=False)
+async def serve_verify_email(token: Optional[str] = Query(None)):
+    from app.routers.auth import verify_email_get
+    return await verify_email_get(token)
 
 
 @app.get("/api/health", tags=["Health Check"])
