@@ -122,7 +122,7 @@ def send_verification_email(to_email: str, user_name: str, verify_url: str) -> b
           <a href="{verify_url}">{verify_url}</a>
         </p>
         <hr class="divider">
-        <p style="font-size:12px;color:#64748b;">This verification link expires in <strong>24 hours</strong>. If you didn't create an Axis Black account, you can safely ignore this email.</p>
+        <p style="font-size:12px;color:#64748b;">This verification link expires in <strong>1 hour</strong>. If you didn't create an Axis Black account, you can safely ignore this email.</p>
       </div>
       <div class="footer">
         <strong>Axis Black</strong> — Business Intelligence Command Center<br>
@@ -137,7 +137,7 @@ def send_verification_email(to_email: str, user_name: str, verify_url: str) -> b
         f"Axis Black — Verify Your Email\n\n"
         f"Hi {user_name},\n\n"
         f"Please verify your email address by clicking the link below:\n{verify_url}\n\n"
-        f"This link expires in 24 hours. If you didn't sign up, ignore this email."
+        f"This link expires in 1 hour. If you didn't sign up, ignore this email."
     )
     return send_email_notification(to_email, subject, html, text)
 

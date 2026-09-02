@@ -69,7 +69,7 @@ def create_reset_token(email: str, expire_hours: float = 0.25) -> str:
     """
     Create a reset/verification JWT.
     expire_hours: hours until expiry (default 0.25 = 15 minutes for password reset).
-    Use expire_hours=24 for email verification links.
+    Use expire_hours=1 for email verification links.
     """
     expire = datetime.now(timezone.utc) + timedelta(hours=expire_hours)
     to_encode = {"sub": email, "type": "reset", "exp": expire}

@@ -87,7 +87,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   }
 }
 
-const getInitialUrlToken = (): { token: string; isReset: boolean } => {
+const getInitialUrlToken = (): { token: string; isReset: boolean; isVerify: boolean } => {
   const searchParams = new URLSearchParams(window.location.search);
   const href = window.location.href;
   const path = window.location.pathname;
@@ -101,26 +101,31 @@ const getInitialUrlToken = (): { token: string; isReset: boolean } => {
     }
   }
 
-  const isReset = Boolean(
-    path.includes('reset-password') ||
-    hash.includes('reset-password') ||
-    href.includes('reset-password') ||
-    (token && (path.includes('reset') || href.includes('reset')))
+  const isVerify = Boolean(
+    path.includes('verify-email') ||
+    hash.includes('verify-email')
   );
 
-  return { token, isReset };
+  const isReset = Boolean(
+    !isVerify && (
+      path.includes('reset-password') ||
+      hash.includes('reset-password')
+    )
+  );
+
+  return { token, isReset, isVerify };
 };
 
 const getInitialViewState = (): 'home' | 'dashboard' | 'login' | 'register' | 'forgot-password' | 'verify-email' => {
-  const { token, isReset } = getInitialUrlToken();
+  const { token, isReset, isVerify } = getInitialUrlToken();
   const path = window.location.pathname;
   const hash = window.location.hash;
 
+  if (isVerify) {
+    return token ? 'verify-email' : 'login';
+  }
   if (isReset) {
     return 'forgot-password';
-  }
-  if (path.includes('verify-email') || hash.includes('verify-email')) {
-    return token ? 'verify-email' : 'login';
   }
   if (path.includes('login') || hash.includes('login')) {
     return 'login';
@@ -155,13 +160,10 @@ export const App: React.FC = () => {
 
   // Check URL parameters & validate active user session on mount
   useEffect(() => {
-    const { token, isReset } = getInitialUrlToken();
+    const { token, isReset, isVerify } = getInitialUrlToken();
 
     if (token) {
-      if (isReset) {
-        setResetToken(token);
-        setViewState('forgot-password');
-      } else {
+      if (isVerify) {
         verifyEmailApi(token)
           .then(res => {
             showToast(res.message || 'Email verified successfully! You can now log in.');
@@ -172,6 +174,9 @@ export const App: React.FC = () => {
             showToast(err.message || 'Verification link expired or invalid.');
             setViewState('login');
           });
+      } else if (isReset) {
+        setResetToken(token);
+        setViewState('forgot-password');
       }
     } else if (getAccessToken()) {
       // Validate active token with backend /api/auth/me

@@ -146,9 +146,9 @@ async def register(payload: RegisterRequest):
             detail=f"Registration error: {str(exc)}",
         )
 
-    # Generate verification token (24h)
+    # Generate verification token (1h)
     verify_token_data = {"sub": email_lower, "type": "email_verify"}
-    verify_token = create_reset_token(email_lower, expire_hours=24)
+    verify_token = create_reset_token(email_lower, expire_hours=1)
 
     verify_url = f"{settings.FRONTEND_URL}/verify-email?token={verify_token}"
 
@@ -156,7 +156,7 @@ async def register(payload: RegisterRequest):
     verify_record = {
         "email": email_lower,
         "token": verify_token,
-        "expires_at": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=24)).isoformat(),
+        "expires_at": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)).isoformat(),
         "created_at": now_str,
         "used": False,
     }
@@ -189,7 +189,7 @@ async def _do_verify_email(token: str) -> tuple[bool, str, str]:
         return False, "Verification token is missing.", ""
 
     decoded = decode_token(token.strip())
-    if not decoded or decoded.get("type") != "reset":
+    if not decoded or decoded.get("type") not in ("reset", "email_verify"):
         return False, "Invalid or expired verification token. Please request a new verification email.", ""
 
     email = decoded.get("sub", "").lower()
@@ -424,13 +424,13 @@ async def resend_verification(payload: ResendVerificationRequest):
         )
 
     now_str = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    verify_token = create_reset_token(email_lower, expire_hours=24)
+    verify_token = create_reset_token(email_lower, expire_hours=1)
     verify_url = f"{settings.FRONTEND_URL}/verify-email?token={verify_token}"
 
     verify_record = {
         "email": email_lower,
         "token": verify_token,
-        "expires_at": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=24)).isoformat(),
+        "expires_at": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)).isoformat(),
         "created_at": now_str,
         "used": False,
     }
