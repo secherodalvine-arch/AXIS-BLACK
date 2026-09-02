@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { sendSupportMessageApi } from '../utils/api';
 
 interface HomePageProps {
   onEnterDashboard: () => void;
@@ -8,7 +9,7 @@ interface HomePageProps {
 
 const XIcon: React.FC<{ size?: number; color?: string; style?: React.CSSProperties }> = ({ size = 16, color = 'currentColor', style }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={color} style={{ display: 'inline-block', verticalAlign: 'middle', ...style }}>
-    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
   </svg>
 );
 
@@ -29,8 +30,8 @@ const FEATURES = [
 ];
 
 const OFFICES = [
-  { city: 'Nairobi', country: 'Kenya', address: 'Westlands Business Park, Waiyaki Way, Nairobi 00100', email: 'nairobi@axisblack.io', phone: '+254 712 000 100', icon: 'fa-location-dot' },
-  { city: 'Lagos', country: 'Nigeria', address: 'Victoria Island, Adeola Odeku Street, Lagos 101233', email: 'lagos@axisblack.io', phone: '+234 802 000 200', icon: 'fa-location-dot' },
+  { city: 'Ruiru', country: 'Kenya', address: 'Ruiru, Kiambu County, Kenya', email: 'secherodalvine@gmail.com', phone: '+254 769 231 760', icon: 'fa-location-dot' },
+  { city: 'Nairobi', country: 'Kenya', address: 'Westlands Business Park, Waiyaki Way, Nairobi 00100', email: 'secherodalvine@gmail.com', phone: '+254 769 231 760', icon: 'fa-building' },
 ];
 
 const PRIVACY_SECTIONS = [
@@ -126,9 +127,30 @@ export const HomePage: React.FC<HomePageProps> = ({
     return () => { window.removeEventListener('resize', resize); cancelAnimationFrame(raf); };
   }, []);
 
-  const handleContactSubmit = (e: React.FormEvent) => {
+  const [submittingContact, setSubmittingContact] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setContactSubmitted(true);
+    if (!contactForm.name || !contactForm.email || !contactForm.message) return;
+
+    setSubmittingContact(true);
+    setContactError(null);
+
+    try {
+      await sendSupportMessageApi({
+        name: contactForm.name,
+        email: contactForm.email,
+        message: contactForm.message,
+        subject: contactForm.subject || 'Platform Inquiry',
+        label: contactForm.subject || 'support',
+      });
+      setContactSubmitted(true);
+    } catch (err: any) {
+      setContactError(err.message || 'Failed to send message. Please try again.');
+    } finally {
+      setSubmittingContact(false);
+    }
   };
 
   const scrollToSection = (id: string) => {
@@ -143,16 +165,16 @@ export const HomePage: React.FC<HomePageProps> = ({
 
       {/* HEADER NAV */}
       <header className="home-nav">
-        <div 
-          className="home-nav-brand" 
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} 
-          style={{ cursor: 'pointer' }} 
+        <div
+          className="home-nav-brand"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          style={{ cursor: 'pointer' }}
           title="Back to Top"
         >
           <img src="/compass_icon.png" alt="Axis Black" className="home-nav-logo" />
           <span className="home-nav-wordmark">AXIS<span>BLACK</span></span>
         </div>
-        
+
         {/* Desktop Nav Links */}
         <nav className="home-nav-links">
           <button className="home-nav-link" onClick={() => scrollToSection('features')}>Features</button>
@@ -177,7 +199,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         </nav>
 
         {/* Mobile Hamburger Toggle Button */}
-        <button 
+        <button
           className={`home-mobile-menu-btn ${mobileMenuOpen ? 'open' : ''}`}
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           aria-label="Toggle Mobile Menu"
@@ -223,8 +245,8 @@ export const HomePage: React.FC<HomePageProps> = ({
       </div>
 
       {/* HERO SECTION CONTAINER WITH FINANCIAL PLATFORM BACKGROUND IMAGE */}
-      <section 
-        className="home-hero-container scroll-reveal" 
+      <section
+        className="home-hero-container scroll-reveal"
         style={{
           width: '100%',
           maxWidth: '100%',
@@ -289,18 +311,18 @@ export const HomePage: React.FC<HomePageProps> = ({
               <svg viewBox="0 0 400 100" className="home-preview-svg" preserveAspectRatio="none">
                 <defs>
                   <linearGradient id="cyanGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#00d4ff" stopOpacity="0.5"/>
-                    <stop offset="100%" stopColor="#00d4ff" stopOpacity="0"/>
+                    <stop offset="0%" stopColor="#00d4ff" stopOpacity="0.5" />
+                    <stop offset="100%" stopColor="#00d4ff" stopOpacity="0" />
                   </linearGradient>
                   <linearGradient id="lilacGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#cebdff" stopOpacity="0.4"/>
-                    <stop offset="100%" stopColor="#cebdff" stopOpacity="0"/>
+                    <stop offset="0%" stopColor="#cebdff" stopOpacity="0.4" />
+                    <stop offset="100%" stopColor="#cebdff" stopOpacity="0" />
                   </linearGradient>
                 </defs>
-                <path d="M0,80 C50,65 80,55 120,45 S200,25 250,18 S320,12 400,8 L400,100 L0,100 Z" fill="url(#cyanGrad)"/>
-                <path d="M0,80 C50,65 80,55 120,45 S200,25 250,18 S320,12 400,8" fill="none" stroke="#00d4ff" strokeWidth="2"/>
-                <path d="M0,90 C50,80 80,72 120,65 S200,52 250,46 S320,42 400,40 L400,100 L0,100 Z" fill="url(#lilacGrad)"/>
-                <path d="M0,90 C50,80 80,72 120,65 S200,52 250,46 S320,42 400,40" fill="none" stroke="#cebdff" strokeWidth="1.5" strokeDasharray="5,3"/>
+                <path d="M0,80 C50,65 80,55 120,45 S200,25 250,18 S320,12 400,8 L400,100 L0,100 Z" fill="url(#cyanGrad)" />
+                <path d="M0,80 C50,65 80,55 120,45 S200,25 250,18 S320,12 400,8" fill="none" stroke="#00d4ff" strokeWidth="2" />
+                <path d="M0,90 C50,80 80,72 120,65 S200,52 250,46 S320,42 400,40 L400,100 L0,100 Z" fill="url(#lilacGrad)" />
+                <path d="M0,90 C50,80 80,72 120,65 S200,52 250,46 S320,42 400,40" fill="none" stroke="#cebdff" strokeWidth="1.5" strokeDasharray="5,3" />
               </svg>
             </div>
           </div>
@@ -386,10 +408,10 @@ export const HomePage: React.FC<HomePageProps> = ({
             </div>
           </div>
           <div style={{ textAlign: 'center' }}>
-            <img 
-              src="/ai_advisor_multimodal.png" 
-              alt="Multimodal Axis AI Assistant Container" 
-              style={{ width: '100%', maxHeight: '340px', objectFit: 'cover', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.15)', boxShadow: '0 12px 36px rgba(0,0,0,0.6)' }} 
+            <img
+              src="/ai_advisor_multimodal.png"
+              alt="Multimodal Axis AI Assistant Container"
+              style={{ width: '100%', maxHeight: '340px', objectFit: 'cover', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.15)', boxShadow: '0 12px 36px rgba(0,0,0,0.6)' }}
             />
           </div>
         </div>
@@ -401,7 +423,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           <div className="home-section-eyebrow">Who We Are</div>
           <h2 className="home-section-title">Built for Africa's<br /><span className="home-hero-gradient">boldest operators</span></h2>
           <p className="home-section-sub" style={{ maxWidth: '720px', margin: '16px auto' }}>
-            Axis Black is a precision-grade financial intelligence platform engineered for founders, CFOs, 
+            Axis Black is a precision-grade financial intelligence platform engineered for founders, CFOs,
             and operators who demand clarity, speed, and intelligence in every decision.
           </p>
         </div>
@@ -447,6 +469,12 @@ export const HomePage: React.FC<HomePageProps> = ({
               </div>
             ) : (
               <form onSubmit={handleContactSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {contactError && (
+                  <div className="auth-error-banner" style={{ marginBottom: '4px' }}>
+                    <i className="fa-solid fa-triangle-exclamation"></i>
+                    <span>{contactError}</span>
+                  </div>
+                )}
                 <div>
                   <label style={{ color: '#cebdff', fontSize: '0.85rem', marginBottom: '6px', display: 'block' }}>Full Name *</label>
                   <input
@@ -495,8 +523,21 @@ export const HomePage: React.FC<HomePageProps> = ({
                     style={{ width: '100%', padding: '12px 16px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', color: '#fff' }}
                   />
                 </div>
-                <button type="submit" className="home-btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '8px' }}>
-                  <i className="fa-solid fa-paper-plane"></i> Send Message
+                <button
+                  type="submit"
+                  className="home-btn-primary"
+                  disabled={submittingContact}
+                  style={{ width: '100%', justifyContent: 'center', marginTop: '8px', opacity: submittingContact ? 0.7 : 1 }}
+                >
+                  {submittingContact ? (
+                    <>
+                      <i className="fa-solid fa-circle-notch fa-spin"></i> Sending Message...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fa-solid fa-paper-plane"></i> Send Message
+                    </>
+                  )}
                 </button>
               </form>
             )}
@@ -568,10 +609,10 @@ export const HomePage: React.FC<HomePageProps> = ({
         <div className="home-footer-inner">
           {/* Brand & Direct Contact Actions */}
           <div className="home-footer-col home-footer-col-brand">
-            <div 
-              className="home-footer-brand" 
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} 
-              style={{ cursor: 'pointer' }} 
+            <div
+              className="home-footer-brand"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              style={{ cursor: 'pointer' }}
               title="Back to Top"
             >
               <img src="/compass_icon.png" alt="Axis Black" className="home-nav-logo" />
@@ -582,37 +623,37 @@ export const HomePage: React.FC<HomePageProps> = ({
               Real-time. AI-native. Built for scale.
             </p>
             <div className="home-footer-socials">
-              <a 
-                href="https://wa.me/254712000100" 
-                target="_blank" 
-                rel="noreferrer" 
-                className="footer-social-btn" 
+              <a
+                href="https://wa.me/254769231760"
+                target="_blank"
+                rel="noreferrer"
+                className="footer-social-btn"
                 title="WhatsApp Us"
                 style={{ textDecoration: 'none' }}
               >
                 <i className="fa-brands fa-whatsapp"></i>
               </a>
-              <a 
-                href="https://x.com/axisblack" 
-                target="_blank" 
-                rel="noreferrer" 
-                className="footer-social-btn" 
+              <a
+                href="https://x.com/Reino Forms"
+                target="_blank"
+                rel="noreferrer"
+                className="footer-social-btn"
                 title="X (Twitter)"
                 style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
                 <XIcon size={15} color="#cebdff" />
               </a>
-              <a 
-                href="mailto:support@axisblack.io" 
-                className="footer-social-btn" 
+              <a
+                href="mailto:secherodalvine@gmail.com"
+                className="footer-social-btn"
                 title="Email Support"
                 style={{ textDecoration: 'none' }}
               >
                 <i className="fa-solid fa-envelope"></i>
               </a>
-              <a 
-                href="tel:+254712000100" 
-                className="footer-social-btn" 
+              <a
+                href="tel:+254769231760"
+                className="footer-social-btn"
                 title="Call Support"
                 style={{ textDecoration: 'none' }}
               >
@@ -651,23 +692,23 @@ export const HomePage: React.FC<HomePageProps> = ({
             <div className="home-footer-col-title">Contact Us</div>
             <ul className="home-footer-links">
               <li>
-                <a href="https://wa.me/254712000100" target="_blank" rel="noreferrer" className="home-footer-link" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                <a href="https://wa.me/254769231760" target="_blank" rel="noreferrer" className="home-footer-link" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                   <i className="fa-brands fa-whatsapp" style={{ color: '#25D366' }}></i> WhatsApp Chat
                 </a>
               </li>
               <li>
-                <a href="https://x.com/axisblack" target="_blank" rel="noreferrer" className="home-footer-link" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                <a href="https://x.com/Reino Forms" target="_blank" rel="noreferrer" className="home-footer-link" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                   <XIcon size={14} color="#00d4ff" /> @axisblack
                 </a>
               </li>
               <li>
-                <a href="mailto:support@axisblack.io" className="home-footer-link" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                  <i className="fa-solid fa-envelope" style={{ color: '#cebdff' }}></i> support@axisblack.io
+                <a href="mailto:secherodalvine@gmail.com" className="home-footer-link" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fa-solid fa-envelope" style={{ color: '#cebdff' }}></i> secherodalvine@gmail.com
                 </a>
               </li>
               <li>
-                <a href="tel:+254712000100" className="home-footer-link" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                  <i className="fa-solid fa-phone" style={{ color: '#4ade80' }}></i> +254 712 000 100
+                <a href="tel:+254769231760" className="home-footer-link" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fa-solid fa-phone" style={{ color: '#4ade80' }}></i> +254 769 231 760
                 </a>
               </li>
             </ul>

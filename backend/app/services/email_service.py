@@ -42,6 +42,7 @@ def send_email_notification(
     subject: str,
     body_html: str,
     body_text: Optional[str] = None,
+    reply_to: Optional[str] = None,
 ) -> bool:
     """
     Sends an email directly via the Vercel Email API microservice.
@@ -65,6 +66,8 @@ def send_email_notification(
         "html": body_html,
         "text": body_text,
     }
+    if reply_to:
+        payload["reply_to"] = reply_to.strip()
 
     headers = {
         "Authorization": f"Bearer {email_api_key}",
@@ -126,7 +129,7 @@ def send_verification_email(to_email: str, user_name: str, verify_url: str) -> b
       </div>
       <div class="footer">
         <strong>Axis Black</strong> — Business Intelligence Command Center<br>
-        Nairobi, Kenya · Lagos, Nigeria
+        Nairobi, Kenya · Ruiru, Kiambu County
       </div>
     </div>
   </div>
@@ -180,7 +183,7 @@ def send_password_reset_email(to_email: str, reset_url: str) -> bool:
       </div>
       <div class="footer">
         <strong>Axis Black</strong> — Business Intelligence Command Center<br>
-        Nairobi, Kenya · Lagos, Nigeria
+        Nairobi, Kenya · Ruiru, Kiambu County
       </div>
     </div>
   </div>
@@ -286,7 +289,7 @@ def send_welcome_email(to_email: str, user_name: str) -> bool:
       </div>
       <div class="footer">
         <strong>Axis Black</strong> — Business Intelligence Command Center<br>
-        Nairobi, Kenya · Lagos, Nigeria
+        Nairobi, Kenya · Ruiru, Kiambu County
       </div>
     </div>
   </div>
@@ -299,3 +302,91 @@ def send_welcome_email(to_email: str, user_name: str) -> bool:
         f"Log in at your Axis Black dashboard to get started."
     )
     return send_email_notification(to_email, subject, html, text)
+
+
+def send_support_message_email(
+    name: str,
+    email: str,
+    message: str,
+    subject: str = "New message",
+    label: str = "support",
+) -> bool:
+    """
+    Sends support, contact, inquiry, or sales message to the support team (secherodalvine@gmail.com).
+    Sets Reply-To to the sender's email address so replies go directly to the user.
+    """
+    clean_subject = subject.strip() or "New Support Inquiry"
+    clean_label = label.strip().lower() or "support"
+    formatted_label = clean_label.replace("_", " ").title()
+    dest_email = getattr(settings, "SUPPORT_EMAIL", "secherodalvine@gmail.com")
+
+    email_subject = f"[Axis Black {formatted_label}] {clean_subject}"
+
+    import html
+    safe_name = html.escape(name)
+    safe_email = html.escape(email)
+    safe_subject = html.escape(clean_subject)
+    safe_message = html.escape(message).replace("\n", "<br>")
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{email_subject}</title>
+  <style>{_EMAIL_BASE_STYLE}</style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="header">
+        <div class="brand">
+          <span class="brand-name">AXIS<span>BLACK</span></span>
+        </div>
+        <h1 class="header-title">New {formatted_label} Message</h1>
+        <p class="header-sub">Submitted from Axis Black Platform</p>
+      </div>
+      <div class="body">
+        <p><strong>Sender Details:</strong></p>
+        <ul style="color:#cbd5e1;font-size:14px;line-height:1.8;list-style:none;padding-left:0;">
+          <li>👤 <strong>Name:</strong> {safe_name}</li>
+          <li>✉️ <strong>Email:</strong> <a href="mailto:{safe_email}" style="color:#00d4ff;">{safe_email}</a></li>
+          <li>🏷️ <strong>Category:</strong> {clean_label.upper()}</li>
+          <li>📌 <strong>Subject:</strong> {safe_subject}</li>
+        </ul>
+        <hr class="divider">
+        <p><strong>Message Content:</strong></p>
+        <div style="background:rgba(0, 212, 255, 0.05);border:1px solid rgba(0, 212, 255, 0.2);border-radius:12px;padding:20px;color:#e2e8f0;font-size:14px;line-height:1.7;">
+          {safe_message}
+        </div>
+        <div class="btn-wrap">
+          <a href="mailto:{safe_email}" class="btn">✉️ Reply to {safe_name}</a>
+        </div>
+        <hr class="divider">
+        <p style="font-size:12px;color:#64748b;">Replying to this email will send your response directly to <strong>{safe_email}</strong>.</p>
+      </div>
+      <div class="footer">
+        <strong>Axis Black Support Desk</strong> &bull; Automated Dispatch
+      </div>
+    </div>
+  </div>
+</body>
+</html>"""
+
+    text_content = (
+        f"Axis Black {formatted_label} Message\n\n"
+        f"From: {name} <{email}>\n"
+        f"Category: {clean_label.upper()}\n"
+        f"Subject: {clean_subject}\n\n"
+        f"Message:\n{message}\n\n"
+        f"Reply directly to this email to respond to {email}."
+    )
+
+    return send_email_notification(
+        to_email=dest_email,
+        subject=email_subject,
+        body_html=html_content,
+        body_text=text_content,
+        reply_to=email,
+    )
+

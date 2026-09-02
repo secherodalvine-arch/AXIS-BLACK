@@ -35,6 +35,7 @@ class Settings:
     SMTP_TLS: bool = os.getenv("SMTP_TLS", "True").lower() in ("true", "1", "yes")
     EMAILS_FROM_EMAIL: str = os.getenv("EMAILS_FROM_EMAIL", "noreply@axisblack.io")
     EMAILS_FROM_NAME: str = os.getenv("EMAILS_FROM_NAME", "Axis Black")
+    SUPPORT_EMAIL: str = os.getenv("SUPPORT_EMAIL", "secherodalvine@gmail.com")
 
     # Frontend URL (used in email links)
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")

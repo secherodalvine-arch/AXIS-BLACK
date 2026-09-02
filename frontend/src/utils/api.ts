@@ -332,3 +332,18 @@ export const processVoiceCommandApi = async (transcript: string, active_tab?: st
   });
 };
 
+// ── Support & Contact API ──
+export const sendSupportMessageApi = async (payload: {
+  name: string;
+  email: string;
+  message: string;
+  subject?: string;
+  label?: string;
+}): Promise<{ message: string; label: string }> => {
+  return await request<{ message: string; label: string }>('/support/message', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+

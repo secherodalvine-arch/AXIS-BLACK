@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse
 
 from app.config import settings
 from app.database import connect_to_mongo, close_mongo_connection
-from app.routers import user, dashboard, transactions, voice, auth, storage, inventory, analytics, agent
+from app.routers import user, dashboard, transactions, voice, auth, storage, inventory, analytics, agent, support
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -49,8 +49,9 @@ app.add_middleware(
 )
 
 
-# ── Auth API (public — no user token required) ──────────────────
+# ── Auth & Support APIs (public — no user token required) ──────
 app.include_router(auth.router)
+app.include_router(support.router)
 
 # ── Axis Black Protected API Routers ────────────────────────────
 app.include_router(user.router)
