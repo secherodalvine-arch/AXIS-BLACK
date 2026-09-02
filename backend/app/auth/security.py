@@ -1,30 +1,46 @@
 """
 security.py — Password hashing and JWT token utilities.
-Uses bcrypt directly (compatible with Python 3.13) and python-jose for JWT.
+Uses Argon2id (argon2-cffi) for modern password hashing, with legacy bcrypt fallback.
 """
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 
-import bcrypt
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError, InvalidHashError
 from jose import JWTError, jwt
 
 from app.config import settings
 
+# Initialize Argon2id hasher
+_ph = PasswordHasher()
+
 
 def hash_password(plain_password: str) -> str:
-    """Return a bcrypt hash of the plain-text password."""
-    password_bytes = plain_password.encode("utf-8")
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password_bytes, salt).decode("utf-8")
+    """Return an Argon2id hash of the plain-text password."""
+    return _ph.hash(plain_password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Return True if the plain password matches the stored hash."""
+    """
+    Return True if the plain password matches the stored Argon2id hash.
+    Includes fallback verification for legacy bcrypt hashes.
+    """
+    if not plain_password or not hashed_password:
+        return False
+
     try:
-        return bcrypt.checkpw(
-            plain_password.encode("utf-8"),
-            hashed_password.encode("utf-8")
-        )
+        return _ph.verify(hashed_password, plain_password)
+    except (VerifyMismatchError, InvalidHashError):
+        if hashed_password.startswith(("$2a$", "$2b$", "$2y$")):
+            try:
+                import bcrypt
+                return bcrypt.checkpw(
+                    plain_password.encode("utf-8"),
+                    hashed_password.encode("utf-8")
+                )
+            except Exception:
+                return False
+        return False
     except Exception:
         return False
 
