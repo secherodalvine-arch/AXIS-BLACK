@@ -6,6 +6,7 @@ OTP-based password reset with 1-minute resend cooldown.
 import uuid
 import datetime
 import random
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from fastapi.responses import HTMLResponse

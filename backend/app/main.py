@@ -65,29 +65,64 @@ app.include_router(storage.router)
 
 
 # ── Static & Frontend ───────────────────────────────────────────
-FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "frontend")
-STATIC_DIR   = os.path.join(FRONTEND_DIR, "static")
-if os.path.isdir(STATIC_DIR):
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+# In production (Render), the Vite build is in frontend/dist/.
+# In local dev the dist/ may not exist; fall back gracefully.
+FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")
+FRONTEND_ASSETS = os.path.join(FRONTEND_DIST, "assets")
+
+if os.path.isdir(FRONTEND_ASSETS):
+    app.mount("/assets", StaticFiles(directory=FRONTEND_ASSETS), name="assets")
+
+def _serve_index() -> HTMLResponse:
+    """Serve the Vite-built index.html (SPA entry-point)."""
+    index_path = os.path.join(FRONTEND_DIST, "index.html")
+    try:
+        with open(index_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(
+            content="<h1>Frontend not built.</h1><p>Run <code>npm run build</code> in the frontend/ directory.</p>",
+            status_code=503,
+        )
+
 
 @app.get("/", response_class=HTMLResponse, tags=["Frontend"], include_in_schema=False)
-@app.get("/index.html", response_class=HTMLResponse, tags=["Frontend"], include_in_schema=False)
-async def serve_frontend():
-    index_path = os.path.join(FRONTEND_DIR, "index.html")
-    with open(index_path, "r", encoding="utf-8") as f:
-        return HTMLResponse(content=f.read())
+async def serve_root():
+    return _serve_index()
+
 
 @app.get("/login", response_class=HTMLResponse, tags=["Frontend"], include_in_schema=False)
-@app.get("/login.html", response_class=HTMLResponse, tags=["Frontend"], include_in_schema=False)
-async def serve_login():
-    path = os.path.join(FRONTEND_DIR, "login.html")
-    with open(path, "r", encoding="utf-8") as f:
-        return HTMLResponse(content=f.read())
+@app.get("/register", response_class=HTMLResponse, tags=["Frontend"], include_in_schema=False)
+async def serve_spa_auth():
+    """Serve the SPA for auth pages so email-app deep-links resolve correctly."""
+    return _serve_index()
+
 
 @app.get("/verify-email", response_class=HTMLResponse, tags=["Frontend"], include_in_schema=False)
 async def serve_verify_email(token: Optional[str] = Query(None)):
+    """
+    Handles email verification links clicked directly from an email client.
+
+    When FRONTEND_URL == backend URL (Render single-service deployment), the
+    verification link in the email points here.  We process the token and
+    return a styled HTML result page with a 'Sign In' button.
+
+    When the frontend is hosted separately (Vercel/Netlify), the SPA handles
+    the token via the POST /api/auth/verify-email endpoint.  This route still
+    works as a graceful fallback in that case.
+    """
     from app.routers.auth import verify_email_get
     return await verify_email_get(token)
+
+
+@app.get("/reset-password", response_class=HTMLResponse, tags=["Frontend"], include_in_schema=False)
+async def serve_reset_password():
+    """
+    Handles password-reset links clicked directly from an email client.
+    Returns the SPA so the PasswordResetPage component can read the token
+    from the URL query string.
+    """
+    return _serve_index()
 
 
 @app.get("/api/health", tags=["Health Check"])
