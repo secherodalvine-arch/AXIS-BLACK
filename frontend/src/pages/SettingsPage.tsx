@@ -16,14 +16,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onUserUpdate 
 }) => {
   const [profile, setProfile] = useState<any>({
-    name: user?.name || 'Dalvine',
-    email: user?.email || 'secherodalvine@gmail.com',
-    role: user?.role || 'Chief Financial Officer',
-    company: user?.company || 'Axis Black Inc.',
-    salary: user?.salary || 150000,
+    name: user?.name || '',
+    email: user?.email || '',
+    role: user?.role || '',
+    company: user?.company || '',
+    salary: user?.salary || 0,
     income_frequency: user?.income_frequency || 'monthly',
-    city: user?.location?.city || 'Nairobi',
-    country: user?.location?.country || 'Kenya',
+    city: user?.location?.city || '',
+    country: user?.location?.country || '',
     currency: user?.currency || currency,
     avatar_url: user?.avatar_url || '',
     personality: user?.personality || 'Precision-Driven',
@@ -41,14 +41,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       .then((res) => {
         if (mounted && res) {
           const loaded: any = {
-            name: res.name || user?.name || 'Dalvine',
-            email: res.email || user?.email || 'secherodalvine@gmail.com',
-            role: res.role || user?.role || 'Chief Financial Officer',
-            company: res.company || user?.company || 'Axis Black Inc.',
-            salary: res.salary ?? user?.salary ?? 150000,
+            name: res.name || user?.name || '',
+            email: res.email || user?.email || '',
+            role: res.role || user?.role || '',
+            company: res.company || user?.company || '',
+            salary: res.salary ?? user?.salary ?? 0,
             income_frequency: res.income_frequency || user?.income_frequency || 'monthly',
-            city: res.location?.city || user?.location?.city || 'Nairobi',
-            country: res.location?.country || user?.location?.country || 'Kenya',
+            city: res.location?.city || user?.location?.city || '',
+            country: res.location?.country || user?.location?.country || '',
             currency: res.currency || user?.currency || currency,
             avatar_url: res.avatar_url || user?.avatar_url || '',
             personality: res.personality || user?.personality || 'Precision-Driven',

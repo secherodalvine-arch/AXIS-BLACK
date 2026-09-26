@@ -97,6 +97,7 @@ async def save_user_chat_session(payload: ChatSessionSaveModel, current_user: di
         user_mem[existing_idx] = session_data
     else:
         user_mem.insert(0, session_data)
+    db_manager.save_memory_store()
 
     return {"status": "saved", "session": session_data}
 
@@ -108,5 +109,6 @@ async def delete_user_chat_session(session_id: str, current_user: dict = Depends
 
     user_mem = db_manager.memory_store["copilot_chats"].get(user_id, [])
     db_manager.memory_store["copilot_chats"][user_id] = [s for s in user_mem if s["id"] != session_id]
+    db_manager.save_memory_store()
 
     return {"status": "deleted", "session_id": session_id}

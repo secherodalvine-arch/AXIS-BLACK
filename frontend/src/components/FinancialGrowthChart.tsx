@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import ChartJS from 'chart.js/auto';
 
-export const FinancialGrowthChart: React.FC = () => {
+export const FinancialGrowthChart: React.FC<{ transactions?: any[] }> = ({ transactions }) => {
   const chartRef = useRef<HTMLCanvasElement | null>(null);
   const instanceRef = useRef<any>(null);
 
@@ -112,7 +112,7 @@ export const FinancialGrowthChart: React.FC = () => {
       <div className="card-header">
         <div className="card-title-group">
           <h3>Financial Performance & Growth</h3>
-          <p className="subtitle">Real-time revenue, gross margin, and operational expenditures</p>
+          <p className="subtitle">{transactions && transactions.length > 0 ? 'Revenue, margin, and expenditure trends derived from your ledger' : 'Add transactions to see real trend data — chart shows illustrative structure'}</p>
         </div>
         <div className="card-actions">
           <div className="chart-legend-custom">

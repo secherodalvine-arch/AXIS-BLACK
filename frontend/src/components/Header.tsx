@@ -26,6 +26,7 @@ interface HeaderProps {
   onSearchChange: (query: string) => void;
   onLogout?: () => void;
   onNavigateLogin?: () => void;
+  onNavigateSettings?: () => void;
 }
 
 const TAB_TITLES: Record<NavTab, string> = {
@@ -88,7 +89,8 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleMobileMenu,
   onSearchChange,
   onLogout,
-  onNavigateLogin
+  onNavigateLogin,
+  onNavigateSettings
 }) => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
@@ -96,7 +98,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [notifFilter, setNotifFilter] = useState<'all' | 'unread'>('all');
   const [selectedNotif, setSelectedNotif] = useState<SystemNotification | null>(null);
 
-  const displayName = userName || (userEmail ? userEmail.split('@')[0] : 'Dalvine');
+  const displayName = userName || (userEmail ? userEmail.split('@')[0] : 'Operator');
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const filteredNotifications = notifications.filter(n => {
@@ -473,7 +475,7 @@ export const Header: React.FC<HeaderProps> = ({
               position: 'absolute',
               top: '120%',
               right: 0,
-              width: '200px',
+              width: '210px',
               background: '#141418',
               border: '1px solid rgba(255, 255, 255, 0.12)',
               borderRadius: '12px',
@@ -481,6 +483,49 @@ export const Header: React.FC<HeaderProps> = ({
               boxShadow: '0 12px 32px rgba(0, 0, 0, 0.8)',
               zIndex: 100
             }}>
+              {/* Profile Identity Summary */}
+              <div style={{ padding: '8px 12px 10px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', marginBottom: '6px' }}>
+                <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {displayName}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                  {userEmail || userRole || 'Active Operator'}
+                </div>
+              </div>
+
+              {/* Settings Action */}
+              {onNavigateSettings && (
+                <button
+                  onClick={() => {
+                    setShowProfileDropdown(false);
+                    onNavigateSettings();
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    background: 'transparent',
+                    border: 'none',
+                    borderRadius: '8px',
+                    color: '#e5e2e1',
+                    fontSize: '0.85rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    marginBottom: '4px',
+                    transition: 'all 0.2s ease',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0, 212, 255, 0.1)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <i className="fa-solid fa-gear" style={{ color: '#00d4ff', width: '16px', textAlign: 'center' }}></i>
+                  <span>Settings</span>
+                </button>
+              )}
+
+              {/* Logout Action */}
               {onLogout ? (
                 <button
                   onClick={() => {
@@ -490,7 +535,7 @@ export const Header: React.FC<HeaderProps> = ({
                   style={{
                     width: '100%',
                     padding: '8px 12px',
-                    background: 'rgba(255, 142, 142, 0.1)',
+                    background: 'rgba(255, 142, 142, 0.08)',
                     border: '1px solid rgba(255, 142, 142, 0.2)',
                     borderRadius: '8px',
                     color: '#ff8e8e',
@@ -499,10 +544,15 @@ export const Header: React.FC<HeaderProps> = ({
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px'
+                    gap: '10px',
+                    transition: 'all 0.2s ease',
+                    textAlign: 'left'
                   }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 142, 142, 0.18)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255, 142, 142, 0.08)')}
                 >
-                  <i className="fa-solid fa-right-from-bracket"></i> Sign Out
+                  <i className="fa-solid fa-right-from-bracket" style={{ width: '16px', textAlign: 'center' }}></i>
+                  <span>Logout</span>
                 </button>
               ) : onNavigateLogin ? (
                 <button
@@ -522,10 +572,11 @@ export const Header: React.FC<HeaderProps> = ({
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px'
+                    gap: '10px'
                   }}
                 >
-                  <i className="fa-solid fa-right-to-bracket"></i> Sign In
+                  <i className="fa-solid fa-right-to-bracket" style={{ width: '16px', textAlign: 'center' }}></i>
+                  <span>Sign In</span>
                 </button>
               ) : null}
             </div>

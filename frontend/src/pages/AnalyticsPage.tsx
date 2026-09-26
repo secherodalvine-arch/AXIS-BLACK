@@ -1,42 +1,46 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import ChartJS from 'chart.js/auto';
-import { Currency } from '../types';
+import { Currency, Transaction } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
 
 interface BusinessAnalyticsProps {
   currency?: Currency;
+  transactions?: Transaction[];
 }
 
 interface MonthlyRecord {
   month: string;
   fullMonth: string;
-  engineering: number;
-  sales: number;
-  cloud: number;
-  operations: number;
+  cat1: number;
+  cat2: number;
+  cat3: number;
+  cat4: number;
 }
 
-const MONTHLY_BUSINESS_UNIT_DATA: MonthlyRecord[] = [
-  { month: 'Jan', fullMonth: 'January 2026', engineering: 180000, sales: 120000, cloud: 80000, operations: 60000 },
-  { month: 'Feb', fullMonth: 'February 2026', engineering: 195000, sales: 135000, cloud: 85000, operations: 65000 },
-  { month: 'Mar', fullMonth: 'March 2026', engineering: 210000, sales: 150000, cloud: 95000, operations: 72000 },
-  { month: 'Apr', fullMonth: 'April 2026', engineering: 225000, sales: 170000, cloud: 102000, operations: 78000 },
-  { month: 'May', fullMonth: 'May 2026', engineering: 240000, sales: 190000, cloud: 110000, operations: 85000 },
-  { month: 'Jun', fullMonth: 'June 2026', engineering: 255000, sales: 205000, cloud: 118000, operations: 90000 },
-  { month: 'Jul', fullMonth: 'July 2026', engineering: 260000, sales: 220000, cloud: 125000, operations: 95000 },
-  { month: 'Aug', fullMonth: 'August 2026', engineering: 275000, sales: 240000, cloud: 132000, operations: 100000 },
-  { month: 'Sep', fullMonth: 'September 2026', engineering: 290000, sales: 260000, cloud: 140000, operations: 105000 },
-  { month: 'Oct', fullMonth: 'October 2026', engineering: 310000, sales: 280000, cloud: 148000, operations: 110000 },
-  { month: 'Nov', fullMonth: 'November 2026', engineering: 325000, sales: 300000, cloud: 155000, operations: 115000 },
-  { month: 'Dec', fullMonth: 'December 2026', engineering: 340000, sales: 320000, cloud: 162000, operations: 120000 }
+const MONTHS_CONFIG = [
+  { month: 'Jan', fullMonth: 'January 2026' },
+  { month: 'Feb', fullMonth: 'February 2026' },
+  { month: 'Mar', fullMonth: 'March 2026' },
+  { month: 'Apr', fullMonth: 'April 2026' },
+  { month: 'May', fullMonth: 'May 2026' },
+  { month: 'Jun', fullMonth: 'June 2026' },
+  { month: 'Jul', fullMonth: 'July 2026' },
+  { month: 'Aug', fullMonth: 'August 2026' },
+  { month: 'Sep', fullMonth: 'September 2026' },
+  { month: 'Oct', fullMonth: 'October 2026' },
+  { month: 'Nov', fullMonth: 'November 2026' },
+  { month: 'Dec', fullMonth: 'December 2026' },
 ];
 
-export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency = 'USD' }) => {
+export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency = 'USD', transactions = [] }) => {
   const chartRef = useRef<HTMLCanvasElement | null>(null);
   const chartInstanceRef = useRef<any>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState<MonthlyRecord>(MONTHLY_BUSINESS_UNIT_DATA[3]); // Apr 2026 default
   const [industryMode, setIndustryMode] = useState<'restaurant' | 'tech' | 'general'>('restaurant');
+  const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(() => {
+    const cur = new Date().getMonth();
+    return cur >= 0 && cur <= 11 ? cur : 7;
+  });
 
   const getLabels = () => {
     if (industryMode === 'restaurant') {
@@ -77,6 +81,73 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
 
   const labelsConfig = getLabels();
 
+  // Dynamically compute monthly records from real transactions
+  const monthlyData: MonthlyRecord[] = useMemo(() => {
+    const records: MonthlyRecord[] = MONTHS_CONFIG.map(m => ({
+      month: m.month,
+      fullMonth: m.fullMonth,
+      cat1: 0,
+      cat2: 0,
+      cat3: 0,
+      cat4: 0,
+    }));
+
+    if (!transactions || transactions.length === 0) {
+      return records;
+    }
+
+    transactions.forEach(t => {
+      if (!t.date) return;
+      const d = new Date(t.date);
+      const mIdx = d.getMonth();
+      if (isNaN(mIdx) || mIdx < 0 || mIdx > 11) return;
+
+      const amt = Math.abs(Number(t.amount) || 0);
+      const cat = (t.category || '').toLowerCase();
+      const cp = (t.counterparty || '').toLowerCase();
+
+      if (industryMode === 'restaurant') {
+        if (/food|ingredient|kitchen|beverage|produce|meat|sysco/i.test(cat) || /food|produce|sysco/i.test(cp)) {
+          records[mIdx].cat1 += amt;
+        } else if (/payroll|staff|labor|salary|wage/i.test(cat) || /payroll|gusto/i.test(cp)) {
+          records[mIdx].cat2 += amt;
+        } else if (/equipment|tech|pos|hardware|printer|rig/i.test(cat)) {
+          records[mIdx].cat3 += amt;
+        } else {
+          records[mIdx].cat4 += amt;
+        }
+      } else if (industryMode === 'tech') {
+        if (/engineer|product|dev|payroll|salary/i.test(cat) || /payroll|gusto/i.test(cp)) {
+          records[mIdx].cat1 += amt;
+        } else if (/sales|growth|marketing|subscription|crm|ad/i.test(cat) || /stripe|salesforce/i.test(cp)) {
+          records[mIdx].cat2 += amt;
+        } else if (/infra|cloud|aws|hosting|server|kubernetes/i.test(cat) || /aws|amazon|google/i.test(cp)) {
+          records[mIdx].cat3 += amt;
+        } else {
+          records[mIdx].cat4 += amt;
+        }
+      } else {
+        if (/cogs|cost of goods|inventory|produce/i.test(cat)) {
+          records[mIdx].cat1 += amt;
+        } else if (/sales|marketing|subscription|growth/i.test(cat)) {
+          records[mIdx].cat2 += amt;
+        } else if (/rent|facilities|lease|utilities/i.test(cat)) {
+          records[mIdx].cat3 += amt;
+        } else {
+          records[mIdx].cat4 += amt;
+        }
+      }
+    });
+
+    return records;
+  }, [transactions, industryMode]);
+
+  const hasAnyData = useMemo(() => {
+    return monthlyData.some(m => m.cat1 > 0 || m.cat2 > 0 || m.cat3 > 0 || m.cat4 > 0);
+  }, [monthlyData]);
+
+  const selectedMonth = monthlyData[selectedMonthIndex] || monthlyData[0];
+
   useEffect(() => {
     if (!chartRef.current) return;
     const ctx = chartRef.current.getContext('2d');
@@ -86,11 +157,11 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
       chartInstanceRef.current.destroy();
     }
 
-    const months = MONTHLY_BUSINESS_UNIT_DATA.map(d => d.month);
-    const engData = MONTHLY_BUSINESS_UNIT_DATA.map(d => d.engineering);
-    const salesData = MONTHLY_BUSINESS_UNIT_DATA.map(d => d.sales);
-    const cloudData = MONTHLY_BUSINESS_UNIT_DATA.map(d => d.cloud);
-    const opsData = MONTHLY_BUSINESS_UNIT_DATA.map(d => d.operations);
+    const months = monthlyData.map(d => d.month);
+    const cat1Data = monthlyData.map(d => d.cat1);
+    const cat2Data = monthlyData.map(d => d.cat2);
+    const cat3Data = monthlyData.map(d => d.cat3);
+    const cat4Data = monthlyData.map(d => d.cat4);
 
     chartInstanceRef.current = new ChartJS(ctx, {
       type: 'bar',
@@ -99,7 +170,7 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
         datasets: [
           {
             label: labelsConfig.cat1,
-            data: engData,
+            data: cat1Data,
             backgroundColor: '#cebdff',
             borderRadius: 6,
             barPercentage: 0.75,
@@ -107,7 +178,7 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
           },
           {
             label: labelsConfig.cat2,
-            data: salesData,
+            data: cat2Data,
             backgroundColor: '#00d4ff',
             borderRadius: 6,
             barPercentage: 0.75,
@@ -115,16 +186,16 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
           },
           {
             label: labelsConfig.cat3,
-            data: cloudData,
-            backgroundColor: '#cebdff',
+            data: cat3Data,
+            backgroundColor: '#a78bfa',
             borderRadius: 6,
             barPercentage: 0.75,
             categoryPercentage: 0.8
           },
           {
             label: labelsConfig.cat4,
-            data: opsData,
-            backgroundColor: '#a78bfa',
+            data: cat4Data,
+            backgroundColor: '#818cf8',
             borderRadius: 6,
             barPercentage: 0.75,
             categoryPercentage: 0.8
@@ -137,7 +208,7 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
         onClick: (_event: any, elements: any[]) => {
           if (elements.length > 0) {
             const index = elements[0].index;
-            setSelectedMonth(MONTHLY_BUSINESS_UNIT_DATA[index]);
+            setSelectedMonthIndex(index);
           }
         },
         plugins: {
@@ -193,7 +264,7 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
         chartInstanceRef.current.destroy();
       }
     };
-  }, [currency, industryMode]);
+  }, [currency, industryMode, monthlyData]);
 
   // Scroll helper functions
   const handleScrollToRange = (startIndex: number) => {
@@ -204,14 +275,14 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
     }
   };
 
-  const selectedMonthTotal = selectedMonth.engineering + selectedMonth.sales + selectedMonth.cloud + selectedMonth.operations;
+  const selectedMonthTotal = selectedMonth.cat1 + selectedMonth.cat2 + selectedMonth.cat3 + selectedMonth.cat4;
 
   // Annual Totals
-  const totalEng = MONTHLY_BUSINESS_UNIT_DATA.reduce((acc, curr) => acc + curr.engineering, 0);
-  const totalSales = MONTHLY_BUSINESS_UNIT_DATA.reduce((acc, curr) => acc + curr.sales, 0);
-  const totalCloud = MONTHLY_BUSINESS_UNIT_DATA.reduce((acc, curr) => acc + curr.cloud, 0);
-  const totalOps = MONTHLY_BUSINESS_UNIT_DATA.reduce((acc, curr) => acc + curr.operations, 0);
-  const grandAnnualTotal = totalEng + totalSales + totalCloud + totalOps;
+  const totalCat1 = monthlyData.reduce((acc, curr) => acc + curr.cat1, 0);
+  const totalCat2 = monthlyData.reduce((acc, curr) => acc + curr.cat2, 0);
+  const totalCat3 = monthlyData.reduce((acc, curr) => acc + curr.cat3, 0);
+  const totalCat4 = monthlyData.reduce((acc, curr) => acc + curr.cat4, 0);
+  const grandAnnualTotal = totalCat1 + totalCat2 + totalCat3 + totalCat4;
 
   return (
     <div className="tab-view active">
@@ -219,14 +290,14 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
       <div className="view-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-            <span className="pill-tag cyan">12 MONTH PERFORMANCE DATA</span>
+            <span className="pill-tag cyan">PERFORMANCE DATA</span>
             <span className="pill-tag lilac">BUSINESS UNIT OVERVIEW</span>
           </div>
           <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', margin: 0, fontFamily: 'Plus Jakarta Sans' }}>
             Business Unit Financial Performance
           </h2>
           <p className="subtitle" style={{ color: '#9ca3af', marginTop: '0.25rem' }}>
-            Monthly performance breakdown across business units (Adaptable for Restaurant, Tech & General Business)
+            Monthly performance breakdown extracted from real ledger transactions
           </p>
         </div>
 
@@ -253,6 +324,25 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
           </div>
         </div>
       </div>
+
+      {/* Real data notification banner if no transactions logged yet */}
+      {!hasAnyData && (
+        <div style={{
+          background: 'rgba(0, 212, 255, 0.06)',
+          border: '1px solid rgba(0, 212, 255, 0.25)',
+          borderRadius: '0.85rem',
+          padding: '1rem 1.25rem',
+          marginBottom: '1.25rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.85rem'
+        }}>
+          <i className="fa-solid fa-circle-info" style={{ color: '#00d4ff', fontSize: '1.2rem', flexShrink: 0 }}></i>
+          <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+            <strong style={{ color: '#fff' }}>No transaction records for the current year yet.</strong> As you log revenue and expenses in the Ledger, this dashboard dynamically aggregates and visualizes your monthly business unit metrics.
+          </div>
+        </div>
+      )}
 
       {/* Main Layout Grid (Left: 12-Month Scrollable Graph | Right: Historical Data Sidebar) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
@@ -299,28 +389,28 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
             <div style={{ background: 'rgba(206, 189, 255, 0.08)', padding: '0.75rem', borderRadius: '0.6rem', border: '1px solid rgba(206, 189, 255, 0.2)' }}>
               <div style={{ fontSize: '0.7rem', color: '#cebdff', fontWeight: 600, textTransform: 'uppercase' }}>{labelsConfig.cat1Short}</div>
               <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ffffff', fontFamily: 'JetBrains Mono', marginTop: '0.2rem' }}>
-                {formatCurrency(totalEng, currency)}
+                {formatCurrency(totalCat1, currency)}
               </div>
             </div>
 
             <div style={{ background: 'rgba(0, 212, 255, 0.08)', padding: '0.75rem', borderRadius: '0.6rem', border: '1px solid rgba(0, 212, 255, 0.2)' }}>
               <div style={{ fontSize: '0.7rem', color: '#00d4ff', fontWeight: 600, textTransform: 'uppercase' }}>{labelsConfig.cat2Short}</div>
               <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ffffff', fontFamily: 'JetBrains Mono', marginTop: '0.2rem' }}>
-                {formatCurrency(totalSales, currency)}
-              </div>
-            </div>
-
-            <div style={{ background: 'rgba(206, 189, 255, 0.08)', padding: '0.75rem', borderRadius: '0.6rem', border: '1px solid rgba(206, 189, 255, 0.2)' }}>
-              <div style={{ fontSize: '0.7rem', color: '#cebdff', fontWeight: 600, textTransform: 'uppercase' }}>{labelsConfig.cat3Short}</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ffffff', fontFamily: 'JetBrains Mono', marginTop: '0.2rem' }}>
-                {formatCurrency(totalCloud, currency)}
+                {formatCurrency(totalCat2, currency)}
               </div>
             </div>
 
             <div style={{ background: 'rgba(167, 139, 250, 0.08)', padding: '0.75rem', borderRadius: '0.6rem', border: '1px solid rgba(167, 139, 250, 0.2)' }}>
-              <div style={{ fontSize: '0.7rem', color: '#a78bfa', fontWeight: 600, textTransform: 'uppercase' }}>{labelsConfig.cat4Short}</div>
+              <div style={{ fontSize: '0.7rem', color: '#a78bfa', fontWeight: 600, textTransform: 'uppercase' }}>{labelsConfig.cat3Short}</div>
               <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ffffff', fontFamily: 'JetBrains Mono', marginTop: '0.2rem' }}>
-                {formatCurrency(totalOps, currency)}
+                {formatCurrency(totalCat3, currency)}
+              </div>
+            </div>
+
+            <div style={{ background: 'rgba(129, 140, 248, 0.08)', padding: '0.75rem', borderRadius: '0.6rem', border: '1px solid rgba(129, 140, 248, 0.2)' }}>
+              <div style={{ fontSize: '0.7rem', color: '#818cf8', fontWeight: 600, textTransform: 'uppercase' }}>{labelsConfig.cat4Short}</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ffffff', fontFamily: 'JetBrains Mono', marginTop: '0.2rem' }}>
+                {formatCurrency(totalCat4, currency)}
               </div>
             </div>
           </div>
@@ -353,19 +443,19 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.75rem', fontSize: '0.8rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.2rem' }}>
                 <span style={{ color: '#9ca3af' }}>{labelsConfig.cat1Short}:</span>
-                <span style={{ color: '#cebdff', fontFamily: 'JetBrains Mono', fontWeight: 600 }}>{formatCurrency(selectedMonth.engineering, currency)}</span>
+                <span style={{ color: '#cebdff', fontFamily: 'JetBrains Mono', fontWeight: 600 }}>{formatCurrency(selectedMonth.cat1, currency)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.2rem' }}>
                 <span style={{ color: '#9ca3af' }}>{labelsConfig.cat2Short}:</span>
-                <span style={{ color: '#00d4ff', fontFamily: 'JetBrains Mono', fontWeight: 600 }}>{formatCurrency(selectedMonth.sales, currency)}</span>
+                <span style={{ color: '#00d4ff', fontFamily: 'JetBrains Mono', fontWeight: 600 }}>{formatCurrency(selectedMonth.cat2, currency)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.2rem' }}>
                 <span style={{ color: '#9ca3af' }}>{labelsConfig.cat3Short}:</span>
-                <span style={{ color: '#cebdff', fontFamily: 'JetBrains Mono', fontWeight: 600 }}>{formatCurrency(selectedMonth.cloud, currency)}</span>
+                <span style={{ color: '#a78bfa', fontFamily: 'JetBrains Mono', fontWeight: 600 }}>{formatCurrency(selectedMonth.cat3, currency)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: '#9ca3af' }}>{labelsConfig.cat4Short}:</span>
-                <span style={{ color: '#a78bfa', fontFamily: 'JetBrains Mono', fontWeight: 600 }}>{formatCurrency(selectedMonth.operations, currency)}</span>
+                <span style={{ color: '#818cf8', fontFamily: 'JetBrains Mono', fontWeight: 600 }}>{formatCurrency(selectedMonth.cat4, currency)}</span>
               </div>
             </div>
           </div>
@@ -376,13 +466,13 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
           </h4>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '320px', overflowY: 'auto', paddingRight: '4px' }}>
-            {MONTHLY_BUSINESS_UNIT_DATA.map((rec) => {
-              const monthSum = rec.engineering + rec.sales + rec.cloud + rec.operations;
-              const isSelected = selectedMonth.month === rec.month;
+            {monthlyData.map((rec, index) => {
+              const monthSum = rec.cat1 + rec.cat2 + rec.cat3 + rec.cat4;
+              const isSelected = selectedMonthIndex === index;
               return (
                 <div
                   key={rec.month}
-                  onClick={() => setSelectedMonth(rec)}
+                  onClick={() => setSelectedMonthIndex(index)}
                   style={{
                     padding: '0.7rem 0.85rem',
                     borderRadius: '0.6rem',
@@ -400,7 +490,7 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
                       {rec.month} - {rec.fullMonth.split(' ')[0]}
                     </div>
                     <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: '0.1rem' }}>
-                      {labelsConfig.cat1Short}: {formatCurrency(rec.engineering, currency)} • {labelsConfig.cat2Short}: {formatCurrency(rec.sales, currency)}
+                      {labelsConfig.cat1Short}: {formatCurrency(rec.cat1, currency)} • {labelsConfig.cat2Short}: {formatCurrency(rec.cat2, currency)}
                     </div>
                   </div>
 
@@ -408,7 +498,9 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
                     <div style={{ fontSize: '0.9rem', fontWeight: 700, color: isSelected ? '#00d4ff' : '#cebdff', fontFamily: 'JetBrains Mono' }}>
                       {formatCurrency(monthSum, currency)}
                     </div>
-                    <span style={{ fontSize: '0.65rem', color: '#4ade80' }}>Verified</span>
+                    <span style={{ fontSize: '0.65rem', color: monthSum > 0 ? '#4ade80' : '#64748b' }}>
+                      {monthSum > 0 ? 'Verified' : 'No Data'}
+                    </span>
                   </div>
                 </div>
               );

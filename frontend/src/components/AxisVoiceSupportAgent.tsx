@@ -9,6 +9,7 @@ interface AxisVoiceSupportAgentProps {
   onNavigate: (tab: NavTab) => void;
 }
 
+// Voice is handled entirely by ElevenLabs Convai widget
 const DEFAULT_AGENT_ID = 'agent_6601m1bjmavhem6a2a7epcx9rxzk';
 
 export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
@@ -19,13 +20,7 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
 }) => {
   const [status, setStatus] = useState<'idle' | 'connecting' | 'connected' | 'listening' | 'speaking'>('idle');
   const [agentId, setAgentId] = useState<string>(DEFAULT_AGENT_ID);
-  const [messages, setMessages] = useState<Array<{ sender: 'user' | 'agent'; text: string; time: string }>>([
-    {
-      sender: 'agent',
-      text: 'Hello! I am your Axis Black Voice Support Agent. Tap start or speak directly to ask about platform features or voice log transactions.',
-      time: 'Just now'
-    }
-  ]);
+  const [messages, setMessages] = useState<Array<{ sender: 'user' | 'agent'; text: string; time: string }>>([]);
   const [isListening, setIsListening] = useState(false);
 
   const recognitionRef = useRef<any>(null);
@@ -90,13 +85,8 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
       console.warn('Backend signed URL check fallback:', err);
     }
 
-    setupBrowserSpeechFallback();
-  };
-
-  const setupBrowserSpeechFallback = () => {
     setStatus('listening');
     setIsListening(true);
-    addAgentMessage("Voice Support Session Active. Speak your question or tap a quick topic below!");
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -119,6 +109,7 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
 
       recognition.onend = () => {
         setIsListening(false);
+        setStatus('connected');
       };
 
       recognitionRef.current = recognition;
@@ -136,9 +127,6 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
         recognitionRef.current.stop();
       } catch (e) {}
     }
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
     setStatus('idle');
     setIsListening(false);
   };
@@ -149,19 +137,6 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
 
   const addAgentMessage = (text: string) => {
     setMessages(prev => [...prev, { sender: 'agent', text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
-    speakResponse(text);
-  };
-
-  const speakResponse = (text: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      utterance.onstart = () => setStatus('speaking');
-      utterance.onend = () => setStatus('connected');
-      window.speechSynthesis.speak(utterance);
-    }
   };
 
   const handleUserQuery = async (queryText: string) => {
@@ -184,6 +159,7 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
     } catch (e) {
       addAgentMessage("I heard: '" + queryText + "'. You can navigate across Dashboard, Transactions, Inventory, Analytics, Runway Simulator, and Settings.");
     }
+    setStatus('connected');
   };
 
   if (!isOpen) return null;
@@ -207,10 +183,10 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
             </div>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#fff', fontFamily: 'Plus Jakarta Sans' }}>
-                Axis Voice Support Agent
+                Axis Voice Support
               </h3>
-              <p style={{ margin: 0, fontSize: '0.78rem', color: 'rgba(255,255,255,0.6)' }}>
-                Axis Financial Intelligence Support • Currently on <span style={{ color: '#00d4ff', fontWeight: 600 }}>{activeTab.toUpperCase()}</span>
+              <p style={{ margin: 0, fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)' }}>
+                AI-Powered Voice Intelligence
               </p>
             </div>
           </div>
@@ -263,28 +239,30 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
           )}
         </div>
 
-        {/* Conversation Stream */}
-        <div style={styles.chatStream}>
-          {messages.map((msg, index) => (
-            <div
-              key={index}
-              style={{
-                ...styles.chatBubble,
-                alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                background: msg.sender === 'user' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                border: msg.sender === 'user' ? '1px solid rgba(0, 212, 255, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)'
-              }}
-            >
-              <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginBottom: '4px' }}>
-                {msg.sender === 'user' ? 'You' : 'Axis Support Agent'} • {msg.time}
+        {/* Conversation Stream - only shown when messages exist */}
+        {messages.length > 0 && (
+          <div style={styles.chatStream}>
+            {messages.map((msg, index) => (
+              <div
+                key={index}
+                style={{
+                  ...styles.chatBubble,
+                  alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                  background: msg.sender === 'user' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                  border: msg.sender === 'user' ? '1px solid rgba(0, 212, 255, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)'
+                }}
+              >
+                <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginBottom: '4px' }}>
+                  {msg.sender === 'user' ? 'You' : 'Axis Agent'} • {msg.time}
+                </div>
+                <div style={{ fontSize: '0.9rem', color: '#f8fafc', lineHeight: 1.45 }}>
+                  {msg.text}
+                </div>
               </div>
-              <div style={{ fontSize: '0.9rem', color: '#f8fafc', lineHeight: 1.45 }}>
-                {msg.text}
-              </div>
-            </div>
-          ))}
-          <div ref={chatBottomRef} />
-        </div>
+            ))}
+            <div ref={chatBottomRef} />
+          </div>
+        )}
 
         {/* Quick Platform Guides with Real Icons (No Emojis) */}
         <div style={styles.quickGuideContainer}>

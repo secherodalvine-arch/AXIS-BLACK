@@ -150,10 +150,10 @@ export const registerApi = async (payload: {
       email: payload.email,
       password: payload.password,
       currency: payload.currency || 'USD',
-      salary: payload.salary || 5000,
+      salary: payload.salary ?? 0,
       income_frequency: payload.income_frequency || 'monthly',
-      city: payload.city || 'Nairobi',
-      country: payload.country || 'Kenya',
+      city: payload.city || '',
+      country: payload.country || '',
     }),
   });
 };

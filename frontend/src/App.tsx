@@ -35,25 +35,11 @@ import {
 import './styles/globals.css';
 import '../styles/homepage.css';
 
-const DEFAULT_METRICS: MetricData[] = [
-  { id: 'financial', title: 'Financial Overview', value: '$4,285,400', numericValue: 4285400, change: '+18.4% ARR', isPositive: true, targetOrMeta: 'Target: $4.5M • Yield 4.85%', glowColor: 'lilac', icon: 'fa-coins', progressPercent: 92 },
-  { id: 'inventory', title: 'Inventory Management', value: '1.8x Turnover', numericValue: 180000, change: '+12.5% Growth', isPositive: true, targetOrMeta: 'Warehouse Health: 96.4% • Reorder Ready', glowColor: 'cyan', icon: 'fa-boxes-stacked', progressPercent: 88 },
-  { id: 'operations', title: 'Operations Overview', value: '94.2% Efficiency', numericValue: 94.2, change: '24ms Latency', isPositive: true, targetOrMeta: 'Server Load: 68% • Uptime 99.99%', glowColor: 'pink', icon: 'fa-gears', progressPercent: 94 },
-  { id: 'growth', title: 'Growth Overview', value: '+1,240 Accounts', numericValue: 124000, change: '+28% EMEA', isPositive: true, targetOrMeta: 'CAC Ratio: 3.2x • Expansion High', glowColor: 'purple', icon: 'fa-arrow-trend-up', progressPercent: 85 }
-];
+const DEFAULT_METRICS: MetricData[] = [];
 
-const DEFAULT_TRANSACTIONS: Transaction[] = [
-  { id: 'TXN-9082', counterparty: 'Toast POS Daily Dining Revenue', type: 'Revenue', category: 'Dining Sales', accountType: 'Cash', date: '2026-08-20', status: 'Cleared', amount: 184500.00, notes: 'Direct Customer Card & Mobile Pay Settlements' },
-  { id: 'TXN-9083', counterparty: 'Sysco Fresh Food & Meat Supply', type: 'Expense', category: 'Ingredients & Produce', accountType: 'Accounts Payable', date: '2026-08-21', status: 'Cleared', amount: -14250.00, notes: 'Fresh Produce, Meat Cuts & Dairy Supplies' },
-  { id: 'TXN-9084', counterparty: 'Gusto Staff Payroll Systems', type: 'Expense', category: 'Payroll', accountType: 'Bank', date: '2026-08-22', status: 'Cleared', amount: -68400.00, notes: 'Kitchen & Front-of-House Staff Bi-weekly Payroll' },
-  { id: 'TXN-9085', counterparty: 'Kenya Power & Lighting (Electricity)', type: 'Expense', category: 'Utilities', accountType: 'Expense', date: '2026-08-23', status: 'Cleared', amount: -3850.00, notes: 'Monthly Commercial Kitchen Energy Utility Bill' },
-  { id: 'TXN-9086', counterparty: 'Corporate Catering Receivable', type: 'Revenue', category: 'Catering Revenue', accountType: 'Accounts Receivable', date: '2026-08-24', status: 'Pending', amount: 12500.00, notes: 'Annual Gala Catering Invoice - Payment Due 14 Days' }
-];
+const DEFAULT_TRANSACTIONS: Transaction[] = [];
 
-const DEFAULT_AI_STREAM: AIStreamItem[] = [
-  { id: 'ai-1', time: '10 mins ago', title: 'Subscription Revenue Spike', content: 'Enterprise tier sign-ups increased by 28% in EMEA region. ARR growth is trending 4.2% above baseline forecast.', tags: [{ text: '+28% EMEA', type: 'cyan' }, { text: 'High Impact', type: 'lilac' }], isHighlight: true },
-  { id: 'ai-2', time: '2 hours ago', title: 'Treasury Yield Optimization Opportunity', content: 'Transferring $350,000 idle checking cash into 30-day T-Bills will generate an extra $1,415 net monthly yield at 4.85% APY.', actionLabel: 'Auto-Execute Sweep Strategy' }
-];
+const DEFAULT_AI_STREAM: AIStreamItem[] = [];
 
 const DEFAULT_CHAT_MESSAGES: ChatMessage[] = [];
 
@@ -209,26 +195,36 @@ export const App: React.FC = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(DEFAULT_CHAT_MESSAGES);
 
   React.useEffect(() => {
-    // Fetch live backend metrics & transactions if authenticated or viewing dashboard
-    if (viewState === 'dashboard') {
+    // Fetch live data from backend whenever user is authenticated
+    if (user?.user_id) {
       getDashboardMetricsApi()
-        .then(res => res && res.length && setMetrics(res))
-        .catch(err => console.log('Metrics fetch fallback to initial state:', err));
+        .then(res => { if (res && res.length) setMetrics(res); })
+        .catch(err => console.log('Metrics fetch error:', err));
 
       getTransactionsApi()
-        .then(res => res && res.length && setTransactions(res))
-        .catch(err => console.log('Transactions fetch fallback to initial state:', err));
+        .then(res => { if (res && res.length) setTransactions(res); })
+        .catch(err => console.log('Transactions fetch error:', err));
     }
-  }, [viewState]);
+  }, [user?.user_id]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const handleLoginSuccess = (name: string, email: string) => {
-    setUser({ user_id: 'usr_active', name, email, currency });
-    showToast(`Welcome back, ${name}! Logged in successfully.`);
+  const handleLoginSuccess = async (name: string, email: string) => {
+    // Always fetch the real user profile from the backend after login
+    try {
+      const profile = await getMeApi();
+      setUser(profile);
+      if (profile.currency) setCurrency(profile.currency as Currency);
+      showToast(`Welcome back, ${profile.name || name}! Logged in successfully.`);
+    } catch {
+      // Fallback: use the data returned by the login response
+      const storedUser = getStoredUser();
+      setUser(storedUser || { user_id: 'usr_active', name, email, currency });
+      showToast(`Welcome back, ${name}! Logged in successfully.`);
+    }
     setViewState('dashboard');
   };
 
@@ -237,7 +233,7 @@ export const App: React.FC = () => {
     setUser(null);
     setChatMessages([]);
     showToast('Logged out successfully.');
-    setViewState('home');
+    setViewState('login');
   };
 
   const handleAddTransaction = async (newTxnData: Omit<Transaction, 'id'>) => {
@@ -295,29 +291,13 @@ export const App: React.FC = () => {
         };
         setChatMessages(prev => [...prev, aiReply]);
       } catch {
-        const qLower = query.toLowerCase().trim();
-        let text = "Greetings! I am Axis, your real-time business data assistant. How can I assist your financial strategy today?";
-        if (qLower.includes('hi') || qLower.includes('hello') || qLower.includes('hey')) {
-          text = "Greetings! I am Axis, your real-time business data assistant. How can I assist your financial strategy today?";
-        } else if (qLower.includes('who') || qLower.includes('what are you')) {
-          text = "I am Axis, your real-time business data assistant. I help you track metrics, model scenarios, and optimize financial strategy in clear, plain language.";
-        } else if (qLower.includes('cash') && qLower.includes('90')) {
-          text = "### 90-Day Cash Balance Projection\n\n- **Current Cash Balance:** $1,840,250\n- **Estimated 90-Day Expenses:** $428,400\n- **Projected Cash Balance in 90 Days:** **$1,411,850**\n\nYour projected cash runway remains healthy at **12.9+ months**.";
-        } else if (qLower.includes('cost') || qLower.includes('optimization')) {
-          text = "### Top 3 Cost Savings Opportunities\n\n1. **Cloud Server Optimization:** Save **$3,200/mo** by turning off unused test servers.\n2. **Software Licenses:** Save **$1,800/mo** by canceling 6 inactive software seats.\n3. **Checking Account Interest:** Earn **+$1,415/mo** by moving $350K idle cash into a short-term treasury yield account.";
-        } else if (qLower.includes('engineer') || qLower.includes('hire')) {
-          text = "### Hiring Simulation: 4 Senior Engineers (October)\n\nHiring 4 senior engineers will help build products faster and increase revenue. Here is the financial breakdown starting in October:\n\n- **Cost per Engineer:** $180,000 / year\n- **Total Annual Cost (4 Engineers):** $720,000 / year\n- **New Monthly Salary Expense:** $60,000 / month\n\n#### Financial Overview:\n- **Current Monthly Expenses:** $142,800 / month\n- **New Total Monthly Expenses:** $202,800 / month ($142,800 + $60,000)\n- **Current Cash Balance:** $1,840,250\n- **New Cash Runway:** **9.1 Months** (down from 12.9 months)\n\n**Key Takeaway:** Adding 4 senior engineers increases monthly costs by $60,000 and reduces your cash runway from 12.9 months to 9.1 months.";
-        } else {
-          text = "### Business Performance Overview\n\n- **Annual Revenue (ARR):** **$4.28M** (+18.4% YoY growth)\n- **Cash Runway:** **14.8 Months** ($1.84M Cash Balance)\n- **Inventory Turnover Rate:** **1.8x** (96.4% Stock Health)\n- **Operational Efficiency:** **94.2%**";
-        }
-
-        const fallbackReply: ChatMessage = {
+        const errorReply: ChatMessage = {
           id: `ai-${Date.now()}`,
           sender: 'ai',
-          text,
+          text: "I'm unable to reach the Axis intelligence backend right now. Please check your connection or try again in a moment. Your data and sessions are safe.",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
-        setChatMessages(prev => [...prev, fallbackReply]);
+        setChatMessages(prev => [...prev, errorReply]);
       } finally {
         setIsAgentProcessing(false);
       }
@@ -379,9 +359,31 @@ export const App: React.FC = () => {
   if (viewState === 'home') {
     return (
       <HomePage 
-        onEnterDashboard={() => setViewState('dashboard')}
+        onEnterDashboard={() => {
+          if (getAccessToken() || user) {
+            setViewState('dashboard');
+          } else {
+            setViewState('login');
+          }
+        }}
         onNavigateLogin={() => setViewState('login')}
         onNavigateRegister={() => setViewState('register')}
+      />
+    );
+  }
+
+  // Guard: Protect internal app against unauthenticated access
+  if (!getAccessToken() && !user) {
+    return (
+      <LoginPage 
+        onLoginSuccess={handleLoginSuccess}
+        onNavigateRegister={() => setViewState('register')}
+        onNavigateForgotPassword={() => setViewState('forgot-password')}
+        onVerificationRequired={(email) => {
+          setPendingVerifyEmail(email);
+          setViewState('verify-email');
+        }}
+        onBackToHome={() => setViewState('home')}
       />
     );
   }
@@ -425,6 +427,7 @@ export const App: React.FC = () => {
             onSearchChange={(q) => console.log('Searching:', q)}
             onLogout={handleLogout}
             onNavigateLogin={() => setViewState('login')}
+            onNavigateSettings={() => setCurrentTab('settings')}
           />
 
 
@@ -444,7 +447,7 @@ export const App: React.FC = () => {
               )}
 
               {currentTab === 'inventory' && <InventoryPage currency={currency} />}
-              {currentTab === 'analytics' && <AnalyticsPage currency={currency} />}
+              {currentTab === 'analytics' && <AnalyticsPage currency={currency} transactions={transactions} />}
               {currentTab === 'transactions' && (
                 <TransactionsPage 
                   transactions={transactions}

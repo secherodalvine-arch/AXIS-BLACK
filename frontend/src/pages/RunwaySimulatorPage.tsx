@@ -12,27 +12,39 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
   const [newHires, setNewHires] = useState(1);
   const [mktBudget, setMktBudget] = useState(10000);
   const [dbRunway, setDbRunway] = useState<number | null>(null);
+  const [baseCash, setBaseCash] = useState<number | null>(null);
+  const [baseBurn, setBaseBurn] = useState<number | null>(null);
   const [confidence, setConfidence] = useState<string>('95%');
-  const [recommendation, setRecommendation] = useState<string>('Optimal runway buffer achieved.');
+  const [recommendation, setRecommendation] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Compute local dynamic runway
-  const baseCash = 1840250;
-  const baseBurn = 142800;
-  const netBurn = Math.max(20000, baseBurn + (newHires * 12000) + mktBudget - (baseBurn * (revGrowth / 100)));
-  const calculatedRunway = dbRunway !== null ? dbRunway.toFixed(1) : (baseCash / netBurn).toFixed(1);
+  // Compute dynamic runway only when real data is available
+  const netBurn = baseBurn !== null
+    ? Math.max(20000, baseBurn + (newHires * 12000) + mktBudget - (baseBurn * (revGrowth / 100)))
+    : null;
+  const calculatedRunway = dbRunway !== null
+    ? dbRunway.toFixed(1)
+    : (baseCash !== null && netBurn !== null)
+      ? (baseCash / netBurn).toFixed(1)
+      : null;
 
   useEffect(() => {
-    // Fetch live backend metrics first to seed baseline
+    setIsLoading(true);
+    // Fetch live backend metrics to seed real baseline cash & burn
     getDashboardMetricsApi()
       .then(metrics => {
-        if (metrics && metrics[0] && metrics[0].runwayMonths) {
-          setDbRunway(metrics[0].runwayMonths);
+        if (metrics && metrics[0]) {
+          if (metrics[0].runwayMonths) setDbRunway(metrics[0].runwayMonths);
+          if (metrics[0].netLiquidity) setBaseCash(metrics[0].netLiquidity);
+          if (metrics[0].monthlyBurn) setBaseBurn(metrics[0].monthlyBurn);
         }
       })
-      .catch(err => console.log('Dashboard metrics fallback notice:', err));
+      .catch(err => console.log('Dashboard metrics fetch error:', err))
+      .finally(() => setIsLoading(false));
   }, []);
 
   useEffect(() => {
+    if (baseBurn === null) return;
     // Trigger Monte Carlo simulation on parameter change
     const adjustedBurn = Math.max(20000, baseBurn + (newHires * 12000) + mktBudget - (baseBurn * (revGrowth / 100)));
     const efficiencyFactor = Math.min(100, Math.max(0, revGrowth * 2));
@@ -45,8 +57,8 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
           if (res.recommendation) setRecommendation(res.recommendation);
         }
       })
-      .catch(err => console.log('Simulation backend fallback notice:', err));
-  }, [revGrowth, newHires, mktBudget]);
+      .catch(err => console.log('Simulation backend error:', err));
+  }, [revGrowth, newHires, mktBudget, baseBurn]);
 
   return (
     <div className="tab-view active">
@@ -98,22 +110,41 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
         </div>
 
         <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-          <span className="pill-tag cyan" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>
-            MONTE CARLO SIMULATED • {confidence} CONFIDENCE
-          </span>
-          <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>Projected Runway Outcome</h3>
-          <div style={{ margin: '24px 0' }}>
-            <span style={{ fontFamily: 'JetBrains Mono', fontSize: '4rem', fontWeight: 800, color: '#00d4ff' }}>
-              {calculatedRunway}
-            </span>
-            <div style={{ fontSize: '1.1rem', color: '#cebdff', fontWeight: 600 }}>Months of Solvency</div>
-          </div>
-          <p style={{ fontSize: '0.85rem', color: '#9ca3af', maxWidth: '400px', margin: 0 }}>
-            Based on current cash reserves of <strong>{formatCurrency(baseCash, currency)}</strong> with projected net burn of <strong>{formatCurrency(netBurn, currency)}/mo</strong>.
-          </p>
-          <div style={{ marginTop: '16px', padding: '10px 14px', background: 'rgba(0, 212, 255, 0.08)', borderRadius: '8px', border: '1px solid rgba(0, 212, 255, 0.25)', fontSize: '0.8rem', color: '#00d4ff' }}>
-            <i className="fa-solid fa-lightbulb" style={{ marginRight: '6px' }}></i> {recommendation}
-          </div>
+          {isLoading ? (
+            <>
+              <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '2rem', color: '#00d4ff', marginBottom: '1rem' }}></i>
+              <p style={{ color: '#9ca3af', fontSize: '0.9rem' }}>Fetching your real financial data...</p>
+            </>
+          ) : calculatedRunway === null ? (
+            <>
+              <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: '2rem', color: '#fb923c', marginBottom: '1rem' }}></i>
+              <h3 style={{ margin: '0 0 8px', color: '#fff' }}>Data Unavailable</h3>
+              <p style={{ fontSize: '0.85rem', color: '#9ca3af', maxWidth: '340px', margin: 0 }}>
+                Unable to load your financial baseline from the server. Please check your connection and try refreshing.
+              </p>
+            </>
+          ) : (
+            <>
+              <span className="pill-tag cyan" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>
+                MONTE CARLO SIMULATED • {confidence} CONFIDENCE
+              </span>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>Projected Runway Outcome</h3>
+              <div style={{ margin: '24px 0' }}>
+                <span style={{ fontFamily: 'JetBrains Mono', fontSize: '4rem', fontWeight: 800, color: '#00d4ff' }}>
+                  {calculatedRunway}
+                </span>
+                <div style={{ fontSize: '1.1rem', color: '#cebdff', fontWeight: 600 }}>Months of Solvency</div>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: '#9ca3af', maxWidth: '400px', margin: 0 }}>
+                Based on cash reserves of <strong>{baseCash !== null ? formatCurrency(baseCash, currency) : '—'}</strong> with projected net burn of <strong>{netBurn !== null ? `${formatCurrency(netBurn, currency)}/mo` : '—'}</strong>.
+              </p>
+              {recommendation && (
+                <div style={{ marginTop: '16px', padding: '10px 14px', background: 'rgba(0, 212, 255, 0.08)', borderRadius: '8px', border: '1px solid rgba(0, 212, 255, 0.25)', fontSize: '0.8rem', color: '#00d4ff' }}>
+                  <i className="fa-solid fa-lightbulb" style={{ marginRight: '6px' }}></i> {recommendation}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>

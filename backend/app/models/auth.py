@@ -11,9 +11,9 @@ class RegisterRequest(BaseModel):
     password: str = Field(..., min_length=6, description="Password (min 6 characters)")
     income_frequency: str = Field("monthly", description="daily, weekly, or monthly")
     income_amount: Optional[float] = Field(None, description="Amount per frequency period")
-    salary: float = Field(..., gt=0, description="Monthly salary (calculated or direct)")
-    city: str = Field("Nairobi", description="City / town")
-    country: str = Field("Kenya", description="Country")
+    salary: float = Field(0.0, ge=0, description="Monthly salary (calculated or direct)")
+    city: str = Field("", description="City / town")
+    country: str = Field("", description="Country")
     currency: str = Field("USD", description="Currency code")
 
 

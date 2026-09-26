@@ -108,18 +108,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       <div className="sidebar-footer">
-        <div className="system-status-card" title={isCollapsed ? "System Engine v2.4 Operational" : undefined}>
-          <div className="status-indicator online"></div>
-          {!isCollapsed && (
-            <div className="status-info">
-              <span className="status-label">System Engine v2.4</span>
-              <span className="status-val">Operational • 12ms</span>
-            </div>
-          )}
-          <button className="icon-btn-sm" title="Refresh Feeds">
-            <i className="fa-solid fa-arrows-rotate"></i>
-          </button>
-        </div>
       </div>
     </aside>
   );

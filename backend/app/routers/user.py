@@ -75,6 +75,7 @@ async def update_user_profile(payload: UserProfileUpdate, current_user: dict = D
         for u_key, u_val in db_manager.memory_store["users"].items():
             if u_val.get("email") == email:
                 u_val.update(updates)
+    db_manager.save_memory_store()
     current_user.pop("hashed_password", None)
     return current_user
 

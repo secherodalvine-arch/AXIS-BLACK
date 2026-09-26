@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Currency } from '../types';
 import { registerApi } from '../utils/api';
 
 interface RegisterPageProps {
@@ -7,11 +6,6 @@ interface RegisterPageProps {
   onNavigateLogin: () => void;
   onBackToHome: () => void;
 }
-
-const CURRENCIES: { value: Currency; label: string }[] = [
-  { value: 'USD', label: '🇺🇸 USD — US Dollar' },
-  { value: 'KES', label: '🇰🇪 KES — Kenya Shilling' },
-];
 
 export const RegisterPage: React.FC<RegisterPageProps> = ({
   onVerificationRequired,
@@ -22,9 +16,6 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [currency, setCurrency] = useState<Currency>('USD');
-  const [salary, setSalary] = useState<number | ''>('');
-  const [incomeFrequency, setIncomeFrequency] = useState<'monthly' | 'weekly' | 'daily'>('monthly');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +33,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !password) {
+    if (!name.trim() || !email.trim() || !password) {
       setError('Please fill in all required fields.');
       return;
     }
@@ -54,24 +45,20 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
       setError('Passwords do not match.');
       return;
     }
-    if (!salary || Number(salary) <= 0) {
-      setError('Please enter your monthly income or revenue.');
-      return;
-    }
 
     setError(null);
     setLoading(true);
 
     try {
       const res = await registerApi({
-        name,
-        email,
+        name: name.trim(),
+        email: email.toLowerCase().trim(),
         password,
-        currency,
-        salary: Number(salary),
-        income_frequency: incomeFrequency,
-        city: 'Nairobi',
-        country: 'Kenya',
+        currency: 'USD',
+        salary: 0,
+        income_frequency: 'monthly',
+        city: '',
+        country: '',
       });
       // Navigate to verification page with the registered email
       onVerificationRequired(res.email || email.toLowerCase().trim());
@@ -88,7 +75,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
       <div className="auth-glow auth-glow-lilac"></div>
 
       <button className="auth-back-btn" onClick={onBackToHome}>
-        <i className="fa-solid fa-arrow-left"></i> Back to Axis Black
+        <i className="fa-solid fa-arrow-left"></i> Back to Homepage
       </button>
 
       <div className="auth-card glass-card" style={{ maxWidth: '500px' }}>
@@ -198,59 +185,11 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
             </div>
           </div>
 
-          {/* Income */}
-          <div className="auth-row-two">
-            <div className="auth-field">
-              <label htmlFor="reg-frequency">Income Frequency</label>
-              <select
-                id="reg-frequency"
-                value={incomeFrequency}
-                onChange={(e) => setIncomeFrequency(e.target.value as any)}
-                className="auth-select"
-              >
-                <option value="monthly">Monthly</option>
-                <option value="weekly">Weekly</option>
-                <option value="daily">Daily</option>
-              </select>
-            </div>
-
-            <div className="auth-field">
-              <label htmlFor="reg-salary">Income Amount <span className="auth-required">*</span></label>
-              <div className="auth-input-wrapper">
-                <i className="fa-solid fa-money-bill-wave auth-input-icon"></i>
-                <input
-                  id="reg-salary"
-                  type="number"
-                  required
-                  placeholder="e.g. 5000"
-                  min={1}
-                  value={salary}
-                  onChange={(e) => setSalary(e.target.value === '' ? '' : Number(e.target.value))}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Currency */}
-          <div className="auth-field">
-            <label htmlFor="reg-currency">Base Currency</label>
-            <select
-              id="reg-currency"
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value as Currency)}
-              className="auth-select"
-            >
-              {CURRENCIES.map(c => (
-                <option key={c.value} value={c.value}>{c.label}</option>
-              ))}
-            </select>
-          </div>
-
           <button
             type="submit"
             className="auth-btn-primary"
             disabled={loading}
-            style={{ marginTop: '8px' }}
+            style={{ marginTop: '12px' }}
           >
             {loading ? (
               <>

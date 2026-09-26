@@ -18,16 +18,9 @@ interface InventoryItem {
   status: 'Optimal' | 'Reorder Soon' | 'Surge Buffer';
 }
 
-const INITIAL_INVENTORY_ITEMS: InventoryItem[] = [
-  { id: 'ITEM-8092', name: 'Wagyu Beef Ribeye Cut (10kg)', category: 'Food & Beverage', stockLevel: 350, minThreshold: 100, unitPriceUSD: 320, turnoverRate: '3.8x/mo', status: 'Optimal' },
-  { id: 'ITEM-8093', name: 'Artisan Espresso Roast Beans (5kg)', category: 'Ingredients & Produce', stockLevel: 45, minThreshold: 60, unitPriceUSD: 85, turnoverRate: '4.2x/mo', status: 'Reorder Soon' },
-  { id: 'ITEM-4021', name: 'Commercial Grade Espresso Machine', category: 'Kitchen & Dining Equipment', stockLevel: 12, minThreshold: 5, unitPriceUSD: 2400, turnoverRate: '0.8x/mo', status: 'Optimal' },
-  { id: 'ITEM-1192', name: 'POS Thermal Receipts & Rolls (Box)', category: 'Packaging & Supplies', stockLevel: 180, minThreshold: 50, unitPriceUSD: 45, turnoverRate: '2.5x/mo', status: 'Optimal' },
-  { id: 'ITEM-5541', name: 'Enterprise Gateway Sensor Array v4', category: 'Tech & Network Hardware', stockLevel: 120, minThreshold: 50, unitPriceUSD: 890, turnoverRate: '1.8x/mo', status: 'Optimal' },
-];
-
 export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }) => {
-  const [items, setItems] = useState<InventoryItem[]>(INITIAL_INVENTORY_ITEMS);
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -44,6 +37,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
   const [submitting, setSubmitting] = useState(false);
 
   const fetchInventory = () => {
+    setIsLoading(true);
     getInventoryApi()
       .then((data) => {
         if (data && data.length) {
@@ -58,9 +52,15 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
             status: Number(d.stock_quantity ?? d.stockLevel ?? 0) <= Number(d.reorder_point ?? d.minThreshold ?? 50) ? 'Reorder Soon' : 'Optimal'
           }));
           setItems(mapped);
+        } else {
+          setItems([]);
         }
       })
-      .catch((err) => console.log('Live inventory fetch fallback:', err));
+      .catch((err) => {
+        console.log('Live inventory fetch error:', err);
+        setItems([]);
+      })
+      .finally(() => setIsLoading(false));
   };
 
   useEffect(() => {
@@ -87,24 +87,15 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
 
     try {
       await createInventoryItemApi(newItemData);
-      const newLocalItem: InventoryItem = {
-        id: itemCode,
-        name,
-        category: finalCategory,
-        stockLevel: parseInt(stockQuantity) || 0,
-        minThreshold: parseInt(reorderPoint) || 50,
-        unitPriceUSD: parseFloat(unitCost) || 100,
-        turnoverRate: '1.8x/mo',
-        status: (parseInt(stockQuantity) || 0) <= (parseInt(reorderPoint) || 50) ? 'Reorder Soon' : 'Optimal'
-      };
-      setItems(prev => [newLocalItem, ...prev]);
+      // Re-fetch from backend to get the latest persisted state
+      fetchInventory();
       setIsModalOpen(false);
       setName('');
       setCustomCategory('');
       setIsCustomCategory(false);
     } catch (err) {
-      console.error('Failed to save item:', err);
-      // Fallback local update
+      console.error('Failed to save item to backend:', err);
+      // Optimistic local update as fallback
       const newLocalItem: InventoryItem = {
         id: itemCode,
         name,
@@ -188,10 +179,10 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
         <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '1rem' }}>
           <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#9ca3af' }}>STOCK TURNOVER RATE</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#00d4ff', fontFamily: 'JetBrains Mono', marginTop: '0.25rem' }}>
-            2.4x / month
+            {items.length > 0 ? '2.4x / mo' : '--'}
           </div>
           <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem', display: 'block' }}>
-            Velocity: Optimal
+            {items.length > 0 ? 'Velocity: Active' : 'No inventory items logged'}
           </span>
         </div>
 
@@ -201,17 +192,17 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
             {items.reduce((acc, item) => acc + item.stockLevel, 0).toLocaleString()} Units
           </div>
           <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem', display: 'block' }}>
-            Across Active Items
+            Across {items.length} Tracked Item(s)
           </span>
         </div>
 
         <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '1rem' }}>
           <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#9ca3af' }}>WAREHOUSE & STOCK HEALTH</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#ffafd3', fontFamily: 'JetBrains Mono', marginTop: '0.25rem' }}>
-            {items.length ? (Math.round((items.filter(i => i.stockLevel > i.minThreshold).length / items.length) * 1000) / 10).toFixed(1) : '100.0'}%
+            {items.length ? `${(Math.round((items.filter(i => i.stockLevel > i.minThreshold).length / items.length) * 1000) / 10).toFixed(1)}%` : '--'}
           </div>
           <span style={{ fontSize: '0.75rem', color: items.some(i => i.stockLevel <= i.minThreshold) ? '#ff8e8e' : '#4ade80', marginTop: '0.5rem', display: 'block' }}>
-            {items.filter(i => i.stockLevel <= i.minThreshold).length} Low Stock Alert(s)
+            {items.length ? `${items.filter(i => i.stockLevel <= i.minThreshold).length} Low Stock Alert(s)` : 'No items recorded'}
           </span>
         </div>
       </div>
@@ -255,40 +246,59 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
               </tr>
             </thead>
             <tbody>
-              {filteredItems.map(item => {
-                const totalVal = item.stockLevel * item.unitPriceUSD;
-                return (
-                  <tr key={item.id}>
-                    <td className="ref-code">{item.id}</td>
-                    <td>
-                      <div className="counterparty-cell">
-                        <div className="entity-avatar" style={{ background: 'rgba(0, 212, 255, 0.15)', color: '#00d4ff' }}>
-                          <i className="fa-solid fa-box"></i>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '3rem 1rem', color: '#64748b' }}>
+                    <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '1.6rem', display: 'block', marginBottom: '0.75rem', color: '#00d4ff', opacity: 0.7 }}></i>
+                    <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Loading your inventory from the server...</div>
+                  </td>
+                </tr>
+              ) : filteredItems.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '3rem 1rem', color: '#64748b' }}>
+                    <i className="fa-solid fa-boxes-stacked" style={{ fontSize: '1.8rem', display: 'block', marginBottom: '0.75rem', opacity: 0.3 }}></i>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>
+                      {filterCategory !== 'ALL' ? `No items in "${filterCategory}" category` : 'No inventory items yet'}
+                    </div>
+                    <div style={{ fontSize: '0.8rem' }}>Click <strong>Add Inventory Item</strong> to log your first SKU.</div>
+                  </td>
+                </tr>
+              ) : (
+                filteredItems.map(item => {
+                  const totalVal = item.stockLevel * item.unitPriceUSD;
+                  return (
+                    <tr key={item.id}>
+                      <td className="ref-code">{item.id}</td>
+                      <td>
+                        <div className="counterparty-cell">
+                          <div className="entity-avatar" style={{ background: 'rgba(0, 212, 255, 0.15)', color: '#00d4ff' }}>
+                            <i className="fa-solid fa-box"></i>
+                          </div>
+                          <span style={{ fontWeight: 600, color: '#fff' }}>{item.name}</span>
                         </div>
-                        <span style={{ fontWeight: 600, color: '#fff' }}>{item.name}</span>
-                      </div>
-                    </td>
-                    <td style={{ color: '#9ca3af' }}>{item.category}</td>
-                    <td style={{ fontFamily: 'JetBrains Mono', fontWeight: 600, color: item.stockLevel < item.minThreshold ? '#ff8e8e' : '#e5e2e1' }}>
-                      {item.stockLevel} units (Min: {item.minThreshold})
-                    </td>
-                    <td style={{ fontFamily: 'JetBrains Mono' }}>
-                      {formatCurrency(item.unitPriceUSD, currency)}
-                    </td>
-                    <td style={{ fontFamily: 'JetBrains Mono', fontWeight: 700, color: '#cebdff' }}>
-                      {formatCurrency(totalVal, currency)}
-                    </td>
-                    <td style={{ fontFamily: 'JetBrains Mono', color: '#00d4ff' }}>
-                      {item.turnoverRate}
-                    </td>
-                    <td>
-                      <span className={`status-badge ${item.status === 'Reorder Soon' ? 'status-pending' : item.status === 'Optimal' ? 'status-cleared' : 'status-processing'}`}>
-                        {item.status}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                      <td style={{ color: '#9ca3af' }}>{item.category}</td>
+                      <td style={{ fontFamily: 'JetBrains Mono', fontWeight: 600, color: item.stockLevel < item.minThreshold ? '#ff8e8e' : '#e5e2e1' }}>
+                        {item.stockLevel} units (Min: {item.minThreshold})
+                      </td>
+                      <td style={{ fontFamily: 'JetBrains Mono' }}>
+                        {formatCurrency(item.unitPriceUSD, currency)}
+                      </td>
+                      <td style={{ fontFamily: 'JetBrains Mono', fontWeight: 700, color: '#cebdff' }}>
+                        {formatCurrency(totalVal, currency)}
+                      </td>
+                      <td style={{ fontFamily: 'JetBrains Mono', color: '#00d4ff' }}>
+                        {item.turnoverRate}
+                      </td>
+                      <td>
+                        <span className={`status-badge ${item.status === 'Reorder Soon' ? 'status-pending' : item.status === 'Optimal' ? 'status-cleared' : 'status-processing'}`}>
+                          {item.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

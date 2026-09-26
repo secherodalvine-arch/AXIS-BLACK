@@ -137,6 +137,7 @@ async def register(payload: RegisterRequest):
             await db_manager.db.users.insert_one(user_doc)
         else:
             db_manager.memory_store["users"][user_id] = user_doc
+            db_manager.save_memory_store()
     except Exception as exc:
         if "duplicate key error" in str(exc).lower() or "11000" in str(exc):
             raise HTTPException(
@@ -794,6 +795,7 @@ async def social_login(payload: SocialLoginRequest):
                 await db_manager.db.users.insert_one(user)
             else:
                 db_manager.memory_store["users"][user_id] = user
+                db_manager.save_memory_store()
         except Exception:
             pass
 

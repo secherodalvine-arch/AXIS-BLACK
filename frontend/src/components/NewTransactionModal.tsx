@@ -101,12 +101,12 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                 onChange={(e) => setAccountType(e.target.value as any)}
                 style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px' }}
               >
-                <option value="Cash" style={{ background: '#141418', color: '#ffffff' }}>💵 Cash Account</option>
-                <option value="Bank" style={{ background: '#141418', color: '#ffffff' }}>🏦 Bank Account</option>
-                <option value="Accounts Receivable" style={{ background: '#141418', color: '#ffffff' }}>👥 Accounts Receivable (Customer)</option>
-                <option value="Accounts Payable" style={{ background: '#141418', color: '#ffffff' }}>🧾 Accounts Payable (Supplier)</option>
-                <option value="Revenue" style={{ background: '#141418', color: '#ffffff' }}>💰 Revenue Account</option>
-                <option value="Expense" style={{ background: '#141418', color: '#ffffff' }}>💡 Expense Account</option>
+                <option value="Cash" style={{ background: '#141418', color: '#ffffff' }}>Cash Account</option>
+                <option value="Bank" style={{ background: '#141418', color: '#ffffff' }}>Bank Account</option>
+                <option value="Accounts Receivable" style={{ background: '#141418', color: '#ffffff' }}>Accounts Receivable (Customer)</option>
+                <option value="Accounts Payable" style={{ background: '#141418', color: '#ffffff' }}>Accounts Payable (Supplier)</option>
+                <option value="Revenue" style={{ background: '#141418', color: '#ffffff' }}>Revenue Account</option>
+                <option value="Expense" style={{ background: '#141418', color: '#ffffff' }}>Expense Account</option>
               </select>
             </div>
 

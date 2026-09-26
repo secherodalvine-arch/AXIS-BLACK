@@ -2,6 +2,8 @@ import logging
 import asyncio
 import base64
 import datetime
+import json
+from pathlib import Path
 from typing import Dict, Any, List, Optional
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.config import settings
@@ -13,6 +15,7 @@ class DatabaseManager:
     client: Optional[AsyncIOMotorClient] = None
     db = None
     is_connected: bool = False
+    data_file = Path(__file__).resolve().parent.parent / "local_store.json"
     
     # Resilient in-memory store if MongoDB Atlas is unreachable
     memory_store: Dict[str, Any] = {
@@ -24,7 +27,27 @@ class DatabaseManager:
         "copilot_chats": {}
     }
 
+    def load_memory_store(self):
+        try:
+            if self.data_file.exists():
+                with open(self.data_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    for k in self.memory_store:
+                        if k in data and isinstance(data[k], dict):
+                            self.memory_store[k] = data[k]
+                logger.info(f"Loaded local data store from {self.data_file}")
+        except Exception as e:
+            logger.warning(f"Could not load local data store: {e}")
+
+    def save_memory_store(self):
+        try:
+            with open(self.data_file, "w", encoding="utf-8") as f:
+                json.dump(self.memory_store, f, indent=2, default=str)
+        except Exception as e:
+            logger.warning(f"Could not save local data store: {e}")
+
 db_manager = DatabaseManager()
+db_manager.load_memory_store()
 
 async def connect_to_mongo():
     try:
@@ -39,7 +62,8 @@ async def connect_to_mongo():
         logger.info(f"Successfully connected to MongoDB Atlas at {settings.DB_NAME}")
     except Exception as e:
         db_manager.is_connected = False
-        logger.warning(f"MongoDB Atlas connection ({e}). Operating in resilient In-Memory mode.")
+        db_manager.load_memory_store()
+        logger.warning(f"MongoDB Atlas connection ({e}). Operating in resilient In-Memory mode with local disk persistence.")
 
 async def close_mongo_connection():
     if db_manager.client:
@@ -111,39 +135,39 @@ class AxisDataStore:
         txns = await AxisDataStore.get_transactions(user_id)
         inventory_items = await AxisDataStore.get_inventory(user_id)
 
-        # Dynamic Financial Calculation
+        # Dynamic Financial Calculation from real transactions
         total_revenue = sum(t["amount"] for t in txns if t.get("amount", 0) > 0)
         total_expense = sum(abs(t["amount"]) for t in txns if t.get("amount", 0) < 0)
-        net_liquidity = max(total_revenue - total_expense, 1840250.0)
-        monthly_burn = max(total_expense, 142800.0)
-        runway_months = round(net_liquidity / monthly_burn if monthly_burn > 0 else 14.8, 1)
+        net_liquidity = total_revenue - total_expense
+        monthly_burn = total_expense
+        runway_months = round(net_liquidity / monthly_burn, 1) if monthly_burn > 0 else (12.0 if net_liquidity > 0 else 0.0)
 
-        # Dynamic Inventory Calculation
+        # Dynamic Inventory Calculation from real inventory SKUs
         total_stock_val = sum(item.get("stock_quantity", 0) * item.get("unit_cost", 0) for item in inventory_items)
         active_skus_count = len(inventory_items)
         critical_items = [i for i in inventory_items if i.get("stock_quantity", 0) <= i.get("reorder_point", 0)]
-        wh_health = round(((active_skus_count - len(critical_items)) / active_skus_count * 100) if active_skus_count > 0 else 96.4, 1)
+        wh_health = round(((active_skus_count - len(critical_items)) / active_skus_count * 100), 1) if active_skus_count > 0 else 100.0
 
         # Dynamic Operations Calculation
         infra_expenses = sum(abs(t["amount"]) for t in txns if t.get("category") == "Infrastructure")
-        infra_cost_str = f"${infra_expenses:,.0f}/mo" if infra_expenses > 0 else "$14,250/mo"
+        infra_cost_str = f"${infra_expenses:,.0f}/mo" if infra_expenses > 0 else "$0/mo"
 
         # Dynamic Growth Calculation
         sub_revenue = sum(t["amount"] for t in txns if t.get("category") == "Subscription")
-        new_arr_str = f"${sub_revenue:,.0f}" if sub_revenue > 0 else "$124,000"
+        new_arr_str = f"${sub_revenue:,.0f}" if sub_revenue > 0 else "$0"
 
         return [
             {
                 "id": "financial",
                 "title": "Financial Advisor",
-                "value": f"${total_revenue:,.0f}" if total_revenue > 0 else "$4,285,400",
-                "numericValue": total_revenue if total_revenue > 0 else 4285400,
-                "change": "+18.4% ARR",
-                "isPositive": True,
-                "targetOrMeta": f"Net Cash: ${net_liquidity:,.0f} • Runway: {runway_months} Mo",
+                "value": f"${total_revenue:,.0f}" if total_revenue > 0 else "$0",
+                "numericValue": total_revenue,
+                "change": "+18.4% ARR" if total_revenue > 0 else "0% ARR",
+                "isPositive": total_revenue >= total_expense,
+                "targetOrMeta": f"Net Cash: ${net_liquidity:,.0f} • Runway: {runway_months} Mo" if monthly_burn > 0 else f"Net Cash: ${net_liquidity:,.0f}",
                 "glowColor": "lilac",
                 "icon": "fa-coins",
-                "progressPercent": 92,
+                "progressPercent": min(100, max(10, int((net_liquidity / max(total_revenue, 1)) * 100))) if total_revenue > 0 else 50,
                 "netLiquidity": net_liquidity,
                 "monthlyBurn": monthly_burn,
                 "runwayMonths": runway_months
@@ -151,14 +175,14 @@ class AxisDataStore:
             {
                 "id": "inventory",
                 "title": "Inventory Advisor",
-                "value": "1.8x Turnover",
-                "numericValue": total_stock_val if total_stock_val > 0 else 180000,
-                "change": "+12.5% Speed",
-                "isPositive": True,
-                "targetOrMeta": f"Warehouse Health: {wh_health}% • SKUs: {active_skus_count}",
+                "value": f"{active_skus_count} Active SKUs" if active_skus_count > 0 else "0 Active SKUs",
+                "numericValue": total_stock_val,
+                "change": f"{len(critical_items)} Needs Reorder" if critical_items else "Stock Optimal",
+                "isPositive": len(critical_items) == 0,
+                "targetOrMeta": f"Warehouse Health: {wh_health}% • Stock Val: ${total_stock_val:,.0f}" if active_skus_count > 0 else "No inventory items tracked yet",
                 "glowColor": "cyan",
                 "icon": "fa-boxes-stacked",
-                "progressPercent": 88,
+                "progressPercent": int(wh_health) if active_skus_count > 0 else 0,
                 "activeSKUs": active_skus_count,
                 "stockValuation": total_stock_val,
                 "warehouseHealth": wh_health
@@ -166,9 +190,9 @@ class AxisDataStore:
             {
                 "id": "operations",
                 "title": "Operations Advisor",
-                "value": "94.2% Efficiency",
-                "numericValue": 94.2,
-                "change": "24ms Latency",
+                "value": "99.9% Efficiency" if txns else "Baseline",
+                "numericValue": 99.9 if txns else 0.0,
+                "change": "Active Monitoring",
                 "isPositive": True,
                 "targetOrMeta": f"Infrastructure: {infra_cost_str} • SLA 99.99%",
                 "glowColor": "pink",
@@ -181,14 +205,14 @@ class AxisDataStore:
             {
                 "id": "growth",
                 "title": "Growth Advisor",
-                "value": "+1,240 Accounts",
-                "numericValue": sub_revenue if sub_revenue > 0 else 124000,
-                "change": "+28% EMEA",
+                "value": f"${sub_revenue:,.0f} ARR" if sub_revenue > 0 else "Ready",
+                "numericValue": sub_revenue,
+                "change": "Active",
                 "isPositive": True,
-                "targetOrMeta": f"Monthly ARR: {new_arr_str} • LTV:CAC 3.2x",
+                "targetOrMeta": f"Subscription ARR: {new_arr_str} • Growth Active" if sub_revenue > 0 else "Log revenue to track ARR growth",
                 "glowColor": "purple",
                 "icon": "fa-arrow-trend-up",
-                "progressPercent": 85,
+                "progressPercent": 85 if sub_revenue > 0 else 20,
                 "newARR": new_arr_str,
                 "ltvCac": "3.2x",
                 "expansionRate": "18.6%"
@@ -262,6 +286,7 @@ class AxisDataStore:
         user_txns = db_manager.memory_store["transactions"].get(user_id, [])
         if not user_txns:
             db_manager.memory_store["transactions"][user_id] = default_txns
+            db_manager.save_memory_store()
             return default_txns
         return user_txns
 
@@ -287,6 +312,7 @@ class AxisDataStore:
         if user_id not in db_manager.memory_store["transactions"]:
             db_manager.memory_store["transactions"][user_id] = []
         db_manager.memory_store["transactions"][user_id].insert(0, doc)
+        db_manager.save_memory_store()
 
         return {k: v for k, v in doc.items() if k != "_id"}
 
@@ -310,6 +336,7 @@ class AxisDataStore:
         user_items = db_manager.memory_store["inventory"].get(user_id, [])
         if not user_items:
             db_manager.memory_store["inventory"][user_id] = default_inventory
+            db_manager.save_memory_store()
             return default_inventory
         return user_items
 
@@ -334,5 +361,6 @@ class AxisDataStore:
         if user_id not in db_manager.memory_store["inventory"]:
             db_manager.memory_store["inventory"][user_id] = []
         db_manager.memory_store["inventory"][user_id].insert(0, doc)
+        db_manager.save_memory_store()
 
         return {k: v for k, v in doc.items() if k != "_id"}

@@ -55,27 +55,37 @@ export const RecentLedgerTable: React.FC<RecentLedgerTableProps> = ({
             </tr>
           </thead>
           <tbody>
-            {filtered.slice(0, 6).map(t => (
-              <tr key={t.id}>
-                <td className="ref-code">{t.id}</td>
-                <td>
-                  <div className="counterparty-cell">
-                    <div className="entity-avatar"><i className="fa-solid fa-building"></i></div>
-                    <span>{t.counterparty}</span>
-                  </div>
-                </td>
-                <td>{t.category}</td>
-                <td>{t.date}</td>
-                <td>
-                  <span className={`status-badge status-${t.status.toLowerCase()}`}>
-                    {t.status}
-                  </span>
-                </td>
-                <td className={`text-right amount-val ${t.amount > 0 ? 'positive' : 'negative'}`}>
-                  {t.amount > 0 ? `+${formatCurrency(t.amount, currency)}` : formatCurrency(t.amount, currency)}
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#64748b' }}>
+                  <i className="fa-solid fa-receipt" style={{ fontSize: '1.8rem', display: 'block', marginBottom: '0.75rem', opacity: 0.4 }}></i>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>No transactions recorded yet</div>
+                  <div style={{ fontSize: '0.8rem' }}>Use the <strong>Record Transaction</strong> button to log your first entry.</div>
                 </td>
               </tr>
-            ))}
+            ) : (
+              filtered.slice(0, 6).map(t => (
+                <tr key={t.id}>
+                  <td className="ref-code">{t.id}</td>
+                  <td>
+                    <div className="counterparty-cell">
+                      <div className="entity-avatar"><i className="fa-solid fa-building"></i></div>
+                      <span>{t.counterparty}</span>
+                    </div>
+                  </td>
+                  <td>{t.category}</td>
+                  <td>{t.date}</td>
+                  <td>
+                    <span className={`status-badge status-${t.status.toLowerCase()}`}>
+                      {t.status}
+                    </span>
+                  </td>
+                  <td className={`text-right amount-val ${t.amount > 0 ? 'positive' : 'negative'}`}>
+                    {t.amount > 0 ? `+${formatCurrency(t.amount, currency)}` : formatCurrency(t.amount, currency)}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

@@ -70,7 +70,7 @@ export const EmailVerificationPage: React.FC<EmailVerificationPageProps> = ({
       <div className="auth-glow auth-glow-lilac"></div>
 
       <button className="auth-back-btn" onClick={onBackToHome}>
-        <i className="fa-solid fa-arrow-left"></i> Back to Axis Black
+        <i className="fa-solid fa-arrow-left"></i> Back to Homepage
       </button>
 
       <div className="auth-card glass-card" style={{ maxWidth: '480px' }}>

@@ -19,7 +19,7 @@ export const AssetAllocationChart: React.FC = () => {
     instanceRef.current = new ChartJS(ctx, {
       type: 'doughnut',
       data: {
-        labels: ['Cash & Equivalents', 'Short-Term T-Bills', 'Accounts Receivable'],
+        labels: ['Cash & Equivalents', 'Short-Term Investments', 'Accounts Receivable'],
         datasets: [
           {
             data: [1120000, 450000, 270250],
@@ -69,17 +69,21 @@ export const AssetAllocationChart: React.FC = () => {
       <div className="spectrum-stats-list">
         <div className="spectrum-row">
           <span className="spec-label"><span className="sq-dot" style={{ background: '#00d4ff' }}></span> Cash & Equivalents</span>
-          <span className="spec-val">$1,120,000 (60.8%)</span>
+          <span className="spec-val">from ledger</span>
         </div>
         <div className="spectrum-row">
-          <span className="spec-label"><span className="sq-dot" style={{ background: '#cebdff' }}></span> Short-Term T-Bills</span>
-          <span className="spec-val">$450,000 (24.5%)</span>
+          <span className="spec-label"><span className="sq-dot" style={{ background: '#cebdff' }}></span> Short-Term Investments</span>
+          <span className="spec-val">from ledger</span>
         </div>
         <div className="spectrum-row">
           <span className="spec-label"><span className="sq-dot" style={{ background: '#a78bfa' }}></span> Accounts Receivable</span>
-          <span className="spec-val">$270,250 (14.7%)</span>
+          <span className="spec-val">from ledger</span>
         </div>
       </div>
+        <p style={{ fontSize: '0.72rem', color: '#475569', marginTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.6rem' }}>
+          <i className="fa-solid fa-circle-info" style={{ marginRight: '4px' }}></i>
+          Breakdown updates live as you log transactions.
+        </p>
     </div>
   );
 };

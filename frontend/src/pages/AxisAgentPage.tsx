@@ -146,6 +146,7 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
     return s[0]?.id || 'session-default';
   });
   const [inputVal, setInputVal] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch live chat sessions from MongoDB backend on mount & user change
@@ -291,15 +292,29 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
       <div className="copilot-workspace" style={{ marginTop: '0.5rem' }}>
         
         {/* SIDEBAR: NEW CHAT & CLICKABLE SCROLLABLE CHAT HISTORY */}
-        <div className="copilot-sidebar glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {sidebarOpen && (
+        <div className="copilot-sidebar glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
           
+          {/* Sidebar header with collapse button */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#cebdff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Workspace</span>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              title="Collapse panel"
+              style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '0.85rem', padding: '2px 4px', borderRadius: '4px' }}
+            >
+              <i className="fa-solid fa-angles-left"></i>
+            </button>
+          </div>
+
           {/* Single Primary Action Button */}
           <button 
             className="action-btn-primary" 
             onClick={handleCreateNewChat}
-            style={{ width: '100%', justifyContent: 'center', gap: '8px', padding: '12px', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 700 }}
+            style={{ width: '100%', justifyContent: 'center', gap: '8px', padding: '10px', borderRadius: '10px', fontSize: '0.88rem', fontWeight: 700 }}
           >
-            <i className="fa-solid fa-plus"></i> + New Chat Session
+            <i className="fa-solid fa-plus"></i>
+            New Chat Session
           </button>
 
           {/* Clickable Scrollable Chat History - ONLY SHOW SESSIONS WITH EXCHANGES */}
@@ -377,11 +392,22 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
             </div>
           </div>
         </div>
+        )}
 
         {/* MAIN CHAT CONTAINER */}
         <div className="copilot-chat-container glass-card">
           <div className="chat-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {/* Sidebar toggle button */}
+              {!sidebarOpen && (
+                <button
+                  onClick={() => setSidebarOpen(true)}
+                  title="Expand panel"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', cursor: 'pointer', fontSize: '0.82rem', padding: '6px 9px', borderRadius: '8px', display: 'flex', alignItems: 'center' }}
+                >
+                  <i className="fa-solid fa-angles-right"></i>
+                </button>
+              )}
               <div className="ai-avatar-badge" style={{ background: 'rgba(0, 212, 255, 0.15)', color: '#00d4ff' }}>
                 <i className="fa-solid fa-brain"></i>
               </div>

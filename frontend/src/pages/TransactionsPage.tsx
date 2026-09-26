@@ -150,42 +150,42 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
           onClick={() => setAccountLedgerFilter('Cash')}
           style={{ padding: '8px 14px', fontSize: '0.82rem' }}
         >
-          💵 Cash Account
+          <i className="fa-solid fa-dollar-sign" style={{ marginRight: '6px' }}></i> Cash Account
         </button>
         <button 
           className={`tf-btn ${accountLedgerFilter === 'Bank' ? 'active' : ''}`}
           onClick={() => setAccountLedgerFilter('Bank')}
           style={{ padding: '8px 14px', fontSize: '0.82rem' }}
         >
-          🏦 Bank Account
+          <i className="fa-solid fa-building-columns" style={{ marginRight: '6px' }}></i> Bank Account
         </button>
         <button 
           className={`tf-btn ${accountLedgerFilter === 'Accounts Receivable' ? 'active' : ''}`}
           onClick={() => setAccountLedgerFilter('Accounts Receivable')}
           style={{ padding: '8px 14px', fontSize: '0.82rem' }}
         >
-          👥 Accounts Receivable
+          <i className="fa-solid fa-users" style={{ marginRight: '6px' }}></i> Accounts Receivable
         </button>
         <button 
           className={`tf-btn ${accountLedgerFilter === 'Accounts Payable' ? 'active' : ''}`}
           onClick={() => setAccountLedgerFilter('Accounts Payable')}
           style={{ padding: '8px 14px', fontSize: '0.82rem' }}
         >
-          🧾 Accounts Payable
+          <i className="fa-solid fa-file-invoice" style={{ marginRight: '6px' }}></i> Accounts Payable
         </button>
         <button 
           className={`tf-btn ${accountLedgerFilter === 'Revenue' ? 'active' : ''}`}
           onClick={() => setAccountLedgerFilter('Revenue')}
           style={{ padding: '8px 14px', fontSize: '0.82rem' }}
         >
-          💰 Sales & Revenue
+          <i className="fa-solid fa-money-bill-trend-up" style={{ marginRight: '6px' }}></i> Sales & Revenue
         </button>
         <button 
           className={`tf-btn ${accountLedgerFilter === 'Expense' ? 'active' : ''}`}
           onClick={() => setAccountLedgerFilter('Expense')}
           style={{ padding: '8px 14px', fontSize: '0.82rem' }}
         >
-          💡 Operating Expenses
+          <i className="fa-solid fa-file-invoice-dollar" style={{ marginRight: '6px' }}></i> Operating Expenses
         </button>
       </div>
 
@@ -244,7 +244,11 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
             {formatCurrency(remainingUSD, currency)}
           </div>
           <span style={{ fontSize: '0.72rem', color: isOverBudget ? '#ff8e8e' : '#4ade80', marginTop: '0.5rem', display: 'block', fontWeight: 600 }}>
-            {isOverBudget ? '⚠️ Over Budget Alert!' : '✓ Available Remaining'}
+            {isOverBudget ? (
+              <><i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '4px' }}></i>Over Budget Alert!</>
+            ) : (
+              <><i className="fa-solid fa-circle-check" style={{ marginRight: '4px' }}></i>Available Remaining</>
+            )}
           </span>
         </div>
 
@@ -389,50 +393,61 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
               </tr>
             </thead>
             <tbody>
-              {filtered.map(t => (
-                <tr key={t.id}>
-                  <td className="ref-code">{t.id}</td>
-                  <td style={{ fontSize: '0.85rem' }}>{t.date}</td>
-                  <td>
-                    <div className="counterparty-cell">
-                      <div className="entity-avatar" style={{ background: t.amount > 0 ? 'rgba(74, 222, 128, 0.15)' : 'rgba(255, 175, 211, 0.15)', color: t.amount > 0 ? '#4ade80' : '#ffafd3' }}>
-                        <i className={`fa-solid ${t.amount > 0 ? 'fa-arrow-trend-up' : 'fa-receipt'}`}></i>
-                      </div>
-                      <div>
-                        <span style={{ fontWeight: 600, color: '#fff' }}>{t.counterparty}</span>
-                        {t.notes && <div style={{ fontSize: '0.72rem', color: '#9ca3af' }}>{t.notes}</div>}
-                      </div>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '3rem 1rem', color: '#64748b' }}>
+                    <i className="fa-solid fa-file-invoice" style={{ fontSize: '1.8rem', display: 'block', marginBottom: '0.75rem', opacity: 0.3 }}></i>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>
+                      {searchTerm || categoryFilter !== 'ALL' || statusFilter !== 'ALL'
+                        ? 'No transactions match your current filters'
+                        : 'No transactions recorded yet'}
+                    </div>
+                    <div style={{ fontSize: '0.8rem' }}>
+                      {searchTerm || categoryFilter !== 'ALL' || statusFilter !== 'ALL'
+                        ? 'Try clearing your search or filters to see all entries.'
+                        : 'Use the Record Transaction button or Quick Log above to add your first entry.'}
                     </div>
                   </td>
-                  <td>
-                    <span className="pill-tag lilac" style={{ fontSize: '0.7rem', textTransform: 'none', marginRight: '6px' }}>
-                      {t.accountType || 'General'}
-                    </span>
-                    <span style={{ fontSize: '0.8rem', color: '#cebdff' }}>{t.category}</span>
-                  </td>
-
-                  {/* Money In (+) */}
-                  <td className="text-right amount-val positive" style={{ fontFamily: 'JetBrains Mono', fontWeight: 600 }}>
-                    {t.amount > 0 ? `+${formatCurrency(t.amount, currency)}` : <span style={{ color: '#4b5563' }}>—</span>}
-                  </td>
-
-                  {/* Money Out (-) */}
-                  <td className="text-right amount-val negative" style={{ fontFamily: 'JetBrains Mono', fontWeight: 600 }}>
-                    {t.amount < 0 ? formatCurrency(Math.abs(t.amount), currency) : <span style={{ color: '#4b5563' }}>—</span>}
-                  </td>
-
-                  {/* Running Balance */}
-                  <td className="text-right" style={{ fontFamily: 'JetBrains Mono', fontWeight: 800, color: t.runningBalance >= 0 ? '#00d4ff' : '#ff8e8e', fontSize: '0.95rem' }}>
-                    {formatCurrency(t.runningBalance, currency)}
-                  </td>
-
-                  <td>
-                    <span className={`status-badge status-${t.status.toLowerCase()}`}>
-                      {t.status}
-                    </span>
-                  </td>
                 </tr>
-              ))}
+              ) : (
+                filtered.map(t => (
+                  <tr key={t.id}>
+                    <td className="ref-code">{t.id}</td>
+                    <td style={{ fontSize: '0.85rem' }}>{t.date}</td>
+                    <td>
+                      <div className="counterparty-cell">
+                        <div className="entity-avatar" style={{ background: t.amount > 0 ? 'rgba(74, 222, 128, 0.15)' : 'rgba(255, 175, 211, 0.15)', color: t.amount > 0 ? '#4ade80' : '#ffafd3' }}>
+                          <i className={`fa-solid ${t.amount > 0 ? 'fa-arrow-trend-up' : 'fa-receipt'}`}></i>
+                        </div>
+                        <div>
+                          <span style={{ fontWeight: 600, color: '#fff' }}>{t.counterparty}</span>
+                          {t.notes && <div style={{ fontSize: '0.72rem', color: '#9ca3af' }}>{t.notes}</div>}
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="pill-tag lilac" style={{ fontSize: '0.7rem', textTransform: 'none', marginRight: '6px' }}>
+                        {t.accountType || 'General'}
+                      </span>
+                      <span style={{ fontSize: '0.8rem', color: '#cebdff' }}>{t.category}</span>
+                    </td>
+                    <td className="text-right amount-val positive" style={{ fontFamily: 'JetBrains Mono', fontWeight: 600 }}>
+                      {t.amount > 0 ? `+${formatCurrency(t.amount, currency)}` : <span style={{ color: '#4b5563' }}>—</span>}
+                    </td>
+                    <td className="text-right amount-val negative" style={{ fontFamily: 'JetBrains Mono', fontWeight: 600 }}>
+                      {t.amount < 0 ? formatCurrency(Math.abs(t.amount), currency) : <span style={{ color: '#4b5563' }}>—</span>}
+                    </td>
+                    <td className="text-right" style={{ fontFamily: 'JetBrains Mono', fontWeight: 800, color: t.runningBalance >= 0 ? '#00d4ff' : '#ff8e8e', fontSize: '0.95rem' }}>
+                      {formatCurrency(t.runningBalance, currency)}
+                    </td>
+                    <td>
+                      <span className={`status-badge status-${t.status.toLowerCase()}`}>
+                        {t.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

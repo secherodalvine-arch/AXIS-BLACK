@@ -679,11 +679,11 @@ export const HomePage: React.FC<HomePageProps> = ({
           <div className="home-footer-col">
             <div className="home-footer-col-title">Platform</div>
             <ul className="home-footer-links">
-              <li><button onClick={onEnterDashboard} className="home-footer-link">Overview Dashboard</button></li>
-              <li><button onClick={onEnterDashboard} className="home-footer-link">Business Analytics</button></li>
-              <li><button onClick={onEnterDashboard} className="home-footer-link">Axis Agent Advisors</button></li>
-              <li><button onClick={onEnterDashboard} className="home-footer-link">Runway Simulator</button></li>
-              <li><button onClick={onEnterDashboard} className="home-footer-link">Inventory Intelligence</button></li>
+              <li><button onClick={() => scrollToSection('features')} className="home-footer-link">Overview Dashboard</button></li>
+              <li><button onClick={() => scrollToSection('features')} className="home-footer-link">Business Analytics</button></li>
+              <li><button onClick={() => scrollToSection('multimodal')} className="home-footer-link">Axis Agent Advisors</button></li>
+              <li><button onClick={() => scrollToSection('features')} className="home-footer-link">Runway Simulator</button></li>
+              <li><button onClick={() => scrollToSection('features')} className="home-footer-link">Inventory Intelligence</button></li>
             </ul>
           </div>
 
