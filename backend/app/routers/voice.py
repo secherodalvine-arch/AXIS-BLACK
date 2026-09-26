@@ -1,5 +1,4 @@
 import logging
-import httpx
 from fastapi import APIRouter
 from app.config import settings
 
@@ -68,46 +67,12 @@ async def get_voice_config():
 @router.get("/signed-url")
 async def get_elevenlabs_signed_url():
     """
-    Generate a secure, temporary WebSocket URL for ElevenLabs Conversational AI Agent.
-    This prevents exposing private ElevenLabs API key on the frontend.
+    Returns the voice agent ID for the frontend widget.
+    The widget uses the public agent ID directly — no signed URL required.
     """
-    if not settings.ELEVENLABS_AGENT_ID or not settings.ELEVENLABS_API_KEY:
-        return {
-            "status": "unconfigured",
-            "message": "ElevenLabs ELEVENLABS_AGENT_ID or ELEVENLABS_API_KEY is not set in backend environment variables.",
-            "signed_url": None,
-            "agent_id": settings.ELEVENLABS_AGENT_ID or None
-        }
-
-    try:
-        url = f"https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id={settings.ELEVENLABS_AGENT_ID}"
-        headers = {
-            "xi-api-key": settings.ELEVENLABS_API_KEY
-        }
-        
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(url, headers=headers)
-            if resp.status_code == 200:
-                data = resp.json()
-                return {
-                    "status": "success",
-                    "signed_url": data.get("signed_url"),
-                    "agent_id": settings.ELEVENLABS_AGENT_ID
-                }
-            else:
-                logger.error(f"ElevenLabs signed URL error {resp.status_code}: {resp.text}")
-                return {
-                    "status": "error",
-                    "message": f"ElevenLabs API error: {resp.status_code}",
-                    "signed_url": None,
-                    "agent_id": settings.ELEVENLABS_AGENT_ID
-                }
-    except Exception as e:
-        logger.exception("Failed to fetch ElevenLabs signed URL")
-        return {
-            "status": "error",
-            "message": f"Exception occurred: {str(e)}",
-            "signed_url": None,
-            "agent_id": settings.ELEVENLABS_AGENT_ID
-        }
+    return {
+        "status": "success",
+        "signed_url": None,
+        "agent_id": settings.ELEVENLABS_AGENT_ID or None
+    }
 
