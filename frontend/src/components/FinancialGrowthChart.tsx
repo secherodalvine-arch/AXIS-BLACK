@@ -41,9 +41,12 @@ export const FinancialGrowthChart: React.FC<FinancialGrowthChartProps> = ({ tran
     const expenseData = new Array(monthLabels.length).fill(0);
     const netMarginData = new Array(monthLabels.length).fill(0);
 
+    const currentYear = new Date().getFullYear();
     transactions.forEach((t: any) => {
       if (!t.date) return;
       const d = new Date(t.date);
+      if (isNaN(d.getTime())) return;
+      if (d.getFullYear() !== currentYear) return;
       const mIdx = d.getMonth();
       if (mIdx >= 0 && mIdx < monthLabels.length) {
         const amt = Number(t.amount) || 0;

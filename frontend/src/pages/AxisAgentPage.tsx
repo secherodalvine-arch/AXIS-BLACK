@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChatMessage, Currency, MetricData } from '../types';
 import { getAgentSessionsApi, saveAgentSessionApi, deleteAgentSessionApi } from '../utils/api';
+import { formatRelativeTime, extractValidDate, formatMessageTime } from '../utils/dateUtils';
 
 export interface ChatSession {
   id: string;
@@ -24,9 +25,21 @@ interface AxisAgentWorkspaceProps {
 const createDefaultSession = (): ChatSession => ({
   id: `session-${Date.now()}`,
   title: 'New Chat',
-  timestamp: 'Just now',
+  timestamp: new Date().toISOString(),
   messages: []
 });
+
+// Heal and migrate any session with legacy "Just now" or invalid timestamps
+const healSession = (s: any): ChatSession => {
+  const extractedDate = extractValidDate(s.timestamp, s.id, s.messages);
+  const isoTimestamp = extractedDate ? extractedDate.toISOString() : (s.timestamp && s.timestamp !== 'Just now' ? s.timestamp : new Date().toISOString());
+  return {
+    id: s.id || `session-${Date.now()}`,
+    title: s.title || 'New Chat',
+    timestamp: isoTimestamp,
+    messages: Array.isArray(s.messages) ? s.messages : []
+  };
+};
 
 const loadSessionsFromStorage = (userId?: string): ChatSession[] => {
   const key = userId ? `axis_chats_${userId}` : 'axis_chats_guest';
@@ -35,7 +48,7 @@ const loadSessionsFromStorage = (userId?: string): ChatSession[] => {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        return parsed.map(s => healSession(s));
       }
     }
   } catch (e) {
@@ -153,9 +166,10 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
       getAgentSessionsApi()
         .then((mongoSessions) => {
           if (mounted && Array.isArray(mongoSessions)) {
+            const healed = mongoSessions.map(s => healSession(s));
             setSessions(prev => {
               const currentActive = prev.find(s => s.id === activeSessionId) || initialSession;
-              const remoteOthers = mongoSessions.filter(s => s.id !== currentActive.id);
+              const remoteOthers = healed.filter(s => s.id !== currentActive.id);
               return [currentActive, ...remoteOthers];
             });
             // Intentionally DO NOT overwrite activeSessionId with mongoSessions[0].id
@@ -248,11 +262,12 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
     const cleanText = textToSubmit.trim();
     setInputVal('');
 
+    const nowIso = new Date().toISOString();
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       sender: 'user',
       text: cleanText,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: nowIso
     };
 
     setSessions(prev => prev.map(s => {
@@ -262,6 +277,8 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
         const updated = {
           ...s,
           title: newTitle,
+          // Update timestamp to real current ISO time
+          timestamp: nowIso,
           messages: [...s.messages, userMsg]
         };
         if (user?.user_id) {
@@ -348,7 +365,7 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
                             {s.title}
                           </div>
                           <div style={{ color: 'var(--text-dim)', fontSize: '0.72rem', marginTop: '2px' }}>
-                            {s.timestamp}
+                            {formatRelativeTime(s.timestamp, { fallbackId: s.id, fallbackItems: s.messages })}
                           </div>
                         </div>
                       </div>
@@ -447,6 +464,13 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
                             {sug}
                           </button>
                         ))}
+                      </div>
+                    )}
+                    {msg.timestamp && (
+                      <div style={{ display: 'flex', justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start', marginTop: '6px' }}>
+                        <span style={{ fontSize: '0.66rem', color: 'rgba(255, 255, 255, 0.4)', fontFamily: 'JetBrains Mono' }}>
+                          {formatMessageTime(msg.timestamp)}
+                        </span>
                       </div>
                     )}
                   </div>

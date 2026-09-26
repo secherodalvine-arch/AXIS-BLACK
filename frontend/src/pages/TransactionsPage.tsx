@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Transaction, Currency } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
+import { formatRelativeTime } from '../utils/dateUtils';
 
 interface TransactionsLedgerProps {
   transactions: Transaction[];
@@ -32,10 +33,12 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
   const [quickAmount, setQuickAmount] = useState('');
   const [quickCategory, setQuickCategory] = useState('Operations & Logistics');
 
-  // Calculate Used Today (Sum of expense transactions)
-  const todayStr = new Date().toISOString().split('T')[0];
+  // Calculate Used Today (Sum of expense transactions logged today)
+  const now = new Date();
+  const todayUtcStr = now.toISOString().split('T')[0];
+  const todayLocalStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const usedTodayUSD = transactions
-    .filter(t => (t.type === 'Expense' || t.amount < 0))
+    .filter(t => (t.type === 'Expense' || t.amount < 0) && (t.date === todayUtcStr || t.date === todayLocalStr || (t.date && (t.date.startsWith(todayUtcStr) || t.date.startsWith(todayLocalStr)))))
     .reduce((acc, t) => acc + Math.abs(t.amount), 0);
 
   const remainingUSD = dailyBudgetLimit - usedTodayUSD;
@@ -62,7 +65,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
         type: 'Expense',
         category: quickCategory,
         accountType: 'Expense',
-        date: todayStr,
+        date: todayLocalStr,
         status: 'Cleared',
         amount: -Math.abs(amt),
         notes: 'Logged via Daily Usage Tracker'
@@ -412,7 +415,14 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
                 filtered.map(t => (
                   <tr key={t.id}>
                     <td className="ref-code">{t.id}</td>
-                    <td style={{ fontSize: '0.85rem' }}>{t.date}</td>
+                    <td style={{ fontSize: '0.85rem' }}>
+                      <span title={t.date} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <span>{formatRelativeTime(t.date, { showTime: false })}</span>
+                        <span style={{ fontSize: '0.72rem', color: '#9ca3af', fontFamily: 'JetBrains Mono' }}>
+                          ({t.date})
+                        </span>
+                      </span>
+                    </td>
                     <td>
                       <div className="counterparty-cell">
                         <div className="entity-avatar" style={{ background: t.amount > 0 ? 'rgba(74, 222, 128, 0.15)' : 'rgba(255, 175, 211, 0.15)', color: t.amount > 0 ? '#4ade80' : '#ffafd3' }}>

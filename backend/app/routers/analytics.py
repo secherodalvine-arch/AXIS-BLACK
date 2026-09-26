@@ -33,7 +33,8 @@ async def get_celestial_analytics(current_user: dict = Depends(get_current_user)
         if not date_str:
             continue
         try:
-            d = datetime.date.fromisoformat(date_str)
+            date_clean = str(date_str)[:10]
+            d = datetime.date.fromisoformat(date_clean)
             m_key = d.strftime("%b")
         except Exception:
             continue

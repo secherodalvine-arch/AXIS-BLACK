@@ -246,7 +246,8 @@ class AxisDataStore:
             "date": txn_data.get("date", datetime.date.today().isoformat()),
             "status": txn_data.get("status", "Cleared"),
             "amount": float(txn_data.get("amount", 0.0)),
-            "notes": txn_data.get("notes", "")
+            "notes": txn_data.get("notes", ""),
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
 
         if db_manager.is_connected:

@@ -65,7 +65,7 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
       '30D': 30 * 24 * 60 * 60 * 1000,
       '1Y': 365 * 24 * 60 * 60 * 1000
     };
-    const maxAge = msMap[timeframe] || 365 * 24 * 60 * 60 * 1000;
+    const maxAge = msMap[timeframe?.toUpperCase()] || msMap[timeframe] || 365 * 24 * 60 * 60 * 1000;
     const cutoff = now - maxAge;
     const query = (searchQuery || '').toLowerCase().trim();
 
@@ -102,6 +102,8 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
     effectiveTransactions.forEach(t => {
       if (!t.date) return;
       const d = new Date(t.date);
+      if (isNaN(d.getTime())) return;
+      if (d.getFullYear() !== currentYear) return;
       const mIdx = d.getMonth();
       if (isNaN(mIdx) || mIdx < 0 || mIdx > 11) return;
 

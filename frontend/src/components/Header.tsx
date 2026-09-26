@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { NavTab, Timeframe, Currency } from '../types';
+import { formatNotificationTime, formatNotificationDetailTime } from '../utils/dateUtils';
 
 export interface SystemNotification {
   id: string;
@@ -353,7 +354,7 @@ export const Header: React.FC<HeaderProps> = ({
                       <div style={{ flex: 1, cursor: 'pointer', userSelect: 'none' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#ffffff', cursor: 'pointer', userSelect: 'none' }}>{n.title}</span>
-                          <span style={{ fontSize: '0.65rem', color: '#9ca3af', fontFamily: 'JetBrains Mono', cursor: 'pointer', userSelect: 'none' }}>{n.time}</span>
+                          <span style={{ fontSize: '0.65rem', color: '#9ca3af', fontFamily: 'JetBrains Mono', cursor: 'pointer', userSelect: 'none' }}>{formatNotificationTime(n.time)}</span>
                         </div>
                         <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '4px 0 0', lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', cursor: 'pointer', userSelect: 'none' }}>
                           {n.message}
@@ -556,7 +557,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className={`pill-tag ${selectedNotif.type === 'warning' ? 'pink' : selectedNotif.type === 'success' ? 'cyan' : 'lilac'}`} style={{ fontSize: '0.68rem' }}>
                   {selectedNotif.type.toUpperCase()}
                 </span>
-                <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#9ca3af' }}>{selectedNotif.time}</span>
+                <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#9ca3af' }}>{formatNotificationDetailTime(selectedNotif.time)}</span>
               </div>
               <button className="modal-close" onClick={() => setSelectedNotif(null)} style={{ color: '#9ca3af', background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer' }}>&times;</button>
             </div>

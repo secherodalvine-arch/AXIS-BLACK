@@ -265,7 +265,7 @@ export const App: React.FC = () => {
               id: `notif-inv-${i.sku || i.id || Math.random()}`,
               title: `Low Stock Alert: ${i.name}`,
               message: `${i.name} stock level is currently ${i.stock_quantity ?? i.stockLevel ?? 0} units (Reorder threshold: ${i.reorder_point ?? i.minThreshold ?? 50}). Reorder recommended.`,
-              time: 'Active Alert',
+              time: i.updated_at || i.created_at || new Date().toISOString(),
               type: 'warning',
               read: false
             }));
@@ -284,22 +284,42 @@ export const App: React.FC = () => {
 
     // 1. Welcome notification upon registration / login
     if (user) {
+      const welcomeTimestamp = user.created_at || (() => {
+        const k = `axis_welcome_ts_${user.user_id || 'guest'}`;
+        let val = localStorage.getItem(k);
+        if (!val) {
+          val = new Date().toISOString();
+          try { localStorage.setItem(k, val); } catch {}
+        }
+        return val;
+      })();
+
       list.push({
         id: 'notif-welcome',
         title: 'Enterprise Workspace Active',
         message: `Welcome, ${user.name || user.email || 'Operator'}! Your ledger & financial workspace is active.`,
-        time: 'Just now',
+        time: welcomeTimestamp,
         type: 'info',
         read: false
       });
     }
 
     // 2. Business Financial Insight
+    const insightTimestamp = (() => {
+      const k = `axis_insight_ts_${user?.user_id || 'guest'}`;
+      let val = localStorage.getItem(k);
+      if (!val) {
+        val = new Date().toISOString();
+        try { localStorage.setItem(k, val); } catch {}
+      }
+      return val;
+    })();
+
     list.push({
       id: 'notif-financial-insight',
       title: 'Business Financial Insight',
       message: `Verified net liquidity of ${formatCurrency(netLiquidity, currency)} across active ledger entries. Operating runway calculated at ${runwayMonths} month${runwayMonths === 1 ? '' : 's'} based on cash flow analysis.`,
-      time: 'Insight',
+      time: insightTimestamp,
       type: 'success',
       read: false
     });
@@ -441,11 +461,12 @@ export const App: React.FC = () => {
   const [agentStep, setAgentStep] = useState('Step 1/3: Analyzing financial parameters...');
 
   const handleQuickAISubmit = async (query: string) => {
+    const nowIso = new Date().toISOString();
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       sender: 'user',
       text: query,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: nowIso
     };
     setChatMessages(prev => [...prev, userMsg]);
     setCurrentTab('agent');
@@ -468,7 +489,7 @@ export const App: React.FC = () => {
           id: `ai-${Date.now()}`,
           sender: 'ai',
           text: res.answer,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          timestamp: new Date().toISOString()
         };
         setChatMessages(prev => [...prev, aiReply]);
       } catch {
@@ -476,7 +497,7 @@ export const App: React.FC = () => {
           id: `ai-${Date.now()}`,
           sender: 'ai',
           text: "I'm unable to reach the Axis intelligence backend right now. Please check your connection or try again in a moment. Your data and sessions are safe.",
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          timestamp: new Date().toISOString()
         };
         setChatMessages(prev => [...prev, errorReply]);
       } finally {
