@@ -17,7 +17,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
 }) => {
   const [counterparty, setCounterparty] = useState('');
   const [type, setType] = useState<'Expense' | 'Revenue'>('Expense');
-  const [category, setCategory] = useState<string>('Food & Beverage');
+  const [category, setCategory] = useState<string>('Operations & Logistics');
   const [accountType, setAccountType] = useState<Transaction['accountType']>('Cash');
   const [customCategory, setCustomCategory] = useState('');
   const [isCustom, setIsCustom] = useState(false);
@@ -30,7 +30,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const rawNum = parseFloat(amount);
-    const finalCategory = isCustom ? (customCategory.trim() || 'General') : category;
+    const finalCategory = isCustom ? (customCategory.trim() || 'Operations & Logistics') : category;
     if (!counterparty || isNaN(rawNum)) return;
 
     // Convert to USD base if entered in KES
@@ -70,7 +70,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
       <div className="modal-card glass-card" style={{ background: '#141418', border: '1px solid rgba(0, 212, 255, 0.35)', boxShadow: '0 24px 80px rgba(0,0,0,0.9), 0 0 40px rgba(0, 212, 255, 0.2)' }}>
         <div className="modal-header" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '12px', marginBottom: '20px' }}>
           <h3 style={{ margin: 0, color: '#ffffff', fontFamily: 'Plus Jakarta Sans', fontSize: '1.25rem', fontWeight: 800 }}>
-            Record General Ledger Entry
+            Record Ledger Entry
           </h3>
           <button className="modal-close" onClick={onClose} style={{ color: '#9ca3af', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>&times;</button>
         </div>
@@ -82,7 +82,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
             <input 
               type="text" 
               className="input-text" 
-              placeholder="e.g. Food Sales / Sysco Ingredients / Energy Utility"
+              placeholder="e.g. Stripe Payout / AWS Cloud Services / Office Supplies"
               value={counterparty}
               onChange={(e) => setCounterparty(e.target.value)}
               required
@@ -136,17 +136,17 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
               onChange={handleCategorySelectChange}
               style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px' }}
             >
-              <option value="Food & Beverage" style={{ background: '#141418', color: '#ffffff' }}>Food & Beverage</option>
-              <option value="Ingredients & Produce" style={{ background: '#141418', color: '#ffffff' }}>Ingredients & Produce</option>
-              <option value="Dining Sales" style={{ background: '#141418', color: '#ffffff' }}>Dining Sales</option>
-              <option value="Kitchen Equipment" style={{ background: '#141418', color: '#ffffff' }}>Kitchen Equipment</option>
-              <option value="Infrastructure" style={{ background: '#141418', color: '#ffffff' }}>Infrastructure</option>
-              <option value="Payroll" style={{ background: '#141418', color: '#ffffff' }}>Payroll</option>
-              <option value="Subscription" style={{ background: '#141418', color: '#ffffff' }}>Subscription ARR</option>
-              <option value="Marketing" style={{ background: '#141418', color: '#ffffff' }}>Marketing</option>
-              <option value="Supplies & Maintenance" style={{ background: '#141418', color: '#ffffff' }}>Supplies & Maintenance</option>
+              <option value="Revenue & Sales" style={{ background: '#141418', color: '#ffffff' }}>Revenue & Sales</option>
+              <option value="Software & Subscriptions" style={{ background: '#141418', color: '#ffffff' }}>Software & Subscriptions</option>
+              <option value="Cloud & Infrastructure" style={{ background: '#141418', color: '#ffffff' }}>Cloud & Infrastructure</option>
+              <option value="Payroll & Compensation" style={{ background: '#141418', color: '#ffffff' }}>Payroll & Compensation</option>
+              <option value="Operations & Logistics" style={{ background: '#141418', color: '#ffffff' }}>Operations & Logistics</option>
+              <option value="Marketing & Growth" style={{ background: '#141418', color: '#ffffff' }}>Marketing & Growth</option>
+              <option value="Office & Facilities" style={{ background: '#141418', color: '#ffffff' }}>Office & Facilities</option>
+              <option value="Professional Services" style={{ background: '#141418', color: '#ffffff' }}>Professional Services</option>
+              <option value="Equipment & Assets" style={{ background: '#141418', color: '#ffffff' }}>Equipment & Assets</option>
               <option value="Utilities" style={{ background: '#141418', color: '#ffffff' }}>Utilities</option>
-              <option value="Treasury" style={{ background: '#141418', color: '#ffffff' }}>Treasury Yield</option>
+              <option value="Treasury & Capital" style={{ background: '#141418', color: '#ffffff' }}>Treasury & Capital</option>
               <option value="__CUSTOM__" style={{ background: '#141418', color: '#00d4ff', fontWeight: 'bold' }}>+ Custom Category...</option>
             </select>
           </div>
@@ -159,7 +159,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
               <input 
                 type="text" 
                 className="input-text" 
-                placeholder="e.g. Catering Services, Wine Cellar, Software Licenses"
+                placeholder="e.g. Legal Retainer, Cloud Compute, Travel & Lodging"
                 value={customCategory}
                 onChange={(e) => setCustomCategory(e.target.value)}
                 required={isCustom}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { NavTab, Timeframe, Currency } from '../types';
 
-interface SystemNotification {
+export interface SystemNotification {
   id: string;
   title: string;
   message: string;
@@ -12,14 +12,20 @@ interface SystemNotification {
 
 interface HeaderProps {
   currentTab: NavTab;
-  timeframe: Timeframe;
+  timeframe?: Timeframe;
   currency?: Currency;
+  searchQuery?: string;
   userName?: string;
   userEmail?: string;
   userAvatar?: string;
   userRole?: string;
+  notifications?: SystemNotification[];
+  onClearNotifications?: () => void;
+  onDeleteNotification?: (id: string) => void;
+  onToggleNotificationRead?: (id: string) => void;
+  onMarkAllRead?: () => void;
   onCurrencyChange?: (c: Currency) => void;
-  onTimeframeChange: (tf: Timeframe) => void;
+  onTimeframeChange?: (tf: Timeframe) => void;
   onOpenNewTxnModal: () => void;
   onOpenVoiceAgent?: () => void;
   onToggleMobileMenu: () => void;
@@ -39,51 +45,22 @@ const TAB_TITLES: Record<NavTab, string> = {
   settings: 'Settings'
 };
 
-const INITIAL_NOTIFICATIONS: SystemNotification[] = [
-  {
-    id: 'n-1',
-    title: 'Inventory Reorder Warning',
-    message: 'SKU-8093 (Fiber-Optic Laser Transceivers) dropped below min threshold (85 / 100 units).',
-    time: '5m ago',
-    type: 'warning',
-    read: false,
-  },
-  {
-    id: 'n-2',
-    title: 'Subscription Revenue Spike',
-    message: 'Enterprise tier sign-ups increased by +28% in EMEA region. ARR growth trending +4.2%.',
-    time: '25m ago',
-    type: 'success',
-    read: false,
-  },
-  {
-    id: 'n-3',
-    title: 'Treasury Yield Optimization',
-    message: 'Sweeping $350K idle cash into 30-day T-Bills generates +$1,415 monthly net yield.',
-    time: '2h ago',
-    type: 'info',
-    read: false,
-  },
-  {
-    id: 'n-4',
-    title: 'Ledger Audit Cleared',
-    message: 'Transaction TXN-9083 ($184,500.00) verified and synchronized with system database.',
-    time: '4h ago',
-    type: 'success',
-    read: true,
-  }
-];
-
 export const Header: React.FC<HeaderProps> = ({
   currentTab,
-  timeframe,
+  timeframe: _timeframe,
   currency: _currency,
+  searchQuery = '',
   userName = '',
   userEmail = '',
   userAvatar = '',
   userRole = '',
+  notifications: propNotifications,
+  onClearNotifications,
+  onDeleteNotification: propDeleteNotification,
+  onToggleNotificationRead: propToggleNotificationRead,
+  onMarkAllRead,
   onCurrencyChange: _onCurrencyChange,
-  onTimeframeChange,
+  onTimeframeChange: _onTimeframeChange,
   onOpenNewTxnModal,
   onOpenVoiceAgent,
   onToggleMobileMenu,
@@ -94,9 +71,12 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
-  const [notifications, setNotifications] = useState<SystemNotification[]>(INITIAL_NOTIFICATIONS);
+  const [localNotifications, setLocalNotifications] = useState<SystemNotification[]>([]);
   const [notifFilter, setNotifFilter] = useState<'all' | 'unread'>('all');
   const [selectedNotif, setSelectedNotif] = useState<SystemNotification | null>(null);
+
+  const notifications = propNotifications ?? localNotifications;
+  const setNotifications = setLocalNotifications;
 
   const displayName = userName || (userEmail ? userEmail.split('@')[0] : 'Operator');
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -107,15 +87,18 @@ export const Header: React.FC<HeaderProps> = ({
   });
 
   const markAllRead = () => {
+    if (onMarkAllRead) onMarkAllRead();
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
   const clearNotifications = () => {
+    if (onClearNotifications) onClearNotifications();
     setNotifications([]);
   };
 
   const deleteNotification = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (propDeleteNotification) propDeleteNotification(id);
     setNotifications(prev => prev.filter(n => n.id !== id));
     if (selectedNotif?.id === id) {
       setSelectedNotif(null);
@@ -124,12 +107,14 @@ export const Header: React.FC<HeaderProps> = ({
 
   const toggleNotificationRead = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    if (propToggleNotificationRead) propToggleNotificationRead(id);
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: !n.read } : n));
   };
 
   const openNotifDetail = (notif: SystemNotification) => {
     setSelectedNotif(notif);
     if (!notif.read) {
+      if (propToggleNotificationRead) propToggleNotificationRead(notif.id);
       setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n));
     }
   };
@@ -145,15 +130,15 @@ export const Header: React.FC<HeaderProps> = ({
             {TAB_TITLES[currentTab]}
           </span>
         </div>
-
       </div>
 
-      <div className="header-center" style={{ flex: 1, maxWidth: '460px', margin: '0 24px', display: 'flex', justifyContent: 'center' }}>
+      <div className="header-center" style={{ flex: 1, maxWidth: '680px', margin: '0 24px', display: 'flex', justifyContent: 'center' }}>
         <div className="global-search-bar" style={{ width: '100%', position: 'relative' }}>
           <i className="fa-solid fa-magnifying-glass search-icon" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: '0.85rem' }}></i>
           <input 
             type="text" 
-            placeholder="Search metrics, ledger transactions, insights..." 
+            placeholder="Search metrics, ledger transactions, inventory, insights..." 
+            value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             style={{ width: '100%', padding: '9px 16px 9px 38px', background: '#141418', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '20px', color: '#ffffff', fontSize: '0.85rem' }}
           />
@@ -161,28 +146,6 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'nowrap' }}>
-
-        <div className="timeframe-selector" title="Telemetry Timeframe" style={{ display: 'flex', background: '#141418', padding: '3px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-          {(['24h', '7d', '30d', '1y'] as Timeframe[]).map((tf) => (
-            <button
-              key={tf}
-              className={`tf-btn ${timeframe === tf ? 'active' : ''}`}
-              onClick={() => onTimeframeChange(tf)}
-              style={{
-                padding: '4px 10px',
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                borderRadius: '7px',
-                background: timeframe === tf ? 'rgba(167, 139, 250, 0.25)' : 'transparent',
-                color: timeframe === tf ? '#ffffff' : '#9ca3af',
-                border: timeframe === tf ? '1px solid rgba(167, 139, 250, 0.4)' : '1px solid transparent',
-                cursor: 'pointer'
-              }}
-            >
-              {tf.toUpperCase()}
-            </button>
-          ))}
-        </div>
 
         {onOpenVoiceAgent && (
           <button 

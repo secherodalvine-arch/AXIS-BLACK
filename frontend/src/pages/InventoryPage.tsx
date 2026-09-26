@@ -5,6 +5,7 @@ import { getInventoryApi, createInventoryItemApi } from '../utils/api';
 
 interface InventoryViewProps {
   currency?: Currency;
+  searchQuery?: string;
 }
 
 interface InventoryItem {
@@ -18,7 +19,7 @@ interface InventoryItem {
   status: 'Optimal' | 'Reorder Soon' | 'Surge Buffer';
 }
 
-export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }) => {
+export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', searchQuery = '' }) => {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
@@ -26,14 +27,14 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
 
   // Form State
   const [name, setName] = useState('');
-  const [category, setCategory] = useState('Food & Beverage');
+  const [category, setCategory] = useState('Hardware & Devices');
   const [customCategory, setCustomCategory] = useState('');
   const [isCustomCategory, setIsCustomCategory] = useState(false);
-  const [stockQuantity, setStockQuantity] = useState('100');
-  const [reorderPoint, setReorderPoint] = useState('50');
-  const [unitCost, setUnitCost] = useState('150');
-  const [sellingPrice, setSellingPrice] = useState('250');
-  const [supplier, setSupplier] = useState('Sysco Food Logistics');
+  const [stockQuantity, setStockQuantity] = useState('');
+  const [reorderPoint, setReorderPoint] = useState('');
+  const [unitCost, setUnitCost] = useState('');
+  const [sellingPrice, setSellingPrice] = useState('');
+  const [supplier, setSupplier] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const fetchInventory = () => {
@@ -44,7 +45,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
           const mapped: InventoryItem[] = data.map((d: any) => ({
             id: d.sku || d.id || `ITEM-${Math.floor(1000 + Math.random() * 9000)}`,
             name: d.name || 'Inventory Item',
-            category: d.category || 'General',
+            category: d.category || 'Inventory',
             stockLevel: Number(d.stock_quantity ?? d.stockLevel ?? 0),
             minThreshold: Number(d.reorder_point ?? d.minThreshold ?? 50),
             unitPriceUSD: Number(d.unit_cost ?? d.unitPriceUSD ?? 100),
@@ -72,7 +73,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
     if (!name) return;
     setSubmitting(true);
 
-    const finalCategory = isCustomCategory ? (customCategory.trim() || 'General') : category;
+    const finalCategory = isCustomCategory ? (customCategory.trim() || 'Inventory') : category;
     const itemCode = `ITEM-${Math.floor(1000 + Math.random() * 9000)}`;
     const newItemData = {
       sku: itemCode,
@@ -82,7 +83,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
       reorder_point: parseInt(reorderPoint) || 50,
       unit_cost: parseFloat(unitCost) || 100,
       selling_price: parseFloat(sellingPrice) || 200,
-      supplier
+      supplier: supplier || 'Primary Supplier'
     };
 
     try {
@@ -91,6 +92,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
       fetchInventory();
       setIsModalOpen(false);
       setName('');
+      setSupplier('');
       setCustomCategory('');
       setIsCustomCategory(false);
     } catch (err) {
@@ -109,6 +111,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
       setItems(prev => [newLocalItem, ...prev]);
       setIsModalOpen(false);
       setName('');
+      setSupplier('');
       setCustomCategory('');
       setIsCustomCategory(false);
     } finally {
@@ -121,15 +124,23 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
   // Dynamic categories list from items + presets
   const availableCategories = Array.from(new Set([
     'ALL',
-    'Food & Beverage',
-    'Ingredients & Produce',
-    'Kitchen & Dining Equipment',
-    'Packaging & Supplies',
-    'Tech & Network Hardware',
+    'Hardware & Devices',
+    'Finished Goods & Products',
+    'Raw Materials & Parts',
+    'Office Equipment & Facilities',
+    'Packaging & Logistics',
     ...items.map(i => i.category)
   ]));
 
-  const filteredItems = items.filter(item => filterCategory === 'ALL' || item.category === filterCategory);
+  const effectiveSearch = searchQuery.toLowerCase().trim();
+  const filteredItems = items.filter(item => {
+    const matchesCategory = filterCategory === 'ALL' || item.category === filterCategory;
+    const matchesSearch = !effectiveSearch || 
+      item.name.toLowerCase().includes(effectiveSearch) ||
+      item.category.toLowerCase().includes(effectiveSearch) ||
+      item.id.toLowerCase().includes(effectiveSearch);
+    return matchesCategory && matchesSearch;
+  });
 
   const handleCategorySelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
@@ -179,10 +190,10 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
         <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '1rem' }}>
           <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#9ca3af' }}>STOCK TURNOVER RATE</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#00d4ff', fontFamily: 'JetBrains Mono', marginTop: '0.25rem' }}>
-            {items.length > 0 ? '2.4x / mo' : '--'}
+            {items.length > 0 ? `${(items.reduce((acc, i) => acc + (parseFloat(i.turnoverRate) || 1.8), 0) / items.length).toFixed(1)}x / mo` : '--'}
           </div>
           <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem', display: 'block' }}>
-            {items.length > 0 ? 'Velocity: Active' : 'No inventory items logged'}
+            {items.length > 0 ? 'Stock Movement: Active' : 'No inventory items logged'}
           </span>
         </div>
 
@@ -323,7 +334,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
                 <input 
                   type="text" 
                   className="input-text" 
-                  placeholder="e.g. Wagyu Beef Ribeye / Espresso Beans / POS Printer"
+                  placeholder="e.g. Server Rack Mount / Display Unit / Packaging Stock"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
@@ -342,11 +353,11 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
                     onChange={handleCategorySelectChange}
                     style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px' }}
                   >
-                    <option value="Food & Beverage" style={{ background: '#141418', color: '#ffffff' }}>Food & Beverage</option>
-                    <option value="Ingredients & Produce" style={{ background: '#141418', color: '#ffffff' }}>Ingredients & Produce</option>
-                    <option value="Kitchen & Dining Equipment" style={{ background: '#141418', color: '#ffffff' }}>Kitchen & Dining Equipment</option>
-                    <option value="Packaging & Supplies" style={{ background: '#141418', color: '#ffffff' }}>Packaging & Supplies</option>
-                    <option value="Tech & Network Hardware" style={{ background: '#141418', color: '#ffffff' }}>Tech & Network Hardware</option>
+                    <option value="Hardware & Devices" style={{ background: '#141418', color: '#ffffff' }}>Hardware & Devices</option>
+                    <option value="Finished Goods & Products" style={{ background: '#141418', color: '#ffffff' }}>Finished Goods & Products</option>
+                    <option value="Raw Materials & Parts" style={{ background: '#141418', color: '#ffffff' }}>Raw Materials & Parts</option>
+                    <option value="Office Equipment & Facilities" style={{ background: '#141418', color: '#ffffff' }}>Office Equipment & Facilities</option>
+                    <option value="Packaging & Logistics" style={{ background: '#141418', color: '#ffffff' }}>Packaging & Logistics</option>
                     <option value="__CUSTOM__" style={{ background: '#141418', color: '#00d4ff', fontWeight: 'bold' }}>+ Custom Category...</option>
                   </select>
                 </div>
@@ -358,6 +369,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
                   <input 
                     type="number" 
                     className="input-text" 
+                    placeholder="0"
                     value={stockQuantity}
                     onChange={(e) => setStockQuantity(e.target.value)}
                     required
@@ -374,7 +386,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
                   <input 
                     type="text" 
                     className="input-text" 
-                    placeholder="e.g. Wine Cellar, Cleaning Supplies, Bakery Ingredients"
+                    placeholder="e.g. Spare Parts, Electronics, Retail Stock"
                     value={customCategory}
                     onChange={(e) => setCustomCategory(e.target.value)}
                     required={isCustomCategory}
@@ -391,6 +403,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
                   <input 
                     type="number" 
                     className="input-text" 
+                    placeholder="50"
                     value={reorderPoint}
                     onChange={(e) => setReorderPoint(e.target.value)}
                     required
@@ -406,6 +419,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
                     type="number" 
                     step="0.01"
                     className="input-text" 
+                    placeholder="0.00"
                     value={unitCost}
                     onChange={(e) => setUnitCost(e.target.value)}
                     required
@@ -423,6 +437,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
                     type="number" 
                     step="0.01"
                     className="input-text" 
+                    placeholder="0.00"
                     value={sellingPrice}
                     onChange={(e) => setSellingPrice(e.target.value)}
                     required
@@ -437,6 +452,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD' }
                   <input 
                     type="text" 
                     className="input-text" 
+                    placeholder="e.g. Apex Supply Co. / Global Tech"
                     value={supplier}
                     onChange={(e) => setSupplier(e.target.value)}
                     required

@@ -31,11 +31,11 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
       <BusinessInsightBanner onExploreClick={onNavigateToAgent} metrics={metrics} currency={currency} />
 
       {/* 1. Financial Performance & Growth */}
-      <FinancialGrowthChart transactions={transactions} />
+      <FinancialGrowthChart transactions={transactions} currency={currency} />
 
       {/* 2. Asset Allocation Breakdown & 3. Ledger Transactions */}
       <div className="dashboard-grid-secondary" style={{ marginTop: '1.5rem' }}>
-        <AssetAllocationChart />
+        <AssetAllocationChart transactions={transactions} currency={currency} />
         <RecentLedgerTable 
           transactions={transactions}
           currency={currency}

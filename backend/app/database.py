@@ -148,13 +148,16 @@ class AxisDataStore:
         critical_items = [i for i in inventory_items if i.get("stock_quantity", 0) <= i.get("reorder_point", 0)]
         wh_health = round(((active_skus_count - len(critical_items)) / active_skus_count * 100), 1) if active_skus_count > 0 else 100.0
 
-        # Dynamic Operations Calculation
-        infra_expenses = sum(abs(t["amount"]) for t in txns if t.get("category") == "Infrastructure")
+        # Dynamic Operations Calculation from live ledger
+        infra_expenses = sum(abs(t["amount"]) for t in txns if any(k in (t.get("category") or "").lower() for k in ["infra", "cloud", "tech", "operations", "equipment"]))
         infra_cost_str = f"${infra_expenses:,.0f}/mo" if infra_expenses > 0 else "$0/mo"
+        cleared_txns = [t for t in txns if t.get("status") == "Cleared"]
+        ops_efficiency = round((len(cleared_txns) / len(txns) * 100), 1) if txns else 100.0
 
-        # Dynamic Growth Calculation
-        sub_revenue = sum(t["amount"] for t in txns if t.get("category") == "Subscription")
+        # Dynamic Growth Calculation from live ledger
+        sub_revenue = sum(t["amount"] for t in txns if any(k in (t.get("category") or "").lower() for k in ["sub", "revenue", "sales", "arr"]) and t.get("amount", 0) > 0)
         new_arr_str = f"${sub_revenue:,.0f}" if sub_revenue > 0 else "$0"
+        net_margin_pct = round(((total_revenue - total_expense) / total_revenue * 100), 1) if total_revenue > 0 else 0.0
 
         return [
             {
@@ -162,7 +165,7 @@ class AxisDataStore:
                 "title": "Financial Advisor",
                 "value": f"${total_revenue:,.0f}" if total_revenue > 0 else "$0",
                 "numericValue": total_revenue,
-                "change": "+18.4% ARR" if total_revenue > 0 else "0% ARR",
+                "change": f"Net Margin {net_margin_pct}%" if total_revenue > 0 else "0% Margin",
                 "isPositive": total_revenue >= total_expense,
                 "targetOrMeta": f"Net Cash: ${net_liquidity:,.0f} • Runway: {runway_months} Mo" if monthly_burn > 0 else f"Net Cash: ${net_liquidity:,.0f}",
                 "glowColor": "lilac",
@@ -190,104 +193,44 @@ class AxisDataStore:
             {
                 "id": "operations",
                 "title": "Operations Advisor",
-                "value": "99.9% Efficiency" if txns else "Baseline",
-                "numericValue": 99.9 if txns else 0.0,
-                "change": "Active Monitoring",
+                "value": f"{ops_efficiency}% Cleared" if txns else "Ready",
+                "numericValue": ops_efficiency if txns else 0.0,
+                "change": f"{len(cleared_txns)} Cleared" if txns else "Active Monitoring",
                 "isPositive": True,
-                "targetOrMeta": f"Infrastructure: {infra_cost_str} • SLA 99.99%",
+                "targetOrMeta": f"Operations: {infra_cost_str} • {len(cleared_txns)}/{len(txns)} Cleared" if txns else "No operational ledger entries yet",
                 "glowColor": "pink",
                 "icon": "fa-gears",
-                "progressPercent": 94,
+                "progressPercent": int(ops_efficiency) if txns else 100,
                 "infraCost": infra_cost_str,
-                "latency": "24ms",
-                "capacity": "68%"
+                "latency": "Real-time",
+                "capacity": f"{len(txns)} Entries"
             },
             {
                 "id": "growth",
                 "title": "Growth Advisor",
-                "value": f"${sub_revenue:,.0f} ARR" if sub_revenue > 0 else "Ready",
+                "value": f"${sub_revenue:,.0f} ARR" if sub_revenue > 0 else "$0 ARR",
                 "numericValue": sub_revenue,
-                "change": "Active",
-                "isPositive": True,
-                "targetOrMeta": f"Subscription ARR: {new_arr_str} • Growth Active" if sub_revenue > 0 else "Log revenue to track ARR growth",
+                "change": "Active" if sub_revenue > 0 else "Standby",
+                "isPositive": sub_revenue > 0,
+                "targetOrMeta": f"Tracked ARR: {new_arr_str} • Growth Active" if sub_revenue > 0 else "Log revenue to track ARR growth",
                 "glowColor": "purple",
                 "icon": "fa-arrow-trend-up",
-                "progressPercent": 85 if sub_revenue > 0 else 20,
+                "progressPercent": min(100, max(10, int((sub_revenue / max(total_revenue, 1)) * 100))) if total_revenue > 0 else 20,
                 "newARR": new_arr_str,
-                "ltvCac": "3.2x",
-                "expansionRate": "18.6%"
+                "ltvCac": "Active",
+                "expansionRate": "Live"
             }
         ]
 
     @staticmethod
     async def get_transactions(user_id: str) -> List[Dict[str, Any]]:
-        default_txns = [
-            {
-                "id": "TXN-9082",
-                "counterparty": "Amazon Web Services",
-                "type": "Expense",
-                "category": "Infrastructure",
-                "date": "2026-08-20",
-                "status": "Cleared",
-                "amount": -14250.00,
-                "notes": "US-East-1 Cloud Compute & Kubernetes Cluster"
-            },
-            {
-                "id": "TXN-9083",
-                "counterparty": "Stripe Global Enterprise ARR",
-                "type": "Revenue",
-                "category": "Subscription",
-                "date": "2026-08-20",
-                "status": "Cleared",
-                "amount": 184500.00,
-                "notes": "EMEA Monthly Subscription Settlements"
-            },
-            {
-                "id": "TXN-9084",
-                "counterparty": "Gusto Payroll Systems",
-                "type": "Expense",
-                "category": "Payroll",
-                "date": "2026-08-19",
-                "status": "Cleared",
-                "amount": -68400.00,
-                "notes": "Engineering & Product Bi-weekly Payroll"
-            },
-            {
-                "id": "TXN-9085",
-                "counterparty": "US Treasury 3M Bill Yield",
-                "type": "Revenue",
-                "category": "Treasury",
-                "date": "2026-08-18",
-                "status": "Cleared",
-                "amount": 1818.75,
-                "notes": "Monthly Interest Payout on $450k T-Bills"
-            },
-            {
-                "id": "TXN-9086",
-                "counterparty": "Salesforce Enterprise",
-                "type": "Expense",
-                "category": "Subscription",
-                "date": "2026-08-17",
-                "status": "Cleared",
-                "amount": -12500.00,
-                "notes": "Annual CRM Enterprise User Licensing"
-            }
-        ]
-
         if db_manager.is_connected:
-            docs = await db_manager.db.transactions.find({"user_id": user_id}).sort("date", -1).to_list(length=50)
+            docs = await db_manager.db.transactions.find({"user_id": user_id}).sort("date", -1).to_list(length=100)
             if docs:
                 return [{k: v for k, v in d.items() if k != "_id"} for d in docs]
-            # Seed default transactions for new user in MongoDB Atlas
-            seed_docs = [{**t, "user_id": user_id} for t in default_txns]
-            await db_manager.db.transactions.insert_many(seed_docs)
-            return default_txns
+            return []
 
         user_txns = db_manager.memory_store["transactions"].get(user_id, [])
-        if not user_txns:
-            db_manager.memory_store["transactions"][user_id] = default_txns
-            db_manager.save_memory_store()
-            return default_txns
         return user_txns
 
     @staticmethod
@@ -318,26 +261,13 @@ class AxisDataStore:
 
     @staticmethod
     async def get_inventory(user_id: str) -> List[Dict[str, Any]]:
-        default_inventory = [
-            {"sku": "SKU-9041", "name": "Quantum Precision Sensor v4", "category": "Hardware Modules", "stock_quantity": 420, "reorder_point": 100, "unit_cost": 45.0, "selling_price": 120.0, "velocity": "2.4x/mo", "supplier": "Global Tech Logistics"},
-            {"sku": "SKU-3128", "name": "Telemetry Node Alpha", "category": "Network Hardware", "stock_quantity": 85, "reorder_point": 90, "unit_cost": 120.0, "selling_price": 280.0, "velocity": "3.1x/mo", "supplier": "Apex Components Ltd"},
-            {"sku": "SKU-5821", "name": "Cosmic Power Transceiver", "category": "Data Center Riggings", "stock_quantity": 640, "reorder_point": 150, "unit_cost": 85.0, "selling_price": 210.0, "velocity": "1.8x/mo", "supplier": "PowerGrid Supply Co"}
-        ]
-
         if db_manager.is_connected:
-            docs = await db_manager.db.inventory.find({"user_id": user_id}).to_list(length=50)
+            docs = await db_manager.db.inventory.find({"user_id": user_id}).to_list(length=100)
             if docs:
                 return [{k: v for k, v in d.items() if k != "_id"} for d in docs]
-            # Seed default inventory for user in MongoDB Atlas
-            seed_docs = [{**item, "user_id": user_id} for item in default_inventory]
-            await db_manager.db.inventory.insert_many(seed_docs)
-            return default_inventory
+            return []
 
         user_items = db_manager.memory_store["inventory"].get(user_id, [])
-        if not user_items:
-            db_manager.memory_store["inventory"][user_id] = default_inventory
-            db_manager.save_memory_store()
-            return default_inventory
         return user_items
 
     @staticmethod

@@ -6,6 +6,7 @@ import { formatCurrency } from '../utils/currencyUtils';
 interface BusinessAnalyticsProps {
   currency?: Currency;
   transactions?: Transaction[];
+  searchQuery?: string;
 }
 
 interface MonthlyRecord {
@@ -17,69 +18,71 @@ interface MonthlyRecord {
   cat4: number;
 }
 
+const currentYear = new Date().getFullYear();
 const MONTHS_CONFIG = [
-  { month: 'Jan', fullMonth: 'January 2026' },
-  { month: 'Feb', fullMonth: 'February 2026' },
-  { month: 'Mar', fullMonth: 'March 2026' },
-  { month: 'Apr', fullMonth: 'April 2026' },
-  { month: 'May', fullMonth: 'May 2026' },
-  { month: 'Jun', fullMonth: 'June 2026' },
-  { month: 'Jul', fullMonth: 'July 2026' },
-  { month: 'Aug', fullMonth: 'August 2026' },
-  { month: 'Sep', fullMonth: 'September 2026' },
-  { month: 'Oct', fullMonth: 'October 2026' },
-  { month: 'Nov', fullMonth: 'November 2026' },
-  { month: 'Dec', fullMonth: 'December 2026' },
+  { month: 'Jan', fullMonth: `January ${currentYear}` },
+  { month: 'Feb', fullMonth: `February ${currentYear}` },
+  { month: 'Mar', fullMonth: `March ${currentYear}` },
+  { month: 'Apr', fullMonth: `April ${currentYear}` },
+  { month: 'May', fullMonth: `May ${currentYear}` },
+  { month: 'Jun', fullMonth: `June ${currentYear}` },
+  { month: 'Jul', fullMonth: `July ${currentYear}` },
+  { month: 'Aug', fullMonth: `August ${currentYear}` },
+  { month: 'Sep', fullMonth: `September ${currentYear}` },
+  { month: 'Oct', fullMonth: `October ${currentYear}` },
+  { month: 'Nov', fullMonth: `November ${currentYear}` },
+  { month: 'Dec', fullMonth: `December ${currentYear}` },
 ];
 
-export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency = 'USD', transactions = [] }) => {
+export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency = 'USD', transactions = [], searchQuery = '' }) => {
   const chartRef = useRef<HTMLCanvasElement | null>(null);
   const chartInstanceRef = useRef<any>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-  const [industryMode, setIndustryMode] = useState<'restaurant' | 'tech' | 'general'>('restaurant');
+  const [timeframe, setTimeframe] = useState<'24H' | '7D' | '30D' | '1Y'>('1Y');
   const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(() => {
     const cur = new Date().getMonth();
     return cur >= 0 && cur <= 11 ? cur : 7;
   });
 
-  const getLabels = () => {
-    if (industryMode === 'restaurant') {
-      return {
-        cat1: 'Kitchen & Ingredients (COGS)',
-        cat2: 'Front-of-House & Staff',
-        cat3: 'Dining Equipment & Tech',
-        cat4: 'Utilities & Operations',
-        cat1Short: 'Kitchen COGS',
-        cat2Short: 'FOH & Staff',
-        cat3Short: 'Dining Equip',
-        cat4Short: 'Utilities'
-      };
-    } else if (industryMode === 'tech') {
-      return {
-        cat1: 'Engineering & Product',
-        cat2: 'Sales & Growth',
-        cat3: 'Cloud Infrastructure',
-        cat4: 'Operations & Logistics',
-        cat1Short: 'Engineering',
-        cat2Short: 'Sales',
-        cat3Short: 'Cloud Infra',
-        cat4Short: 'Operations'
-      };
-    } else {
-      return {
-        cat1: 'Cost of Goods (COGS)',
-        cat2: 'Sales & Marketing',
-        cat3: 'Facilities & Rent',
-        cat4: 'General & Admin Ops',
-        cat1Short: 'Direct COGS',
-        cat2Short: 'Marketing',
-        cat3Short: 'Facilities',
-        cat4Short: 'Admin Ops'
-      };
-    }
+  const labelsConfig = {
+    cat1: 'Direct Operations & COGS',
+    cat2: 'Payroll & Personnel',
+    cat3: 'Infrastructure & Technology',
+    cat4: 'Growth & Administration',
+    cat1Short: 'Direct Operations',
+    cat2Short: 'Payroll',
+    cat3Short: 'Technology',
+    cat4Short: 'Growth & Admin'
   };
 
-  const labelsConfig = getLabels();
+  // Filter transactions by active timeframe and search query
+  const effectiveTransactions = useMemo(() => {
+    if (!transactions || transactions.length === 0) return [];
+    const now = Date.now();
+    const msMap: Record<string, number> = {
+      '24H': 24 * 60 * 60 * 1000,
+      '7D': 7 * 24 * 60 * 60 * 1000,
+      '30D': 30 * 24 * 60 * 60 * 1000,
+      '1Y': 365 * 24 * 60 * 60 * 1000
+    };
+    const maxAge = msMap[timeframe] || 365 * 24 * 60 * 60 * 1000;
+    const cutoff = now - maxAge;
+    const query = (searchQuery || '').toLowerCase().trim();
+
+    return transactions.filter(t => {
+      if (t.date) {
+        const tTime = new Date(t.date).getTime();
+        if (!isNaN(tTime) && tTime < cutoff) return false;
+      }
+      if (query) {
+        const matches = (t.counterparty || '').toLowerCase().includes(query) ||
+          (t.category || '').toLowerCase().includes(query) ||
+          (t.notes || '').toLowerCase().includes(query);
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [transactions, timeframe, searchQuery]);
 
   // Dynamically compute monthly records from real transactions
   const monthlyData: MonthlyRecord[] = useMemo(() => {
@@ -92,11 +95,11 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
       cat4: 0,
     }));
 
-    if (!transactions || transactions.length === 0) {
+    if (!effectiveTransactions || effectiveTransactions.length === 0) {
       return records;
     }
 
-    transactions.forEach(t => {
+    effectiveTransactions.forEach(t => {
       if (!t.date) return;
       const d = new Date(t.date);
       const mIdx = d.getMonth();
@@ -106,41 +109,19 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
       const cat = (t.category || '').toLowerCase();
       const cp = (t.counterparty || '').toLowerCase();
 
-      if (industryMode === 'restaurant') {
-        if (/food|ingredient|kitchen|beverage|produce|meat|sysco/i.test(cat) || /food|produce|sysco/i.test(cp)) {
-          records[mIdx].cat1 += amt;
-        } else if (/payroll|staff|labor|salary|wage/i.test(cat) || /payroll|gusto/i.test(cp)) {
-          records[mIdx].cat2 += amt;
-        } else if (/equipment|tech|pos|hardware|printer|rig/i.test(cat)) {
-          records[mIdx].cat3 += amt;
-        } else {
-          records[mIdx].cat4 += amt;
-        }
-      } else if (industryMode === 'tech') {
-        if (/engineer|product|dev|payroll|salary/i.test(cat) || /payroll|gusto/i.test(cp)) {
-          records[mIdx].cat1 += amt;
-        } else if (/sales|growth|marketing|subscription|crm|ad/i.test(cat) || /stripe|salesforce/i.test(cp)) {
-          records[mIdx].cat2 += amt;
-        } else if (/infra|cloud|aws|hosting|server|kubernetes/i.test(cat) || /aws|amazon|google/i.test(cp)) {
-          records[mIdx].cat3 += amt;
-        } else {
-          records[mIdx].cat4 += amt;
-        }
+      if (/cogs|cost of goods|inventory|produce|materials|merchandise|order/i.test(cat)) {
+        records[mIdx].cat1 += amt;
+      } else if (/payroll|salary|wage|personnel|staff|compensation/i.test(cat) || /payroll|gusto/i.test(cp)) {
+        records[mIdx].cat2 += amt;
+      } else if (/infra|tech|cloud|aws|hosting|server|kubernetes|hardware|software|subscription/i.test(cat) || /aws|amazon|google|stripe/i.test(cp)) {
+        records[mIdx].cat3 += amt;
       } else {
-        if (/cogs|cost of goods|inventory|produce/i.test(cat)) {
-          records[mIdx].cat1 += amt;
-        } else if (/sales|marketing|subscription|growth/i.test(cat)) {
-          records[mIdx].cat2 += amt;
-        } else if (/rent|facilities|lease|utilities/i.test(cat)) {
-          records[mIdx].cat3 += amt;
-        } else {
-          records[mIdx].cat4 += amt;
-        }
+        records[mIdx].cat4 += amt;
       }
     });
 
     return records;
-  }, [transactions, industryMode]);
+  }, [effectiveTransactions]);
 
   const hasAnyData = useMemo(() => {
     return monthlyData.some(m => m.cat1 > 0 || m.cat2 > 0 || m.cat3 > 0 || m.cat4 > 0);
@@ -264,7 +245,7 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
         chartInstanceRef.current.destroy();
       }
     };
-  }, [currency, industryMode, monthlyData]);
+  }, [currency, monthlyData]);
 
   // Scroll helper functions
   const handleScrollToRange = (startIndex: number) => {
@@ -294,26 +275,26 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
             <span className="pill-tag lilac">BUSINESS UNIT OVERVIEW</span>
           </div>
           <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', margin: 0, fontFamily: 'Plus Jakarta Sans' }}>
-            Business Unit Financial Performance
+            Business Financial Performance
           </h2>
           <p className="subtitle" style={{ color: '#9ca3af', marginTop: '0.25rem' }}>
-            Monthly performance breakdown extracted from real ledger transactions
+            Financial performance and cost breakdowns extracted from real ledger transactions
           </p>
         </div>
 
-        {/* Industry Sector Mode Selector & Timeframe presets */}
+        {/* Timeframe presets and Quarter View */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
           <div className="timeframe-selector" style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.15)', padding: '4px' }}>
-            <span style={{ fontSize: '0.7rem', fontFamily: 'JetBrains Mono', color: '#9ca3af', marginRight: '6px', alignSelf: 'center', paddingLeft: '6px' }}>SECTOR:</span>
-            <button className={`tf-btn ${industryMode === 'restaurant' ? 'active' : ''}`} onClick={() => setIndustryMode('restaurant')}>
-              <i className="fa-solid fa-utensils" style={{ marginRight: '4px' }}></i> Restaurant
-            </button>
-            <button className={`tf-btn ${industryMode === 'tech' ? 'active' : ''}`} onClick={() => setIndustryMode('tech')}>
-              <i className="fa-solid fa-laptop-code" style={{ marginRight: '4px' }}></i> Tech
-            </button>
-            <button className={`tf-btn ${industryMode === 'general' ? 'active' : ''}`} onClick={() => setIndustryMode('general')}>
-              <i className="fa-solid fa-briefcase" style={{ marginRight: '4px' }}></i> General
-            </button>
+            <span style={{ fontSize: '0.7rem', fontFamily: 'JetBrains Mono', color: '#9ca3af', marginRight: '6px', alignSelf: 'center', paddingLeft: '6px' }}>TIMEFRAME:</span>
+            {(['24H', '7D', '30D', '1Y'] as const).map(tf => (
+              <button 
+                key={tf}
+                className={`tf-btn ${timeframe === tf ? 'active' : ''}`} 
+                onClick={() => setTimeframe(tf)}
+              >
+                {tf}
+              </button>
+            ))}
           </div>
 
           <div className="timeframe-selector" style={{ background: 'rgba(0, 212, 255, 0.08)', border: '1px solid rgba(0, 212, 255, 0.25)', padding: '4px' }}>

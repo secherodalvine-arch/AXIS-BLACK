@@ -5,6 +5,7 @@ import { formatCurrency } from '../utils/currencyUtils';
 interface TransactionsLedgerProps {
   transactions: Transaction[];
   currency?: Currency;
+  searchQuery?: string;
   onOpenModal: () => void;
   onAddTransaction?: (txn: Omit<Transaction, 'id'>) => void;
 }
@@ -12,6 +13,7 @@ interface TransactionsLedgerProps {
 export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
   transactions,
   currency = 'USD',
+  searchQuery = '',
   onOpenModal,
   onAddTransaction
 }) => {
@@ -28,7 +30,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
   // Quick Usage Input State
   const [quickCounterparty, setQuickCounterparty] = useState('');
   const [quickAmount, setQuickAmount] = useState('');
-  const [quickCategory, setQuickCategory] = useState('Food & Beverage');
+  const [quickCategory, setQuickCategory] = useState('Operations & Logistics');
 
   // Calculate Used Today (Sum of expense transactions)
   const todayStr = new Date().toISOString().split('T')[0];
@@ -87,26 +89,27 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
 
   const availableCategories = Array.from(new Set([
     'ALL',
-    'Food & Beverage',
-    'Ingredients & Produce',
-    'Dining Sales',
-    'Kitchen Equipment',
-    'Infrastructure',
-    'Payroll',
-    'Subscription',
-    'Marketing',
-    'Supplies & Maintenance',
-    'Utilities',
-    'Treasury',
+    'Revenue & Sales',
+    'Software & Subscriptions',
+    'Cloud & Infrastructure',
+    'Payroll & Compensation',
+    'Marketing & Growth',
+    'Operations & Logistics',
+    'Office & Facilities',
+    'Professional Services',
+    'Equipment & Assets',
+    'Treasury & Capital',
     ...transactions.map(t => t.category).filter(Boolean)
   ]));
 
+  const effectiveSearch = (searchTerm || searchQuery).toLowerCase();
+
   const filtered = sortedDescWithBalance.filter(t => {
     const matchesSearch = 
-      t.counterparty.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (t.notes && t.notes.toLowerCase().includes(searchTerm.toLowerCase()));
+      t.counterparty.toLowerCase().includes(effectiveSearch) ||
+      t.category.toLowerCase().includes(effectiveSearch) ||
+      t.id.toLowerCase().includes(effectiveSearch) ||
+      (t.notes && t.notes.toLowerCase().includes(effectiveSearch));
 
     const matchesCategory = categoryFilter === 'ALL' || t.category === categoryFilter;
     const matchesStatus = statusFilter === 'ALL' || t.status === statusFilter;
@@ -121,14 +124,14 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
       <div className="view-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-            <span className="pill-tag cyan">GENERAL LEDGER</span>
+            <span className="pill-tag cyan">MULTI-CURRENCY LEDGER</span>
             <span className="pill-tag lilac">REAL-TIME DOUBLE ENTRY</span>
           </div>
           <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', margin: 0, fontFamily: 'Plus Jakarta Sans' }}>
-            General Ledger
+            Multi-Currency Ledger
           </h2>
           <p className="subtitle" style={{ color: '#9ca3af', marginTop: '0.25rem' }}>
-            Structured financial history, running cash balance, and account-level ledgers
+            Structured financial history, running cash balance, and account-level ledger telemetry
           </p>
         </div>
         <button className="action-btn-primary" onClick={onOpenModal}>
@@ -143,7 +146,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
           onClick={() => setAccountLedgerFilter('ALL')}
           style={{ padding: '8px 14px', fontSize: '0.82rem' }}
         >
-          <i className="fa-solid fa-book" style={{ marginRight: '6px' }}></i> General Ledger (All)
+          <i className="fa-solid fa-book" style={{ marginRight: '6px' }}></i> All Accounts
         </button>
         <button 
           className={`tf-btn ${accountLedgerFilter === 'Cash' ? 'active' : ''}`}
@@ -306,12 +309,12 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
               onChange={(e) => setQuickCategory(e.target.value)}
               style={{ background: '#141418', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', padding: '8px 12px', fontSize: '0.85rem' }}
             >
-              <option value="Food & Beverage" style={{ background: '#141418', color: '#ffffff' }}>Food & Beverage</option>
-              <option value="Ingredients & Produce" style={{ background: '#141418', color: '#ffffff' }}>Ingredients & Produce</option>
-              <option value="Kitchen Equipment" style={{ background: '#141418', color: '#ffffff' }}>Kitchen Equipment</option>
-              <option value="Supplies & Maintenance" style={{ background: '#141418', color: '#ffffff' }}>Supplies & Maintenance</option>
-              <option value="Utilities" style={{ background: '#141418', color: '#ffffff' }}>Utilities</option>
-              <option value="Infrastructure" style={{ background: '#141418', color: '#ffffff' }}>Infrastructure</option>
+              <option value="Operations & Logistics" style={{ background: '#141418', color: '#ffffff' }}>Operations & Logistics</option>
+              <option value="Cloud & Infrastructure" style={{ background: '#141418', color: '#ffffff' }}>Cloud & Infrastructure</option>
+              <option value="Software & Subscriptions" style={{ background: '#141418', color: '#ffffff' }}>Software & Subscriptions</option>
+              <option value="Marketing & Growth" style={{ background: '#141418', color: '#ffffff' }}>Marketing & Growth</option>
+              <option value="Office & Facilities" style={{ background: '#141418', color: '#ffffff' }}>Office & Facilities</option>
+              <option value="Professional Services" style={{ background: '#141418', color: '#ffffff' }}>Professional Services</option>
             </select>
           </div>
 
@@ -337,7 +340,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
         </form>
       </div>
 
-      {/* Main General Ledger Table Card */}
+      {/* Main Ledger Table Card */}
       <div className="glass-card ledger-full-card" style={{ padding: '24px' }}>
         <div className="table-toolbar" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
           <div className="search-filter-group" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -374,7 +377,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
           </div>
 
           <span style={{ fontFamily: 'JetBrains Mono', fontSize: '0.8rem', color: '#9ca3af', alignSelf: 'center' }}>
-            Showing {filtered.length} General Ledger entries
+            Showing {filtered.length} ledger entries
           </span>
         </div>
 
@@ -426,9 +429,11 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
                       </div>
                     </td>
                     <td>
-                      <span className="pill-tag lilac" style={{ fontSize: '0.7rem', textTransform: 'none', marginRight: '6px' }}>
-                        {t.accountType || 'General'}
-                      </span>
+                      {t.accountType && (
+                        <span className="pill-tag lilac" style={{ fontSize: '0.7rem', textTransform: 'none', marginRight: '6px' }}>
+                          {t.accountType}
+                        </span>
+                      )}
                       <span style={{ fontSize: '0.8rem', color: '#cebdff' }}>{t.category}</span>
                     </td>
                     <td className="text-right amount-val positive" style={{ fontFamily: 'JetBrains Mono', fontWeight: 600 }}>

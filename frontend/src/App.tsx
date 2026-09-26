@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { NavTab, Timeframe, Currency, Transaction, AIStreamItem, ChatMessage, MetricData } from './types';
 import { AppBackground } from './components/AppBackground';
 import { Sidebar } from './components/Sidebar';
-import { Header } from './components/Header';
+import { Header, SystemNotification } from './components/Header';
 import { NewTransactionModal } from './components/NewTransactionModal';
 import { AxisVoiceSupportAgent } from './components/AxisVoiceSupportAgent';
-
+import { formatCurrency } from './utils/currencyUtils';
 
 import { OverviewDashboard as DashboardPage } from './pages/DashboardPage';
 import { InventoryView as InventoryPage } from './pages/InventoryPage';
@@ -29,6 +29,7 @@ import {
   getTransactionsApi, 
   createTransactionApi, 
   getDashboardMetricsApi,
+  getInventoryApi,
   verifyEmailApi
 } from './utils/api';
 
@@ -193,6 +194,115 @@ export const App: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>(DEFAULT_TRANSACTIONS);
   const [aiStream] = useState<AIStreamItem[]>(DEFAULT_AI_STREAM);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(DEFAULT_CHAT_MESSAGES);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [notifications, setNotifications] = useState<SystemNotification[]>([]);
+  const [showTelemetryPopup, setShowTelemetryPopup] = useState(true);
+  const [inventoryAlerts, setInventoryAlerts] = useState<SystemNotification[]>([]);
+
+  // Calculate real net liquidity and operating runway
+  const netLiquidity = transactions.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+  const totalBurn = transactions
+    .filter(t => t.type === 'Expense' || t.amount < 0)
+    .reduce((acc, t) => acc + Math.abs(Number(t.amount) || 0), 0);
+  const runwayMonths = totalBurn > 0 
+    ? Math.max(1, Math.floor(Math.max(0, netLiquidity) / totalBurn)) 
+    : (netLiquidity > 0 ? 12 : 0);
+
+  // Fetch live inventory items for automated low stock alerts
+  useEffect(() => {
+    if (user?.user_id) {
+      getInventoryApi()
+        .then(items => {
+          if (items && items.length) {
+            const lowStock = items.filter((i: any) => {
+              const stock = Number(i.stock_quantity ?? i.stockLevel ?? 0);
+              const reorder = Number(i.reorder_point ?? i.minThreshold ?? 50);
+              return stock <= reorder;
+            });
+            const alerts: SystemNotification[] = lowStock.map((i: any) => ({
+              id: `notif-inv-${i.sku || i.id || Math.random()}`,
+              title: `Low Stock Alert: ${i.name}`,
+              message: `${i.name} stock level is currently ${i.stock_quantity ?? i.stockLevel ?? 0} units (Reorder threshold: ${i.reorder_point ?? i.minThreshold ?? 50}). Reorder recommended.`,
+              time: 'Active Alert',
+              type: 'warning',
+              read: false
+            }));
+            setInventoryAlerts(alerts);
+          } else {
+            setInventoryAlerts([]);
+          }
+        })
+        .catch(err => console.log('Inventory notification fetch error:', err));
+    }
+  }, [user?.user_id]);
+
+  // Aggregate dynamic real notifications
+  useEffect(() => {
+    const list: SystemNotification[] = [];
+
+    // 1. Welcome notification upon registration / login
+    if (user) {
+      list.push({
+        id: 'notif-welcome',
+        title: 'Enterprise Workspace Active',
+        message: `Welcome, ${user.name || user.email || 'Operator'}! Live ledger & intelligence telemetry connected.`,
+        time: 'Just now',
+        type: 'info',
+        read: false
+      });
+    }
+
+    // 2. Live Business Telemetry & Insight
+    list.push({
+      id: 'notif-telemetry',
+      title: 'Live Business Telemetry & Insight',
+      message: `Verified net liquidity of ${formatCurrency(netLiquidity, currency)} across active ledger entries. Operating runway calculated at ${runwayMonths} month${runwayMonths === 1 ? '' : 's'} based on real-time cash flow telemetry.`,
+      time: 'Live',
+      type: 'success',
+      read: false
+    });
+
+    // 3. Inventory low-stock threshold alerts
+    inventoryAlerts.forEach(alert => list.push(alert));
+
+    // 4. Real ledger transaction activity
+    if (transactions.length > 0) {
+      transactions.slice(0, 3).forEach(t => {
+        list.push({
+          id: `notif-txn-${t.id}`,
+          title: `Ledger Entry: ${t.counterparty}`,
+          message: `${t.amount >= 0 ? 'Credited' : 'Debited'} ${formatCurrency(Math.abs(t.amount), currency)} under ${t.category}. Ref: ${t.id}`,
+          time: t.date || 'Recent',
+          type: t.amount >= 0 ? 'success' : 'info',
+          read: false
+        });
+      });
+    }
+
+    setNotifications(prev => {
+      const readMap = new Map(prev.map(p => [p.id, p.read]));
+      return list.map(item => ({
+        ...item,
+        read: readMap.get(item.id) ?? item.read
+      }));
+    });
+  }, [user, netLiquidity, runwayMonths, currency, inventoryAlerts, transactions]);
+
+  const handleClearNotifications = () => {
+    setNotifications([]);
+  };
+
+  const handleDeleteNotification = (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const handleToggleNotificationRead = (id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: !n.read } : n));
+  };
+
+  const handleMarkAllNotificationsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
 
   React.useEffect(() => {
     // Fetch live data from backend whenever user is authenticated
@@ -412,10 +522,16 @@ export const App: React.FC = () => {
             currentTab={currentTab}
             timeframe={timeframe}
             currency={currency}
+            searchQuery={searchQuery}
             userName={user?.name || ''}
             userEmail={user?.email || ''}
             userAvatar={user?.avatar_url || ''}
             userRole={user?.role || ''}
+            notifications={notifications}
+            onClearNotifications={handleClearNotifications}
+            onDeleteNotification={handleDeleteNotification}
+            onToggleNotificationRead={handleToggleNotificationRead}
+            onMarkAllRead={handleMarkAllNotificationsRead}
             onCurrencyChange={(c) => {
               setCurrency(c);
               showToast(`Base currency switched to ${c === 'KES' ? 'Kenya Shillings (KSh)' : 'US Dollars ($)'}`);
@@ -424,7 +540,7 @@ export const App: React.FC = () => {
             onOpenNewTxnModal={() => setIsModalOpen(true)}
             onOpenVoiceAgent={() => setIsVoiceAgentOpen(true)}
             onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
-            onSearchChange={(q) => console.log('Searching:', q)}
+            onSearchChange={setSearchQuery}
             onLogout={handleLogout}
             onNavigateLogin={() => setViewState('login')}
             onNavigateSettings={() => setCurrentTab('settings')}
@@ -446,12 +562,13 @@ export const App: React.FC = () => {
                 />
               )}
 
-              {currentTab === 'inventory' && <InventoryPage currency={currency} />}
-              {currentTab === 'analytics' && <AnalyticsPage currency={currency} transactions={transactions} />}
+              {currentTab === 'inventory' && <InventoryPage currency={currency} searchQuery={searchQuery} />}
+              {currentTab === 'analytics' && <AnalyticsPage currency={currency} transactions={transactions} searchQuery={searchQuery} />}
               {currentTab === 'transactions' && (
                 <TransactionsPage 
                   transactions={transactions}
                   currency={currency}
+                  searchQuery={searchQuery}
                   onOpenModal={() => setIsModalOpen(true)}
                   onAddTransaction={handleAddTransaction}
                 />
@@ -505,6 +622,85 @@ export const App: React.FC = () => {
           showToast(`Navigated to ${tab.toUpperCase()} via Voice Support`);
         }}
       />
+
+      {/* IN-APP / POPUP NOTIFICATION: Live Business Telemetry & Insight */}
+      {showTelemetryPopup && (
+        <div 
+          className="telemetry-popup-notification"
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 9999,
+            maxWidth: '440px',
+            width: 'calc(100vw - 48px)',
+            background: 'rgba(15, 17, 23, 0.95)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(0, 212, 255, 0.4)',
+            borderRadius: '16px',
+            padding: '18px 20px',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 212, 255, 0.15)',
+            animation: 'fadeInUp 0.3s ease-out'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="pill-tag cyan" style={{ fontSize: '0.68rem', padding: '3px 8px', letterSpacing: '0.05em' }}>
+                <i className="fa-solid fa-signal" style={{ marginRight: '5px' }}></i>
+                LIVE TELEMETRY
+              </span>
+              <span style={{ fontSize: '0.72rem', color: '#9ca3af', fontFamily: 'JetBrains Mono' }}>
+                Real-Time
+              </span>
+            </div>
+            <button
+              onClick={() => setShowTelemetryPopup(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#9ca3af',
+                cursor: 'pointer',
+                fontSize: '1.2rem',
+                lineHeight: 1,
+                padding: '2px 6px',
+                borderRadius: '6px'
+              }}
+              title="Dismiss popup"
+            >
+              &times;
+            </button>
+          </div>
+
+          <h4 style={{ margin: '0 0 6px 0', fontSize: '0.95rem', fontWeight: 700, color: '#ffffff', fontFamily: 'Plus Jakarta Sans' }}>
+            Live Business Telemetry & Insight
+          </h4>
+
+          <p style={{ margin: '0 0 14px 0', fontSize: '0.82rem', color: '#cbd5e1', lineHeight: '1.45' }}>
+            Verified net liquidity of <strong style={{ color: '#00d4ff' }}>{formatCurrency(netLiquidity, currency)}</strong> across active ledger entries. Operating runway calculated at <strong style={{ color: '#cebdff' }}>{runwayMonths} month{runwayMonths === 1 ? '' : 's'}</strong> based on real-time cash flow telemetry.
+          </p>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => setShowTelemetryPopup(false)}
+              className="action-btn-secondary"
+              style={{ padding: '6px 12px', fontSize: '0.78rem' }}
+            >
+              Dismiss
+            </button>
+            <button
+              onClick={() => {
+                setCurrentTab('transactions');
+                setShowTelemetryPopup(false);
+              }}
+              className="action-btn-primary"
+              style={{ padding: '6px 14px', fontSize: '0.78rem' }}
+            >
+              <i className="fa-solid fa-book" style={{ marginRight: '5px' }}></i>
+              Inspect Ledger
+            </button>
+          </div>
+        </div>
+      )}
 
       {toastMessage && (
         <div className="toast-container">

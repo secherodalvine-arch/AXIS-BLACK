@@ -1,13 +1,22 @@
 import React, { useEffect, useRef } from 'react';
 import ChartJS from 'chart.js/auto';
+import { Currency } from '../types';
+import { formatCurrency } from '../utils/currencyUtils';
 
-export const FinancialGrowthChart: React.FC<{ transactions?: any[] }> = ({ transactions }) => {
+interface FinancialGrowthChartProps {
+  transactions?: any[];
+  currency?: Currency;
+}
+
+export const FinancialGrowthChart: React.FC<FinancialGrowthChartProps> = ({ transactions = [], currency = 'USD' }) => {
   const chartRef = useRef<HTMLCanvasElement | null>(null);
   const instanceRef = useRef<any>(null);
 
+  const hasTransactions = transactions && transactions.length > 0;
+
   useEffect(() => {
     const canvas = chartRef.current;
-    if (!canvas) return;
+    if (!canvas || !hasTransactions) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -25,14 +34,39 @@ export const FinancialGrowthChart: React.FC<{ transactions?: any[] }> = ({ trans
       instanceRef.current.destroy();
     }
 
+    const currentMonthIdx = new Date().getMonth();
+    const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].slice(0, Math.max(6, currentMonthIdx + 1));
+    
+    const revenueData = new Array(monthLabels.length).fill(0);
+    const expenseData = new Array(monthLabels.length).fill(0);
+    const netMarginData = new Array(monthLabels.length).fill(0);
+
+    transactions.forEach((t: any) => {
+      if (!t.date) return;
+      const d = new Date(t.date);
+      const mIdx = d.getMonth();
+      if (mIdx >= 0 && mIdx < monthLabels.length) {
+        const amt = Number(t.amount) || 0;
+        if (amt > 0) {
+          revenueData[mIdx] += amt;
+        } else {
+          expenseData[mIdx] += Math.abs(amt);
+        }
+      }
+    });
+
+    for (let i = 0; i < monthLabels.length; i++) {
+      netMarginData[i] = revenueData[i] - expenseData[i];
+    }
+
     instanceRef.current = new ChartJS(ctx, {
       type: 'line',
       data: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
+        labels: monthLabels,
         datasets: [
           {
             label: 'Revenue Stream',
-            data: [280000, 310000, 345000, 390000, 420000, 465000, 490000, 528000],
+            data: revenueData,
             borderColor: '#00d4ff',
             backgroundColor: gradCyan,
             fill: true,
@@ -44,7 +78,7 @@ export const FinancialGrowthChart: React.FC<{ transactions?: any[] }> = ({ trans
           },
           {
             label: 'Net Margin',
-            data: [120000, 140000, 165000, 195000, 210000, 240000, 260000, 290000],
+            data: netMarginData,
             borderColor: '#cebdff',
             backgroundColor: gradLilac,
             fill: true,
@@ -55,7 +89,7 @@ export const FinancialGrowthChart: React.FC<{ transactions?: any[] }> = ({ trans
           },
           {
             label: 'OpEx Expenses',
-            data: [160000, 170000, 180000, 195000, 210000, 225000, 230000, 238000],
+            data: expenseData,
             borderColor: '#a78bfa',
             borderDash: [5, 5],
             fill: false,
@@ -79,7 +113,7 @@ export const FinancialGrowthChart: React.FC<{ transactions?: any[] }> = ({ trans
             padding: 12,
             displayColors: true,
             callbacks: {
-              label: (context: any) => ` ${context.dataset.label}: $${context.parsed.y?.toLocaleString()}`
+              label: (context: any) => ` ${context.dataset.label}: ${formatCurrency(context.parsed.y, currency)}`
             }
           }
         },
@@ -93,7 +127,7 @@ export const FinancialGrowthChart: React.FC<{ transactions?: any[] }> = ({ trans
             ticks: {
               color: '#9ca3af',
               font: { family: 'JetBrains Mono', size: 11 },
-              callback: (value: any) => `$${Number(value) / 1000}k`
+              callback: (value: any) => formatCurrency(Number(value), currency)
             }
           }
         }
@@ -105,14 +139,18 @@ export const FinancialGrowthChart: React.FC<{ transactions?: any[] }> = ({ trans
         instanceRef.current.destroy();
       }
     };
-  }, []);
+  }, [transactions, currency, hasTransactions]);
 
   return (
     <div className="glass-card chart-container-card">
       <div className="card-header">
         <div className="card-title-group">
-          <h3>Financial Performance & Growth</h3>
-          <p className="subtitle">{transactions && transactions.length > 0 ? 'Revenue, margin, and expenditure trends derived from your ledger' : 'Add transactions to see real trend data — chart shows illustrative structure'}</p>
+          <h3>Financial Performance &amp; Growth</h3>
+          <p className="subtitle">
+            {hasTransactions 
+              ? 'Revenue, margin, and expenditure trends calculated live from your ledger' 
+              : 'Add transactions to see live growth curves and telemetry'}
+          </p>
         </div>
         <div className="card-actions">
           <div className="chart-legend-custom">
@@ -120,11 +158,20 @@ export const FinancialGrowthChart: React.FC<{ transactions?: any[] }> = ({ trans
             <span className="legend-item"><span className="color-dot dot-lilac"></span> Net Margin</span>
             <span className="legend-item"><span className="color-dot" style={{ background: '#a78bfa' }}></span> Expenses</span>
           </div>
-          <button className="icon-btn-sm" title="Expand view"><i className="fa-solid fa-expand"></i></button>
         </div>
       </div>
-      <div className="chart-wrapper">
-        <canvas ref={chartRef} />
+      <div className="chart-wrapper" style={{ minHeight: '260px' }}>
+        {hasTransactions ? (
+          <canvas ref={chartRef} />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '240px', color: '#64748b' }}>
+            <i className="fa-solid fa-chart-line" style={{ fontSize: '2.5rem', marginBottom: '1rem', opacity: 0.35, color: '#00d4ff' }}></i>
+            <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>No Financial Data Recorded Yet</div>
+            <div style={{ fontSize: '0.82rem', maxWidth: '440px', textAlign: 'center', lineHeight: '1.45' }}>
+              As you record revenue and expenses in the Multi-Currency Ledger, this chart dynamically plots your revenue stream, operating expenses, and net margins.
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

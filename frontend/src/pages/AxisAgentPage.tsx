@@ -289,7 +289,7 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
   return (
     <div className="tab-view active">
       {/* Interactive Axis Agent Workspace */}
-      <div className="copilot-workspace" style={{ marginTop: '0.5rem' }}>
+      <div className={`copilot-workspace ${sidebarOpen ? 'sidebar-expanded' : 'sidebar-collapsed'}`} style={{ marginTop: '0.5rem' }}>
         
         {/* SIDEBAR: NEW CHAT & CLICKABLE SCROLLABLE CHAT HISTORY */}
         {sidebarOpen && (
@@ -397,28 +397,67 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
         {/* MAIN CHAT CONTAINER */}
         <div className="copilot-chat-container glass-card">
           <div className="chat-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {/* Sidebar toggle button */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              
+              {/* Workspace Action Icons when sidebar is collapsed */}
               {!sidebarOpen && (
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  title="Expand panel"
-                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', cursor: 'pointer', fontSize: '0.82rem', padding: '6px 9px', borderRadius: '8px', display: 'flex', alignItems: 'center' }}
-                >
-                  <i className="fa-solid fa-angles-right"></i>
-                </button>
+                <div className="workspace-collapsed-icons">
+                  <button
+                    onClick={() => setSidebarOpen(true)}
+                    title="Expand Workspace Panel"
+                    className="workspace-collapsed-btn primary"
+                  >
+                    <i className="fa-solid fa-angles-right"></i>
+                  </button>
+                  <button
+                    onClick={handleCreateNewChat}
+                    title="New Chat Session"
+                    className="workspace-collapsed-btn"
+                  >
+                    <i className="fa-solid fa-plus"></i>
+                  </button>
+                  <button
+                    onClick={() => setSidebarOpen(true)}
+                    title={`Chat History (${historySessions.length})`}
+                    className="workspace-collapsed-btn"
+                  >
+                    <i className="fa-solid fa-clock-rotate-left"></i>
+                  </button>
+                  <button
+                    onClick={() => setSidebarOpen(true)}
+                    title="Saved Prompt Templates"
+                    className="workspace-collapsed-btn"
+                  >
+                    <i className="fa-solid fa-sparkles"></i>
+                  </button>
+                  <div className="workspace-header-divider" />
+                </div>
               )}
+
               <div className="ai-avatar-badge" style={{ background: 'rgba(0, 212, 255, 0.15)', color: '#00d4ff' }}>
                 <i className="fa-solid fa-brain"></i>
               </div>
               <div>
                 <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                  {activeSession ? activeSession.title : 'Axis Agent'}
+                  {activeSession && activeSession.title !== 'Axis Agent' ? activeSession.title : 'Active Intelligence Workspace'}
                   <span className="pulse-badge"><span className="pulse-dot"></span> Live</span>
                 </h4>
                 <span className="status-subtitle">Connected to Axis Real-Time Business Data Intelligence</span>
               </div>
             </div>
+
+            {/* If sidebar is currently open, show collapse shortcut on right */}
+            {sidebarOpen && (
+              <button
+                onClick={() => setSidebarOpen(false)}
+                title="Collapse Workspace to expand chat"
+                className="action-btn-secondary"
+                style={{ padding: '6px 12px', fontSize: '0.78rem', gap: '6px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}
+              >
+                <i className="fa-solid fa-angles-left"></i>
+                <span>Collapse Workspace</span>
+              </button>
+            )}
           </div>
 
           <div className="chat-messages">

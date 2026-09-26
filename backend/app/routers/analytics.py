@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends
 from typing import Dict, Any, List
 from pydantic import BaseModel
+import datetime
 from app.auth.dependencies import get_current_user
+from app.database import AxisDataStore
 
 router = APIRouter(prefix="/api/analytics", tags=["Celestial Analytics & Runway Simulator"])
 
@@ -13,21 +15,56 @@ class SimulationRequest(BaseModel):
 @router.get("/me", response_model=Dict[str, Any])
 async def get_celestial_analytics(current_user: dict = Depends(get_current_user)):
     """
-    Returns 12-month historical revenue & gross margin analytics.
+    Returns historical revenue & gross margin analytics computed from live transactions.
     """
+    user_id = current_user.get("user_id", "default_user")
+    txns = await AxisDataStore.get_transactions(user_id)
+
+    total_revenue = sum(t["amount"] for t in txns if t.get("amount", 0) > 0)
+    total_expenses = sum(abs(t["amount"]) for t in txns if t.get("amount", 0) < 0)
+    net_cash = total_revenue - total_expenses
+    net_margin = round(((total_revenue - total_expenses) / total_revenue * 100), 1) if total_revenue > 0 else 0.0
+    runway_months = round(net_cash / total_expenses, 1) if total_expenses > 0 else (12.0 if net_cash > 0 else 0.0)
+
+    # Aggregate by month
+    monthly_map: Dict[str, Dict[str, float]] = {}
+    for t in txns:
+        date_str = t.get("date")
+        if not date_str:
+            continue
+        try:
+            d = datetime.date.fromisoformat(date_str)
+            m_key = d.strftime("%b")
+        except Exception:
+            continue
+
+        if m_key not in monthly_map:
+            monthly_map[m_key] = {"revenue": 0.0, "expenses": 0.0}
+
+        amt = t.get("amount", 0.0)
+        if amt > 0:
+            monthly_map[m_key]["revenue"] += amt
+        else:
+            monthly_map[m_key]["expenses"] += abs(amt)
+
+    monthly_series = []
+    for m_key, vals in monthly_map.items():
+        rev = vals["revenue"]
+        exp = vals["expenses"]
+        margin = round(((rev - exp) / rev * 100), 1) if rev > 0 else 0.0
+        monthly_series.append({
+            "month": m_key,
+            "revenue": round(rev, 2),
+            "expenses": round(exp, 2),
+            "grossMargin": margin
+        })
+
     return {
-        "user_id": current_user.get("user_id", "default_user"),
-        "net_margin": 32.4,
-        "cash_balance": 1845000.0,
-        "projected_runway_months": 14.8,
-        "monthly_series": [
-            {"month": "Sep", "revenue": 280000, "expenses": 190000, "grossMargin": 32.1},
-            {"month": "Oct", "revenue": 310000, "expenses": 205000, "grossMargin": 33.8},
-            {"month": "Nov", "revenue": 345000, "expenses": 220000, "grossMargin": 36.2},
-            {"month": "Dec", "revenue": 390000, "expenses": 240000, "grossMargin": 38.5},
-            {"month": "Jan", "revenue": 420000, "expenses": 255000, "grossMargin": 39.2},
-            {"month": "Feb", "revenue": 465000, "expenses": 270000, "grossMargin": 41.9}
-        ]
+        "user_id": user_id,
+        "net_margin": net_margin,
+        "cash_balance": round(net_cash, 2),
+        "projected_runway_months": runway_months,
+        "monthly_series": monthly_series
     }
 
 @router.post("/simulate", response_model=Dict[str, Any])
@@ -36,17 +73,21 @@ async def run_runway_simulation(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Executes Monte Carlo runway scenario simulations based on burn rate and capital efficiency.
+    Executes Monte Carlo runway scenario simulations based on real database cash and parameters.
     """
-    cash = 1845000.0 + payload.new_funding
+    user_id = current_user.get("user_id", "default_user")
+    txns = await AxisDataStore.get_transactions(user_id)
+    real_cash = sum(t.get("amount", 0) for t in txns)
+    cash = max(0.0, real_cash) + payload.new_funding
+
     adjusted_burn = payload.monthly_burn_rate * (1 - (payload.capital_efficiency / 100.0))
-    runway_months = round(cash / adjusted_burn, 1) if adjusted_burn > 0 else 999.0
+    runway_months = round(cash / adjusted_burn, 1) if adjusted_burn > 0 else (999.0 if cash > 0 else 0.0)
 
     return {
         "status": "simulated",
-        "starting_cash": cash,
+        "starting_cash": round(cash, 2),
         "adjusted_monthly_burn": round(adjusted_burn, 2),
         "runway_months": runway_months,
         "confidence_interval": "95%",
-        "recommendation": "Optimal runway buffer achieved." if runway_months >= 12.0 else "Critical: Capital efficiency optimization required."
+        "recommendation": "Optimal runway buffer achieved." if runway_months >= 12.0 else ("Critical: Capital efficiency optimization required." if cash > 0 else "Log transactions in the Ledger to simulate runway.")
     }

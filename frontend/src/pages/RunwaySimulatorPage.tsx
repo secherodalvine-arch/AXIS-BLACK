@@ -19,12 +19,13 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
   const [isLoading, setIsLoading] = useState(true);
 
   // Compute dynamic runway only when real data is available
+  const currentBurn = baseBurn ?? 0;
   const netBurn = baseBurn !== null
-    ? Math.max(20000, baseBurn + (newHires * 12000) + mktBudget - (baseBurn * (revGrowth / 100)))
+    ? Math.max(0, currentBurn + (newHires * 12000) + mktBudget - (currentBurn * (revGrowth / 100)))
     : null;
   const calculatedRunway = dbRunway !== null
     ? dbRunway.toFixed(1)
-    : (baseCash !== null && netBurn !== null)
+    : (baseCash !== null && netBurn !== null && netBurn > 0)
       ? (baseCash / netBurn).toFixed(1)
       : null;
 
@@ -34,9 +35,9 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
     getDashboardMetricsApi()
       .then(metrics => {
         if (metrics && metrics[0]) {
-          if (metrics[0].runwayMonths) setDbRunway(metrics[0].runwayMonths);
-          if (metrics[0].netLiquidity) setBaseCash(metrics[0].netLiquidity);
-          if (metrics[0].monthlyBurn) setBaseBurn(metrics[0].monthlyBurn);
+          if (metrics[0].runwayMonths !== undefined) setDbRunway(metrics[0].runwayMonths);
+          if (metrics[0].netLiquidity !== undefined) setBaseCash(metrics[0].netLiquidity);
+          if (metrics[0].monthlyBurn !== undefined) setBaseBurn(metrics[0].monthlyBurn);
         }
       })
       .catch(err => console.log('Dashboard metrics fetch error:', err))
@@ -46,7 +47,8 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
   useEffect(() => {
     if (baseBurn === null) return;
     // Trigger Monte Carlo simulation on parameter change
-    const adjustedBurn = Math.max(20000, baseBurn + (newHires * 12000) + mktBudget - (baseBurn * (revGrowth / 100)));
+    const currentBurn = baseBurn ?? 0;
+    const adjustedBurn = Math.max(0, currentBurn + (newHires * 12000) + mktBudget - (currentBurn * (revGrowth / 100)));
     const efficiencyFactor = Math.min(100, Math.max(0, revGrowth * 2));
     
     runRunwaySimulationApi(adjustedBurn, efficiencyFactor)

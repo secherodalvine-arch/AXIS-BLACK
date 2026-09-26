@@ -316,20 +316,13 @@ export const deleteAgentSessionApi = async (sessionId: string): Promise<any> => 
   });
 };
 
-// ── Voice Agent APIs ──
+// ── Voice Agent APIs (ElevenLabs) ──
 export const getVoiceConfigApi = async (): Promise<any> => {
   return await request<any>('/voice/config');
 };
 
 export const getVoiceSignedUrlApi = async (): Promise<{ status: string; signed_url: string | null; agent_id: string | null; message?: string }> => {
   return await request<any>('/voice/signed-url');
-};
-
-export const processVoiceCommandApi = async (transcript: string, active_tab?: string): Promise<any> => {
-  return await request<any>('/voice/process', {
-    method: 'POST',
-    body: JSON.stringify({ transcript, active_tab }),
-  });
 };
 
 // ── Support & Contact API ──

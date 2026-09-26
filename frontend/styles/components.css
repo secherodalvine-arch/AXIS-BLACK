@@ -593,6 +593,62 @@
   grid-template-columns: 280px 1fr;
   gap: 20px;
   height: calc(100vh - 140px);
+  transition: grid-template-columns 0.25s ease;
+}
+
+.copilot-workspace.sidebar-collapsed {
+  grid-template-columns: 1fr !important;
+}
+
+.workspace-collapsed-icons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 3px 6px;
+}
+
+.workspace-collapsed-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.82rem;
+  transition: all 0.2s ease;
+}
+
+.workspace-collapsed-btn:hover {
+  background: rgba(0, 212, 255, 0.12);
+  border-color: rgba(0, 212, 255, 0.35);
+  color: #00d4ff;
+  transform: translateY(-1px);
+}
+
+.workspace-collapsed-btn.primary {
+  background: rgba(0, 212, 255, 0.15);
+  border-color: rgba(0, 212, 255, 0.35);
+  color: #00d4ff;
+}
+
+.workspace-collapsed-btn.primary:hover {
+  background: #00d4ff;
+  color: #090d16;
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.4);
+}
+
+.workspace-header-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 0 4px;
 }
 
 .copilot-sidebar {

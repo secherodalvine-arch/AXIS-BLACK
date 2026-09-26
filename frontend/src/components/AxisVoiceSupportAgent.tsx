@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { getVoiceSignedUrlApi, getVoiceConfigApi, processVoiceCommandApi } from '../utils/api';
+import React, { useState, useEffect } from 'react';
+import { getVoiceSignedUrlApi, getVoiceConfigApi } from '../utils/api';
 import { NavTab } from '../types';
 
 interface AxisVoiceSupportAgentProps {
@@ -9,22 +9,18 @@ interface AxisVoiceSupportAgentProps {
   onNavigate: (tab: NavTab) => void;
 }
 
-// Voice is handled entirely by ElevenLabs Convai widget
+// Voice is handled entirely by ElevenLabs Conversational AI
 const DEFAULT_AGENT_ID = 'agent_6601m1bjmavhem6a2a7epcx9rxzk';
 
 export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
   isOpen,
   onClose,
-  activeTab,
+  activeTab: _activeTab,
   onNavigate
 }) => {
-  const [status, setStatus] = useState<'idle' | 'connecting' | 'connected' | 'listening' | 'speaking'>('idle');
+  const [status, setStatus] = useState<'idle' | 'connecting' | 'connected'>('idle');
   const [agentId, setAgentId] = useState<string>(DEFAULT_AGENT_ID);
-  const [messages, setMessages] = useState<Array<{ sender: 'user' | 'agent'; text: string; time: string }>>([]);
-  const [isListening, setIsListening] = useState(false);
-
-  const recognitionRef = useRef<any>(null);
-  const chatBottomRef = useRef<HTMLDivElement | null>(null);
+  const [actionHint, setActionHint] = useState<string | null>(null);
 
   // Load ElevenLabs Convai Widget Script silently in background
   useEffect(() => {
@@ -41,11 +37,12 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
     fetchVoiceConfig();
   }, []);
 
+  // When modal closes, disconnect active voice session cleanly
   useEffect(() => {
-    if (chatBottomRef.current) {
-      chatBottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (!isOpen && status !== 'idle') {
+      stopVoiceSession();
     }
-  }, [messages, status]);
+  }, [isOpen]);
 
   const fetchVoiceConfig = async () => {
     try {
@@ -58,23 +55,27 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
     }
   };
 
-  const startVoiceSession = async () => {
-    setStatus('connecting');
-
-    // Trigger hidden ElevenLabs Convai custom element if present in background
+  const triggerConvaiElement = (): boolean => {
     try {
       const convaiElement = document.querySelector('elevenlabs-convai');
       if (convaiElement) {
         const shadowBtn = convaiElement.shadowRoot?.querySelector('button');
         if (shadowBtn) {
           (shadowBtn as HTMLElement).click();
+          return true;
         } else {
           (convaiElement as HTMLElement).click();
+          return true;
         }
       }
     } catch (e) {
-      console.log('Convai background trigger:', e);
+      console.log('Convai trigger exception:', e);
     }
+    return false;
+  };
+
+  const startVoiceSession = async () => {
+    setStatus('connecting');
 
     try {
       const urlRes = await getVoiceSignedUrlApi();
@@ -85,88 +86,29 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
       console.warn('Backend signed URL check fallback:', err);
     }
 
-    setStatus('listening');
-    setIsListening(true);
-
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = 'en-US';
-
-      recognition.onresult = async (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        if (transcript) {
-          await handleUserQuery(transcript);
-        }
-      };
-
-      recognition.onerror = () => {
-        setStatus('connected');
-        setIsListening(false);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-        setStatus('connected');
-      };
-
-      recognitionRef.current = recognition;
-      try {
-        recognition.start();
-      } catch (e) {
-        console.log('Recognition start error:', e);
-      }
-    }
+    // Trigger ElevenLabs Convai engine
+    setTimeout(() => {
+      triggerConvaiElement();
+      setStatus('connected');
+    }, 300);
   };
 
   const stopVoiceSession = () => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {}
-    }
+    triggerConvaiElement();
     setStatus('idle');
-    setIsListening(false);
   };
 
-  const addUserMessage = (text: string) => {
-    setMessages(prev => [...prev, { sender: 'user', text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
-  };
-
-  const addAgentMessage = (text: string) => {
-    setMessages(prev => [...prev, { sender: 'agent', text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
-  };
-
-  const handleUserQuery = async (queryText: string) => {
-    if (!queryText.trim()) return;
-    addUserMessage(queryText);
-    setStatus('speaking');
-
-    try {
-      const res = await processVoiceCommandApi(queryText, activeTab);
-      if (res && res.spoken_response) {
-        addAgentMessage(res.spoken_response);
-        if (res.status === 'navigation' && res.target_tab) {
-          setTimeout(() => {
-            onNavigate(res.target_tab as NavTab);
-          }, 1500);
-        }
-      } else {
-        addAgentMessage("I understand your question about " + queryText + ". Axis Black provides full telemetry and intelligence tools for your SME operations.");
-      }
-    } catch (e) {
-      addAgentMessage("I heard: '" + queryText + "'. You can navigate across Dashboard, Transactions, Inventory, Analytics, Runway Simulator, and Settings.");
-    }
-    setStatus('connected');
+  const handleTopicClick = (tab: NavTab, topicQuery: string) => {
+    onNavigate(tab);
+    setActionHint(`Navigated to ${tab.toUpperCase()}. Say to ElevenLabs: "${topicQuery}"`);
+    setTimeout(() => setActionHint(null), 4000);
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="voice-agent-backdrop" style={styles.backdrop}>
-      {/* Hidden ElevenLabs Convai Engine (No default widget UI shown on screen) */}
+      {/* ElevenLabs Convai Engine (Embedded Audio & Conversational Stream) */}
       <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', opacity: 0, pointerEvents: 'none', width: 0, height: 0, overflow: 'hidden' }}>
         {React.createElement('elevenlabs-convai', {
           'agent-id': agentId || DEFAULT_AGENT_ID
@@ -179,14 +121,14 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={styles.agentAvatar}>
               <i className="fa-solid fa-microphone-lines" style={{ color: '#00d4ff', fontSize: '1.2rem' }}></i>
-              <span className={`pulse-dot ${status !== 'idle' || isListening ? 'active' : ''}`} style={styles.pulseDot} />
+              <span className={`pulse-dot ${status === 'connected' ? 'active' : ''}`} style={styles.pulseDot} />
             </div>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#fff', fontFamily: 'Plus Jakarta Sans' }}>
                 Axis Voice Support
               </h3>
               <p style={{ margin: 0, fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)' }}>
-                AI-Powered Voice Intelligence
+                Powered by ElevenLabs Conversational AI
               </p>
             </div>
           </div>
@@ -196,17 +138,21 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
           </button>
         </div>
 
-        {/* Visualizer & Custom Status Banner */}
+        {/* Visualizer & Status Banner */}
         <div style={styles.visualizerContainer}>
           <div style={styles.statusBadge} title="Voice Support Mode">
             <span style={{
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              background: status === 'speaking' ? '#a855f7' : (status === 'listening' || isListening) ? '#00d4ff' : status === 'connected' ? '#22c55e' : '#64748b'
+              background: status === 'connected' ? '#22c55e' : status === 'connecting' ? '#00d4ff' : '#64748b'
             }} />
             <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#e2e8f0', textTransform: 'capitalize' }}>
-              {status === 'idle' ? 'Ready to Start Voice Session' : status}
+              {status === 'idle'
+                ? 'Ready to Start Voice Session'
+                : status === 'connecting'
+                ? 'Connecting to ElevenLabs...'
+                : 'ElevenLabs Voice Agent Active'}
             </span>
           </div>
 
@@ -217,19 +163,19 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
                 key={bar}
                 style={{
                   ...styles.soundBar,
-                  height: status === 'speaking' || status === 'listening' || isListening ? `${Math.sin(bar * 0.8) * 18 + 24}px` : '10px',
-                  background: status === 'speaking' ? 'linear-gradient(180deg, #c084fc, #9333ea)' : (status === 'listening' || isListening) ? 'linear-gradient(180deg, #38bdf8, #0284c7)' : 'rgba(255,255,255,0.2)',
+                  height: status === 'connected' ? `${Math.sin(bar * 0.8) * 18 + 24}px` : '10px',
+                  background: status === 'connected' ? 'linear-gradient(180deg, #38bdf8, #0284c7)' : 'rgba(255,255,255,0.2)',
                   transition: 'height 0.25s ease'
                 }}
               />
             ))}
           </div>
 
-          {/* Custom Voice Session Toggle Button */}
+          {/* Voice Session Toggle Button */}
           {status === 'idle' ? (
             <button onClick={startVoiceSession} style={styles.primaryVoiceBtn}>
               <i className="fa-solid fa-microphone" style={{ marginRight: '8px' }}></i>
-              Start Voice Session
+              Start ElevenLabs Voice Session
             </button>
           ) : (
             <button onClick={stopVoiceSession} style={styles.dangerVoiceBtn}>
@@ -237,58 +183,48 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
               Disconnect Voice Agent
             </button>
           )}
+
+          {status === 'connected' && (
+            <div style={{ fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center', marginTop: '4px' }}>
+              <i className="fa-solid fa-waveform-lines" style={{ color: '#00d4ff', marginRight: '6px' }}></i>
+              Speak into your microphone. ElevenLabs is listening in real time.
+            </div>
+          )}
         </div>
 
-        {/* Conversation Stream - only shown when messages exist */}
-        {messages.length > 0 && (
-          <div style={styles.chatStream}>
-            {messages.map((msg, index) => (
-              <div
-                key={index}
-                style={{
-                  ...styles.chatBubble,
-                  alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                  background: msg.sender === 'user' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                  border: msg.sender === 'user' ? '1px solid rgba(0, 212, 255, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)'
-                }}
-              >
-                <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginBottom: '4px' }}>
-                  {msg.sender === 'user' ? 'You' : 'Axis Agent'} • {msg.time}
-                </div>
-                <div style={{ fontSize: '0.9rem', color: '#f8fafc', lineHeight: 1.45 }}>
-                  {msg.text}
-                </div>
-              </div>
-            ))}
-            <div ref={chatBottomRef} />
+        {/* Action Hint Toast */}
+        {actionHint && (
+          <div style={styles.hintBanner}>
+            <i className="fa-solid fa-circle-info" style={{ color: '#00d4ff' }}></i>
+            <span>{actionHint}</span>
           </div>
         )}
 
-        {/* Quick Platform Guides with Real Icons (No Emojis) */}
+        {/* Suggested Voice Topics to Speak with ElevenLabs */}
         <div style={styles.quickGuideContainer}>
-          <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
-            QUICK PLATFORM GUIDES & NAVIGATION:
+          <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600, display: 'block', marginBottom: '8px', letterSpacing: '0.04em' }}>
+            SUGGESTED TOPICS TO SPEAK WITH ELEVENLABS:
           </span>
           <div style={styles.quickButtonsGrid}>
-            <button onClick={() => handleUserQuery("How do I use the Executive Dashboard?")} style={styles.quickBtn}>
+            <button onClick={() => handleTopicClick('dashboard', 'Walk me through the Executive Dashboard metrics and ARR growth pace')} style={styles.quickBtn}>
               <i className="fa-solid fa-chart-pie" style={{ color: '#00d4ff', marginRight: '6px' }}></i>
               Executive Dashboard Guide
             </button>
-            <button onClick={() => handleUserQuery("How to log expenses or revenues in Transactions?")} style={styles.quickBtn}>
+            <button onClick={() => handleTopicClick('transactions', 'How do I record and audit ledger transactions?')} style={styles.quickBtn}>
               <i className="fa-solid fa-credit-card" style={{ color: '#00d4ff', marginRight: '6px' }}></i>
-              Log Transactions
+              Multi-Currency Ledger
             </button>
-            <button onClick={() => handleUserQuery("Explain Runway Simulator scenario modeling")} style={styles.quickBtn}>
+            <button onClick={() => handleTopicClick('forecast', 'Explain the runway simulator and hiring scenario models')} style={styles.quickBtn}>
               <i className="fa-solid fa-chart-line" style={{ color: '#00d4ff', marginRight: '6px' }}></i>
               Runway Simulator Guide
             </button>
-            <button onClick={() => handleUserQuery("How does Inventory & Warehouse tracking work?")} style={styles.quickBtn}>
+            <button onClick={() => handleTopicClick('inventory', 'How does inventory turnover and warehouse tracking work?')} style={styles.quickBtn}>
               <i className="fa-solid fa-boxes-stacked" style={{ color: '#00d4ff', marginRight: '6px' }}></i>
               Inventory Management
             </button>
-            <button onClick={() => handleUserQuery("What can Axis Agent AI do?")} style={styles.quickBtn}>
-              <i className="fa-solid fa-robot" style={{ color: '#00d4ff', marginRight: '6px' }}></i>
-              Axis AI Co-Pilot
+            <button onClick={() => handleTopicClick('agent', 'What business intelligence capabilities can you provide?')} style={styles.quickBtn}>
+              <i className="fa-solid fa-brain" style={{ color: '#00d4ff', marginRight: '6px' }}></i>
+              Axis AI Intelligence
             </button>
           </div>
         </div>
@@ -315,7 +251,6 @@ const styles: Record<string, React.CSSProperties> = {
   modal: {
     width: '100%',
     maxWidth: '540px',
-    maxHeight: '90vh',
     background: 'rgba(13, 17, 23, 0.95)',
     border: '1px solid rgba(0, 212, 255, 0.25)',
     borderRadius: '20px',
@@ -363,13 +298,13 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'color 0.2s'
   },
   visualizerContainer: {
-    padding: '1rem 1.5rem',
+    padding: '1.5rem',
     background: 'rgba(0, 0, 0, 0.3)',
     borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: '12px'
+    gap: '14px'
   },
   statusBadge: {
     display: 'flex',
@@ -395,9 +330,9 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#090d16',
     border: 'none',
     borderRadius: '12px',
-    padding: '0.65rem 1.4rem',
+    padding: '0.75rem 1.6rem',
     fontWeight: 700,
-    fontSize: '0.9rem',
+    fontSize: '0.92rem',
     cursor: 'pointer',
     boxShadow: '0 4px 20px rgba(0, 212, 255, 0.3)',
     transition: 'transform 0.2s, box-shadow 0.2s'
@@ -407,28 +342,23 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#f87171',
     border: '1px solid rgba(239, 68, 68, 0.4)',
     borderRadius: '12px',
-    padding: '0.65rem 1.4rem',
+    padding: '0.75rem 1.6rem',
     fontWeight: 600,
-    fontSize: '0.88rem',
+    fontSize: '0.9rem',
     cursor: 'pointer'
   },
-  chatStream: {
-    padding: '1.25rem 1.5rem',
-    flex: 1,
-    overflowY: 'auto',
+  hintBanner: {
+    padding: '8px 16px',
+    background: 'rgba(0, 212, 255, 0.08)',
+    borderBottom: '1px solid rgba(0, 212, 255, 0.2)',
+    fontSize: '0.8rem',
+    color: '#e2e8f0',
     display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    maxHeight: '260px'
-  },
-  chatBubble: {
-    padding: '0.85rem 1.1rem',
-    borderRadius: '14px',
-    maxWidth: '85%'
+    alignItems: 'center',
+    gap: '8px'
   },
   quickGuideContainer: {
-    padding: '1rem 1.5rem 1.25rem 1.5rem',
-    borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+    padding: '1.25rem 1.5rem',
     background: 'rgba(0, 0, 0, 0.2)'
   },
   quickButtonsGrid: {
@@ -440,7 +370,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(255, 255, 255, 0.04)',
     border: '1px solid rgba(255, 255, 255, 0.08)',
     color: '#cbd5e1',
-    padding: '0.45rem 0.85rem',
+    padding: '0.5rem 0.85rem',
     borderRadius: '8px',
     fontSize: '0.8rem',
     fontWeight: 500,
