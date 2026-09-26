@@ -85,7 +85,6 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
             <span className="auth-wordmark">AXIS<span>BLACK</span></span>
           </div>
           <h2 className="auth-title">Create Account</h2>
-          <p className="auth-subtitle">Join Africa's boldest operators & unlock AI financial intelligence</p>
         </div>
 
         {error && (

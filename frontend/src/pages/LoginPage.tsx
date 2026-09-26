@@ -85,7 +85,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             <span className="auth-wordmark">AXIS<span>BLACK</span></span>
           </div>
           <h2 className="auth-title">Welcome Back</h2>
-          <p className="auth-subtitle">Sign in to your business intelligence command center</p>
+          <p className="auth-subtitle">Sign in to your financial workspace</p>
         </div>
 
         {/* Unverified account banner */}

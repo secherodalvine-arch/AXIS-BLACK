@@ -9,7 +9,7 @@ interface AxisVoiceSupportAgentProps {
   onNavigate: (tab: NavTab) => void;
 }
 
-// Voice is handled entirely by ElevenLabs Conversational AI
+// Voice session is handled by the embedded conversational engine
 const DEFAULT_AGENT_ID = 'agent_6601m1bjmavhem6a2a7epcx9rxzk';
 
 export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
@@ -22,7 +22,7 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
   const [agentId, setAgentId] = useState<string>(DEFAULT_AGENT_ID);
   const [actionHint, setActionHint] = useState<string | null>(null);
 
-  // Load ElevenLabs Convai Widget Script silently in background
+  // Load voice widget script silently in background
   useEffect(() => {
     const scriptId = 'elevenlabs-convai-script';
     if (!document.getElementById(scriptId)) {
@@ -86,7 +86,7 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
       console.warn('Backend signed URL check fallback:', err);
     }
 
-    // Trigger ElevenLabs Convai engine
+    // Trigger voice engine
     setTimeout(() => {
       triggerConvaiElement();
       setStatus('connected');
@@ -100,7 +100,7 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
 
   const handleTopicClick = (tab: NavTab, topicQuery: string) => {
     onNavigate(tab);
-    setActionHint(`Navigated to ${tab.toUpperCase()}. Say to ElevenLabs: "${topicQuery}"`);
+    setActionHint(`Navigated to ${tab.toUpperCase()}. Try asking: "${topicQuery}"`);
     setTimeout(() => setActionHint(null), 4000);
   };
 
@@ -108,7 +108,7 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
 
   return (
     <div className="voice-agent-backdrop" style={styles.backdrop}>
-      {/* ElevenLabs Convai Engine (Embedded Audio & Conversational Stream) */}
+      {/* Voice Engine (hidden, handles audio & conversational stream) */}
       <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', opacity: 0, pointerEvents: 'none', width: 0, height: 0, overflow: 'hidden' }}>
         {React.createElement('elevenlabs-convai', {
           'agent-id': agentId || DEFAULT_AGENT_ID
@@ -128,7 +128,7 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
                 Axis Voice Support
               </h3>
               <p style={{ margin: 0, fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)' }}>
-                Powered by ElevenLabs Conversational AI
+                Axis Voice Assistant
               </p>
             </div>
           </div>
@@ -151,8 +151,8 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
               {status === 'idle'
                 ? 'Ready to Start Voice Session'
                 : status === 'connecting'
-                ? 'Connecting to ElevenLabs...'
-                : 'ElevenLabs Voice Agent Active'}
+                ? 'Connecting...'
+                : 'Voice Session Active'}
             </span>
           </div>
 
@@ -175,7 +175,7 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
           {status === 'idle' ? (
             <button onClick={startVoiceSession} style={styles.primaryVoiceBtn}>
               <i className="fa-solid fa-microphone" style={{ marginRight: '8px' }}></i>
-              Start ElevenLabs Voice Session
+              Start Voice Session
             </button>
           ) : (
             <button onClick={stopVoiceSession} style={styles.dangerVoiceBtn}>
@@ -187,7 +187,7 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
           {status === 'connected' && (
             <div style={{ fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center', marginTop: '4px' }}>
               <i className="fa-solid fa-waveform-lines" style={{ color: '#00d4ff', marginRight: '6px' }}></i>
-              Speak into your microphone. ElevenLabs is listening in real time.
+              Speak into your microphone — Axis Voice is listening.
             </div>
           )}
         </div>
@@ -200,10 +200,10 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
           </div>
         )}
 
-        {/* Suggested Voice Topics to Speak with ElevenLabs */}
+        {/* Suggested Voice Topics */}
         <div style={styles.quickGuideContainer}>
           <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600, display: 'block', marginBottom: '8px', letterSpacing: '0.04em' }}>
-            SUGGESTED TOPICS TO SPEAK WITH ELEVENLABS:
+            SUGGESTED TOPICS:
           </span>
           <div style={styles.quickButtonsGrid}>
             <button onClick={() => handleTopicClick('dashboard', 'Walk me through the Executive Dashboard metrics and ARR growth pace')} style={styles.quickBtn}>

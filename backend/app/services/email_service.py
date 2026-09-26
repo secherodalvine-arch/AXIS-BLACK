@@ -116,7 +116,7 @@ def send_verification_email(to_email: str, user_name: str, verify_url: str) -> b
       </div>
       <div class="body">
         <p>Hi <strong>{user_name}</strong>,</p>
-        <p>Welcome to <strong>Axis Black</strong> — your AI-powered business intelligence platform. To complete your registration and access your dashboard, please verify your email address.</p>
+        <p>Welcome to <strong>Axis Black</strong>. To complete your registration and access your dashboard, please verify your email address.</p>
         <div class="btn-wrap">
           <a href="{verify_url}" class="btn">✓ Verify My Account</a>
         </div>
@@ -128,7 +128,7 @@ def send_verification_email(to_email: str, user_name: str, verify_url: str) -> b
         <p style="font-size:12px;color:#64748b;">This verification link expires in <strong>1 hour</strong>. If you didn't create an Axis Black account, you can safely ignore this email.</p>
       </div>
       <div class="footer">
-        <strong>Axis Black</strong> — Business Intelligence Command Center<br>
+        <strong>Axis Black</strong> — Financial Workspace<br>
         Nairobi, Kenya · Ruiru, Kiambu County
       </div>
     </div>
@@ -182,7 +182,7 @@ def send_password_reset_email(to_email: str, reset_url: str) -> bool:
         <p style="font-size:12px;color:#64748b;">This password reset link expires in <strong>15 minutes</strong>. If you didn't request a password reset, you can safely ignore this email.</p>
       </div>
       <div class="footer">
-        <strong>Axis Black</strong> — Business Intelligence Command Center<br>
+        <strong>Axis Black</strong> — Financial Workspace<br>
         Nairobi, Kenya · Ruiru, Kiambu County
       </div>
     </div>
@@ -240,7 +240,7 @@ def send_otp_email(to_email: str, otp_code: str, purpose: str = "verification") 
         <p style="font-size:12px;color:#64748b;">{note}</p>
       </div>
       <div class="footer">
-        <strong>Axis Black</strong> — Business Intelligence Command Center
+        <strong>Axis Black</strong> — Financial Workspace
       </div>
     </div>
   </div>
@@ -276,19 +276,19 @@ def send_welcome_email(to_email: str, user_name: str) -> bool:
       </div>
       <div class="body">
         <p>Hi <strong>{user_name}</strong>,</p>
-        <p>Your Axis Black account has been successfully verified. You can now log in and access your full business intelligence dashboard.</p>
+        <p>Your Axis Black account has been successfully verified. You can now log in and access your dashboard.</p>
         <p>Here's what's waiting for you:</p>
         <ul style="color:#cbd5e1;font-size:14px;line-height:2;">
-          <li>📊 Real-time financial metrics &amp; analytics</li>
+          <li>📊 Financial metrics &amp; analytics</li>
           <li>📦 Inventory management &amp; reorder alerts</li>
-          <li>🤖 Axis Agent — your AI financial advisor</li>
+          <li>🤖 Axis Agent — your financial advisor</li>
           <li>🚀 Runway Simulator &amp; scenario planning</li>
         </ul>
         <hr class="divider">
         <p style="font-size:12px;color:#64748b;">If you have any questions, reach us at <a href="mailto:nairobi@axisblack.io" style="color:#00d4ff;">nairobi@axisblack.io</a></p>
       </div>
       <div class="footer">
-        <strong>Axis Black</strong> — Business Intelligence Command Center<br>
+        <strong>Axis Black</strong> — Financial Workspace<br>
         Nairobi, Kenya · Ruiru, Kiambu County
       </div>
     </div>

@@ -16,16 +16,16 @@ const XIcon: React.FC<{ size?: number; color?: string; style?: React.CSSProperti
 const STATS = [
   { label: 'Active Business Units', value: '12+', icon: 'fa-building' },
   { label: 'Transactions Tracked', value: '48K', icon: 'fa-receipt' },
-  { label: 'AI Insights Generated', value: '2.4M', icon: 'fa-brain' },
+  { label: 'Reports Generated', value: '2.4M', icon: 'fa-chart-bar' },
   { label: 'Accuracy Rate', value: '99.7%', icon: 'fa-shield-halved' },
 ];
 
 const FEATURES = [
   { icon: 'fa-chart-line', color: '#00d4ff', glow: 'rgba(0, 212, 255, 0.3)', title: 'Financial Growth', desc: 'Real-time revenue tracking, gross margin growth, and expense breakdowns in clear visual charts.', badge: 'Visual Charts' },
-  { icon: 'fa-boxes-stacked', color: '#cebdff', glow: 'rgba(206, 189, 255, 0.3)', title: 'Inventory Management', desc: 'Real-time stock turnover, reorder alerts, and product inventory tracking across all warehouses.', badge: 'Live Stock' },
-  { icon: 'fa-wand-magic-sparkles', color: '#a78bfa', glow: 'rgba(167, 139, 250, 0.3)', title: 'Axis Agent', desc: 'AI financial assistant with specialized tools for revenue, inventory, operations, and growth.', badge: 'Multimodal AI' },
-  { icon: 'fa-square-poll-vertical', color: '#00d4ff', glow: 'rgba(0, 212, 255, 0.3)', title: 'Business Analytics', desc: '12-month business unit performance tracking with monthly historical breakdowns.', badge: 'Analytics' },
-  { icon: 'fa-cubes-stacked', color: '#cebdff', glow: 'rgba(206, 189, 255, 0.3)', title: 'Runway Simulator', desc: 'Financial scenario planning projecting cash burn, monthly runway, and growth impacts.', badge: 'Simulations' },
+  { icon: 'fa-boxes-stacked', color: '#cebdff', glow: 'rgba(206, 189, 255, 0.3)', title: 'Inventory Management', desc: 'Real-time stock tracking, reorder alerts, and product inventory management across your business.', badge: 'Live Stock' },
+  { icon: 'fa-wand-magic-sparkles', color: '#a78bfa', glow: 'rgba(167, 139, 250, 0.3)', title: 'Axis Agent', desc: 'Your business assistant — ask questions, get summaries, and receive clear recommendations based on your actual data.', badge: 'Smart Assistant' },
+  { icon: 'fa-square-poll-vertical', color: '#00d4ff', glow: 'rgba(0, 212, 255, 0.3)', title: 'Business Analytics', desc: '12-month business performance tracking with monthly historical breakdowns and trend insights.', badge: 'Analytics' },
+  { icon: 'fa-cubes-stacked', color: '#cebdff', glow: 'rgba(206, 189, 255, 0.3)', title: 'Runway Simulator', desc: 'Financial scenario planning to project your cash runway, monthly burn rate, and growth impact.', badge: 'Simulations' },
   { icon: 'fa-receipt', color: '#a78bfa', glow: 'rgba(167, 139, 250, 0.3)', title: 'Ledger & Transactions', desc: 'Double-entry transaction records with multi-currency support in USD and Kenya Shillings (KES).', badge: 'Ledger Data' },
 ];
 
@@ -178,7 +178,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         {/* Desktop Nav Links */}
         <nav className="home-nav-links">
           <button className="home-nav-link" onClick={() => scrollToSection('features')}>Features</button>
-          <button className="home-nav-link" onClick={() => scrollToSection('multimodal')}>AI Intelligence</button>
+          <button className="home-nav-link" onClick={() => scrollToSection('multimodal')}>Axis Agent</button>
           <button className="home-nav-link" onClick={() => scrollToSection('stats')}>Metrics</button>
           <button className="home-nav-link" onClick={() => scrollToSection('about')}>About Us</button>
           <button className="home-nav-link" onClick={() => scrollToSection('contact')}>Contact</button>
@@ -215,7 +215,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             <i className="fa-solid fa-layer-group"></i> Features
           </button>
           <button className="home-mobile-nav-link" onClick={() => { scrollToSection('multimodal'); setMobileMenuOpen(false); }}>
-            <i className="fa-solid fa-brain"></i> AI Intelligence
+            <i className="fa-solid fa-brain"></i> Axis Agent
           </button>
           <button className="home-mobile-nav-link" onClick={() => { scrollToSection('stats'); setMobileMenuOpen(false); }}>
             <i className="fa-solid fa-chart-line"></i> Metrics
@@ -269,9 +269,9 @@ export const HomePage: React.FC<HomePageProps> = ({
             <span className="home-hero-gradient">Financial Operations</span>
           </h1>
           <p className="home-hero-sub">
-            Axis Black is a precision-grade financial intelligence platform built for founders,
-            CFOs, and operators who demand real-time clarity across revenue, inventory,
-            cash flow, and growth — all in one financial command center.
+            Axis Black is a business management platform built for founders,
+            operators, and teams who need clear, real-time visibility across revenue, inventory,
+            cash flow, and growth — all in one place.
           </p>
           <div className="home-hero-actions">
             <button className="home-btn-primary" onClick={onNavigateRegister || onNavigateLogin}>
@@ -289,7 +289,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             <span className="home-preview-dot" style={{ background: '#ff5f57' }}></span>
             <span className="home-preview-dot" style={{ background: '#febc2e' }}></span>
             <span className="home-preview-dot" style={{ background: '#28c840' }}></span>
-            <span className="home-preview-title">Axis Black — Overview Dashboard Container</span>
+            <span className="home-preview-title">Axis Black — Overview Dashboard</span>
           </div>
           <div className="home-preview-body">
             <div className="home-preview-metrics">
@@ -387,17 +387,17 @@ export const HomePage: React.FC<HomePageProps> = ({
       }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px', alignItems: 'center' }}>
           <div>
-            <div className="home-section-eyebrow" style={{ color: '#cebdff' }}>Multimodal AI Assistant</div>
+            <div className="home-section-eyebrow" style={{ color: '#cebdff' }}>Your Business Assistant</div>
             <h2 style={{ color: '#fff', fontSize: '2rem', marginTop: '8px', marginBottom: '16px', lineHeight: 1.3 }}>
               Ask Questions, Analyze Data,<br />
-              <span className="home-hero-gradient">Generate Actionable Strategies</span>
+              <span className="home-hero-gradient">Get Actionable Answers</span>
             </h2>
             <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '24px' }}>
-              Axis Agent combines natural language prompts, structured financial markdown skills, visual multi-series charts, and direct ledger data to evaluate business health instantly.
+              Axis Agent understands plain language, works with your financial data, and gives you clear summaries, charts, and recommendations — without needing technical expertise.
             </p>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <div style={{ background: 'rgba(0, 212, 255, 0.1)', border: '1px solid rgba(0, 212, 255, 0.3)', borderRadius: '8px', padding: '8px 14px', color: '#00d4ff', fontSize: '0.85rem' }}>
-                <i className="fa-solid fa-file-code" style={{ marginRight: '6px' }}></i> 4 Markdown Skills
+                <i className="fa-solid fa-comments" style={{ marginRight: '6px' }}></i> Plain Language Chat
               </div>
               <div style={{ background: 'rgba(206, 189, 255, 0.1)', border: '1px solid rgba(206, 189, 255, 0.3)', borderRadius: '8px', padding: '8px 14px', color: '#cebdff', fontSize: '0.85rem' }}>
                 <i className="fa-solid fa-chart-line" style={{ marginRight: '6px' }}></i> Multi-Chart Analytics
@@ -410,7 +410,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           <div style={{ textAlign: 'center' }}>
             <img
               src="/ai_advisor_multimodal.png"
-              alt="Multimodal Axis AI Assistant Container"
+              alt="Axis Agent business assistant"
               style={{ width: '100%', maxHeight: '340px', objectFit: 'cover', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.15)', boxShadow: '0 12px 36px rgba(0,0,0,0.6)' }}
             />
           </div>
@@ -421,10 +421,10 @@ export const HomePage: React.FC<HomePageProps> = ({
       <section id="about" className="info-section scroll-reveal" style={{ padding: '80px 4%', maxWidth: '100%', width: '100%', margin: '0' }}>
         <div className="home-section-header">
           <div className="home-section-eyebrow">Who We Are</div>
-          <h2 className="home-section-title">Built for Africa's<br /><span className="home-hero-gradient">boldest operators</span></h2>
+          <h2 className="home-section-title">Built for businesses<br /><span className="home-hero-gradient">of every kind</span></h2>
           <p className="home-section-sub" style={{ maxWidth: '720px', margin: '16px auto' }}>
-            Axis Black is a precision-grade financial intelligence platform engineered for founders, CFOs,
-            and operators who demand clarity, speed, and intelligence in every decision.
+            Axis Black is a business management platform built for founders, operators, and teams
+            who need clarity and speed in every financial decision.
           </p>
         </div>
 
@@ -434,14 +434,14 @@ export const HomePage: React.FC<HomePageProps> = ({
             <div style={{ color: '#00d4ff', fontSize: '2rem', marginBottom: '16px' }}><i className="fa-solid fa-bullseye"></i></div>
             <h3 style={{ color: '#fff', fontSize: '1.4rem', marginBottom: '12px' }}>Our Mission</h3>
             <p style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}>
-              To democratize enterprise-grade financial intelligence for African businesses — making real-time analytics, AI advisory, and multi-currency operations accessible at every stage of growth.
+              To make powerful business financial tools accessible to every business — from startups to established enterprises — with real-time analytics, smart advisory, and multi-currency support at every stage of growth.
             </p>
           </div>
           <div className="info-card info-card-lilac" style={{ background: 'rgba(206, 189, 255, 0.04)', border: '1px solid rgba(206, 189, 255, 0.2)', borderRadius: '16px', padding: '32px' }}>
             <div style={{ color: '#cebdff', fontSize: '2rem', marginBottom: '16px' }}><i className="fa-solid fa-eye"></i></div>
             <h3 style={{ color: '#fff', fontSize: '1.4rem', marginBottom: '12px' }}>Our Vision</h3>
             <p style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}>
-              A world where every African operator has access to the same financial intelligence tools that power the world's most sophisticated companies — in local currencies and context.
+              A world where every business operator has access to the same financial tools that power the world's most sophisticated companies — with multi-currency support and local context.
             </p>
           </div>
         </div>
@@ -596,8 +596,8 @@ export const HomePage: React.FC<HomePageProps> = ({
           <div className="home-cta-glow-cyan" />
           <div className="home-cta-glow-lilac" />
           <div className="home-cta-badge"><i className="fa-solid fa-star"></i> Ready to launch</div>
-          <h2 className="home-cta-title">Your financial command center<br />awaits activation</h2>
-          <p className="home-cta-sub">Step into Axis Black and transform raw data into business intelligence.</p>
+          <h2 className="home-cta-title">Your business dashboard<br />is ready</h2>
+          <p className="home-cta-sub">Step into Axis Black and get clear, real-time visibility into your business finances.</p>
           <button className="home-btn-primary home-cta-btn" onClick={onEnterDashboard}>
             <i className="fa-solid fa-gauge-high"></i> Launch Dashboard
           </button>
@@ -619,8 +619,8 @@ export const HomePage: React.FC<HomePageProps> = ({
               <span className="home-nav-wordmark">AXIS<span>BLACK</span></span>
             </div>
             <p className="home-footer-tagline">
-              Precision-grade financial intelligence for Africa's boldest operators.
-              Real-time. AI-native. Built for scale.
+              Business financial management for operators who need clarity and control.
+              Real-time visibility. Built for any business.
             </p>
             <div className="home-footer-socials">
               <a
@@ -667,7 +667,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             <div className="home-footer-col-title">Navigation</div>
             <ul className="home-footer-links">
               <li><button onClick={() => scrollToSection('features')} className="home-footer-link">Features</button></li>
-              <li><button onClick={() => scrollToSection('multimodal')} className="home-footer-link">AI Intelligence</button></li>
+              <li><button onClick={() => scrollToSection('multimodal')} className="home-footer-link">Axis Agent</button></li>
               <li><button onClick={() => scrollToSection('stats')} className="home-footer-link">Metrics</button></li>
               <li><button onClick={() => scrollToSection('about')} className="home-footer-link">About Us</button></li>
               <li><button onClick={() => scrollToSection('contact')} className="home-footer-link">Contact</button></li>
@@ -681,7 +681,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             <ul className="home-footer-links">
               <li><button onClick={() => scrollToSection('features')} className="home-footer-link">Overview Dashboard</button></li>
               <li><button onClick={() => scrollToSection('features')} className="home-footer-link">Business Analytics</button></li>
-              <li><button onClick={() => scrollToSection('multimodal')} className="home-footer-link">Axis Agent Advisors</button></li>
+              <li><button onClick={() => scrollToSection('multimodal')} className="home-footer-link">Axis Agent</button></li>
               <li><button onClick={() => scrollToSection('features')} className="home-footer-link">Runway Simulator</button></li>
               <li><button onClick={() => scrollToSection('features')} className="home-footer-link">Inventory Intelligence</button></li>
             </ul>
