@@ -1,4 +1,5 @@
 import logging
+import httpx
 from fastapi import APIRouter
 from app.config import settings
 
@@ -67,12 +68,41 @@ async def get_voice_config():
 @router.get("/signed-url")
 async def get_elevenlabs_signed_url():
     """
-    Returns the voice agent ID for the frontend widget.
-    The widget uses the public agent ID directly — no signed URL required.
+    Fetches a secure, temporary signed WebSocket URL from ElevenLabs for the voice agent.
+    Requires an API key with convai_write permission.
     """
-    return {
-        "status": "success",
-        "signed_url": None,
-        "agent_id": settings.ELEVENLABS_AGENT_ID or None
-    }
+    if not settings.ELEVENLABS_AGENT_ID or not settings.ELEVENLABS_API_KEY:
+        return {
+            "status": "unconfigured",
+            "signed_url": None,
+            "agent_id": settings.ELEVENLABS_AGENT_ID or None
+        }
+
+    try:
+        url = f"https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id={settings.ELEVENLABS_AGENT_ID}"
+        headers = {"xi-api-key": settings.ELEVENLABS_API_KEY}
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(url, headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                return {
+                    "status": "success",
+                    "signed_url": data.get("signed_url"),
+                    "agent_id": settings.ELEVENLABS_AGENT_ID
+                }
+            else:
+                logger.warning(f"Voice signed URL fetch returned {resp.status_code} — falling back to public agent ID")
+                return {
+                    "status": "fallback",
+                    "signed_url": None,
+                    "agent_id": settings.ELEVENLABS_AGENT_ID
+                }
+    except Exception as e:
+        logger.warning(f"Voice signed URL fetch failed: {str(e)} — falling back to public agent ID")
+        return {
+            "status": "fallback",
+            "signed_url": None,
+            "agent_id": settings.ELEVENLABS_AGENT_ID
+        }
 

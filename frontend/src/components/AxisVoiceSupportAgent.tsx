@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { ConversationProvider, useConversation } from '@elevenlabs/react';
-import { getVoiceConfigApi } from '../utils/api';
+import { getVoiceConfigApi, getVoiceSignedUrlApi } from '../utils/api';
 import { NavTab } from '../types';
 
 interface AxisVoiceSupportAgentProps {
@@ -170,22 +170,51 @@ const VoiceModal: React.FC<Omit<AxisVoiceSupportAgentProps, 'isOpen'> & { onClos
   );
 };
 
-// ── Outer wrapper — provides ConversationProvider with agentId ──
+// ── Outer wrapper — fetches signed URL, provides ConversationProvider ──
 export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = (props) => {
   const { isOpen } = props;
   const [agentId, setAgentId] = useState<string>(DEFAULT_AGENT_ID);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
 
   useEffect(() => {
-    getVoiceConfigApi()
-      .then((res) => { if (res?.agent_id) setAgentId(res.agent_id); })
-      .catch(() => {/* use default */});
-  }, []);
+    if (!isOpen) return;
+    setSessionReady(false);
 
-  if (!isOpen) return null;
+    const fetchSession = async () => {
+      try {
+        // Try to get a signed URL (requires convai_write on the API key)
+        const urlRes = await getVoiceSignedUrlApi();
+        if (urlRes?.status === 'success' && urlRes?.signed_url) {
+          setSignedUrl(urlRes.signed_url);
+          setAgentId('');
+        } else {
+          // Fallback: use public agent ID
+          const cfgRes = await getVoiceConfigApi();
+          if (cfgRes?.agent_id) setAgentId(cfgRes.agent_id);
+          setSignedUrl(null);
+        }
+      } catch {
+        // Last resort fallback
+        setSignedUrl(null);
+      } finally {
+        setSessionReady(true);
+      }
+    };
+
+    fetchSession();
+  }, [isOpen]);
+
+  if (!isOpen || !sessionReady) return null;
+
+  // Pass signedUrl for private agents, agentId for public agents
+  const providerProps = signedUrl
+    ? { signedUrl }
+    : { agentId: agentId || DEFAULT_AGENT_ID };
 
   return (
     <div style={styles.backdrop}>
-      <ConversationProvider agentId={agentId}>
+      <ConversationProvider {...providerProps}>
         <VoiceModal {...props} />
       </ConversationProvider>
     </div>
