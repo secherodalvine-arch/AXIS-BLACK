@@ -21,16 +21,9 @@ interface AxisAgentWorkspaceProps {
   user?: any;
 }
 
-const TEMPLATES = [
-  { title: 'Q3 Burn Rate Variance', prompt: 'Analyze burn rate variance for Q3 vs Q2' },
-  { title: 'Hiring 4 Senior Engineers', prompt: 'Simulate hiring 4 senior engineers in October ($180k avg)' },
-  { title: 'Tax Loss Harvesting', prompt: 'Generate tax-loss harvesting recommendations for treasury' },
-  { title: 'SaaS Spend Audit', prompt: 'Audit all software vendor contracts exceeding $1,000/mo' }
-];
-
 const createDefaultSession = (): ChatSession => ({
   id: `session-${Date.now()}`,
-  title: 'Active Intelligence Workspace',
+  title: 'New Chat',
   timestamp: 'Just now',
   messages: []
 });
@@ -48,7 +41,7 @@ const loadSessionsFromStorage = (userId?: string): ChatSession[] => {
   } catch (e) {
     console.error('Error reading local chat sessions:', e);
   }
-  return [createDefaultSession()];
+  return [];
 };
 
 const renderFormattedText = (text: string) => {
@@ -140,11 +133,15 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
   user
 }) => {
   const storageKey = user?.user_id ? `axis_chats_${user.user_id}` : 'axis_chats_guest';
-  const [sessions, setSessions] = useState<ChatSession[]>(() => loadSessionsFromStorage(user?.user_id));
-  const [activeSessionId, setActiveSessionId] = useState<string>(() => {
-    const s = loadSessionsFromStorage(user?.user_id);
-    return s[0]?.id || 'session-default';
+  
+  // Initial empty new session always created on page entry
+  const [initialSession] = useState<ChatSession>(createDefaultSession);
+  const [sessions, setSessions] = useState<ChatSession[]>(() => {
+    const stored = loadSessionsFromStorage(user?.user_id);
+    return [initialSession, ...stored];
   });
+  // ALWAYS default to the clean empty session on entering the page
+  const [activeSessionId, setActiveSessionId] = useState<string>(initialSession.id);
   const [inputVal, setInputVal] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -155,22 +152,19 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
     if (user?.user_id) {
       getAgentSessionsApi()
         .then((mongoSessions) => {
-          if (mounted && Array.isArray(mongoSessions) && mongoSessions.length > 0) {
-            setSessions(mongoSessions);
-            setActiveSessionId(mongoSessions[0].id);
+          if (mounted && Array.isArray(mongoSessions)) {
+            setSessions(prev => {
+              const currentActive = prev.find(s => s.id === activeSessionId) || initialSession;
+              const remoteOthers = mongoSessions.filter(s => s.id !== currentActive.id);
+              return [currentActive, ...remoteOthers];
+            });
+            // Intentionally DO NOT overwrite activeSessionId with mongoSessions[0].id
+            // This ensures every page load opens a clean, empty new chat!
           }
         })
         .catch(() => {
-          const fallback = loadSessionsFromStorage(user?.user_id);
-          if (mounted) {
-            setSessions(fallback);
-            if (fallback.length) setActiveSessionId(fallback[0].id);
-          }
+          // Keep existing local sessions
         });
-    } else {
-      const fallback = loadSessionsFromStorage();
-      setSessions(fallback);
-      if (fallback.length) setActiveSessionId(fallback[0].id);
     }
     return () => { mounted = false; };
   }, [user?.user_id]);
@@ -211,11 +205,11 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
     }
   }, [propMessages, activeSessionId, user?.user_id]);
 
-  const activeSession = sessions.find(s => s.id === activeSessionId) || sessions[0];
+  const activeSession = sessions.find(s => s.id === activeSessionId) || sessions[0] || initialSession;
   const activeMessages = activeSession ? activeSession.messages : [];
 
   // Filter history to ONLY show sessions where user-AI exchanges have occurred
-  const historySessions = sessions.filter(s => s.messages.some(m => m.sender === 'user'));
+  const historySessions = sessions.filter(s => s.messages && s.messages.some(m => m.sender === 'user'));
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -263,7 +257,7 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
 
     setSessions(prev => prev.map(s => {
       if (s.id === activeSessionId) {
-        const isGenericTitle = s.title === 'New Intelligence Chat' || s.title === 'Active Intelligence Workspace';
+        const isGenericTitle = s.title === 'New Chat' || s.title === 'Active Intelligence Workspace' || s.title === 'New Intelligence Chat';
         const newTitle = isGenericTitle ? (cleanText.length > 32 ? cleanText.slice(0, 32) + '...' : cleanText) : s.title;
         const updated = {
           ...s,
@@ -371,26 +365,6 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
               )}
             </div>
           </div>
-
-          {/* Clickable Scrollable Saved Prompt Templates */}
-          <div>
-            <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#cebdff', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <i className="fa-solid fa-brain" style={{ color: '#00d4ff' }}></i> Saved Templates
-            </h3>
-            <div className="copilot-sidebar-scroll" style={{ maxHeight: '180px' }}>
-              {TEMPLATES.map((tmpl, idx) => (
-                <button 
-                  key={idx}
-                  className="template-item"
-                  onClick={() => handlePromptSubmit(tmpl.prompt)}
-                  style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}
-                >
-                  <i className="fa-solid fa-sparkles" style={{ color: '#cebdff', flexShrink: 0 }}></i>
-                  <span style={{ fontSize: '0.82rem' }}>{tmpl.title}</span>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
         )}
 
@@ -423,41 +397,16 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
                   >
                     <i className="fa-solid fa-clock-rotate-left"></i>
                   </button>
-                  <button
-                    onClick={() => setSidebarOpen(true)}
-                    title="Saved Prompt Templates"
-                    className="workspace-collapsed-btn"
-                  >
-                    <i className="fa-solid fa-sparkles"></i>
-                  </button>
                   <div className="workspace-header-divider" />
                 </div>
               )}
 
-              <div className="ai-avatar-badge" style={{ background: 'rgba(0, 212, 255, 0.15)', color: '#00d4ff' }}>
-                <i className="fa-solid fa-brain"></i>
-              </div>
               <div>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                  {activeSession && activeSession.title !== 'Axis Agent' ? activeSession.title : 'Active Intelligence Workspace'}
-                  <span className="pulse-badge"><span className="pulse-dot"></span> Live</span>
+                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#ffffff', fontFamily: 'Plus Jakarta Sans' }}>
+                  {activeSession ? activeSession.title : 'New Chat'}
                 </h4>
-                <span className="status-subtitle">Connected to Axis Real-Time Business Data Intelligence</span>
               </div>
             </div>
-
-            {/* If sidebar is currently open, show collapse shortcut on right */}
-            {sidebarOpen && (
-              <button
-                onClick={() => setSidebarOpen(false)}
-                title="Collapse Workspace to expand chat"
-                className="action-btn-secondary"
-                style={{ padding: '6px 12px', fontSize: '0.78rem', gap: '6px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}
-              >
-                <i className="fa-solid fa-angles-left"></i>
-                <span>Collapse Workspace</span>
-              </button>
-            )}
           </div>
 
           <div className="chat-messages">
@@ -469,7 +418,7 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
                 </div>
                 <div className="msg-bubble">
                   <p style={{ marginBottom: '0.4rem', lineHeight: '1.5', color: '#e5e2e1' }}>
-                    Greetings! I am Axis, your real-time business data intelligence assistant. How can I assist your financial strategy today?
+                    Greetings! I am Axis, your business financial intelligence assistant. How can I assist your strategy today?
                   </p>
                   <div className="quick-chips" style={{ marginTop: '12px' }}>
                     {['What is our projected cash balance in 90 days?', 'Show top 3 cost optimization targets', 'Simulate hiring 3 engineers in October'].map((sug, i) => (

@@ -36,58 +36,76 @@ class AdvisorSubagent:
                 self._instruction = f"You are the {self.name} specialist subagent for Axis Agent."
         return self._instruction
 
-    def analyze(self, metrics: Dict[str, Any], query: str) -> Dict[str, Any]:
+    def analyze(self, metrics: Any, query: str) -> Dict[str, Any]:
         """
-        Executes domain subagent analysis on company business data telemetry.
+        Executes domain subagent analysis on company business data.
         """
         adv_title = self.name.replace("_", " ").title()
 
+        # Handle metrics passed as either a single metric dict, context dict, or list of metrics
+        target: Dict[str, Any] = {}
+        if isinstance(metrics, list):
+            target = next((m for m in metrics if isinstance(m, dict) and self.name.split('_')[0] in m.get("id", "")), {})
+        elif isinstance(metrics, dict):
+            if "metrics" in metrics and isinstance(metrics["metrics"], list):
+                target = next((m for m in metrics["metrics"] if isinstance(m, dict) and self.name.split('_')[0] in m.get("id", "")), {})
+            else:
+                target = metrics
+
         if "financial" in self.name:
-            val = metrics.get("value", "$4.28M")
+            val = target.get("value", "$0")
+            net_liq = target.get("netLiquidity", 0.0)
+            runway = target.get("runwayMonths", 0.0)
             return {
                 "subagent": self.name,
                 "advisor": adv_title,
-                "focus": "Capital Efficiency & ARR Trajectory (Business Telemetry)",
-                "insight": f"Analysis for query '{query}': Current ARR stands at {val} (+18.4% YoY). Treasury yield on $450k T-Bills is yielding 4.85% net.",
+                "focus": "Capital Efficiency & Financial Health",
+                "insight": f"Analysis for query '{query}': Tracked revenue stands at {val}, with verified net liquidity of ${net_liq:,.2f} and an operating runway of {runway} months.",
                 "recommendations": [
-                    "Deploy $150k idle cash into 3-month T-Bills for 4.85% risk-free yield.",
-                    "Maintain 14.8 months runway buffer before Series B round."
+                    "Maintain operating runway buffer before major capital expenditures.",
+                    "Review recurring ledger entries to minimize unneeded overhead."
                 ],
                 "instruction_file": os.path.basename(self.md_path)
             }
         elif "inventory" in self.name:
+            active_skus = target.get("activeSKUs", 0)
+            stock_val = target.get("stockValuation", 0.0)
+            wh_health = target.get("warehouseHealth", 100.0)
             return {
                 "subagent": self.name,
                 "advisor": adv_title,
-                "focus": "Stock Velocity & Reorder Readiness (Business Telemetry)",
-                "insight": f"Analysis for query '{query}': Telemetry Node Alpha (SKU-3128) is at 85 units (reorder point: 90). Immediate purchase order required.",
+                "focus": "Stock Valuation & Reorder Readiness",
+                "insight": f"Analysis for query '{query}': Currently tracking {active_skus} active SKUs with total stock valuation of ${stock_val:,.2f} (Stock Health: {wh_health}%).",
                 "recommendations": [
-                    "Issue Purchase Order PO-892 for 250 units of Telemetry Node Alpha to Apex Components.",
-                    "Maintain 1.8x turnover velocity across all warehouse hubs."
+                    "Ensure items approaching reorder thresholds have purchase orders prepared.",
+                    "Audit holding levels for slow-moving inventory to release liquidity."
                 ],
                 "instruction_file": os.path.basename(self.md_path)
             }
         elif "operations" in self.name:
+            infra_cost = target.get("infraCost", "$0/mo")
+            ops_eff = target.get("numericValue", 100.0)
             return {
                 "subagent": self.name,
                 "advisor": adv_title,
-                "focus": "Infrastructure Efficiency & OpEx Optimization (Business Telemetry)",
-                "insight": f"Analysis for query '{query}': Cluster compute latency is optimized at 24ms. AWS US-East-1 reserved instance coverage reduced cloud spend by 14.2%.",
+                "focus": "Operational Efficiency & Expense Optimization",
+                "insight": f"Analysis for query '{query}': Operational efficiency is at {ops_eff}% with tracked operational costs of {infra_cost}.",
                 "recommendations": [
-                    "Convert 4 on-demand worker nodes to 3-year Savings Plans.",
-                    "Maintain 99.99% SLA uptime."
+                    "Audit recurring software subscriptions and infrastructure contracts quarterly.",
+                    "Ensure ledger entries are categorized promptly to maintain real-time visibility."
                 ],
                 "instruction_file": os.path.basename(self.md_path)
             }
         elif "growth" in self.name:
+            new_arr = target.get("newARR", "$0")
             return {
                 "subagent": self.name,
                 "advisor": adv_title,
-                "focus": "CAC Expansion & Account Expansion (Business Telemetry)",
-                "insight": f"Analysis for query '{query}': Added +1,240 enterprise accounts (+28% growth in EMEA). CAC ratio remains healthy at 3.2x LTV.",
+                "focus": "Revenue Growth & Trajectory",
+                "insight": f"Analysis for query '{query}': Tracked revenue expansion stands at {new_arr}.",
                 "recommendations": [
-                    "Expand outbound sales force in UK and DACH regions.",
-                    "Target enterprise ACV above $150k."
+                    "Focus acquisition on high-margin customer segments.",
+                    "Track customer retention and repeat transactions in the ledger."
                 ],
                 "instruction_file": os.path.basename(self.md_path)
             }
@@ -95,34 +113,34 @@ class AdvisorSubagent:
             return {
                 "subagent": self.name,
                 "advisor": adv_title,
-                "focus": "Business Telemetry Analysis",
-                "insight": f"Subagent analysis for query '{query}' based on telemetry.",
-                "recommendations": ["Optimize business data telemetry metrics."],
+                "focus": "Business Data Analysis",
+                "insight": f"Subagent analysis for query '{query}' based on ledger and inventory data.",
+                "recommendations": ["Review business metrics in your ledger."],
                 "instruction_file": os.path.basename(self.md_path)
             }
 
 # Instantiating the 4 Specialist Advisor Subagents (PAPGENT Pattern)
 financial_advisor_subagent = AdvisorSubagent(
     name="financial_advisor",
-    description="Handles enterprise ARR growth, cash runway buffer, net liquidity optimization, burn rate trajectory, and treasury yield.",
+    description="Handles enterprise revenue growth, cash runway buffer, net liquidity optimization, burn rate trajectory, and treasury yield.",
     md_filename="financial_advisor.md"
 )
 
 inventory_advisor_subagent = AdvisorSubagent(
     name="inventory_advisor",
-    description="Handles SKU turnover velocity, warehouse valuation, reorder point matrices, stockout prevention, and supply chain telemetry.",
+    description="Handles SKU stock movement, warehouse valuation, reorder point matrices, stockout prevention, and supply chain records.",
     md_filename="inventory_advisor.md"
 )
 
 operations_advisor_subagent = AdvisorSubagent(
     name="operations_advisor",
-    description="Handles system efficiency scores, AWS cloud compute spend optimization, API latency monitoring, and SLA uptime metrics.",
+    description="Handles system efficiency scores, operations spend optimization, and SLA uptime records.",
     md_filename="operations_advisor.md"
 )
 
 growth_advisor_subagent = AdvisorSubagent(
     name="growth_advisor",
-    description="Handles customer acquisition velocity, enterprise account expansion, LTV:CAC payback ratios, EMEA/regional surges, and license seat optimization.",
+    description="Handles customer acquisition, account expansion, sales trajectory, and revenue acceleration.",
     md_filename="growth_advisor.md"
 )
 

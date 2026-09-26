@@ -95,7 +95,7 @@ export const AssetAllocationChart: React.FC<AssetAllocationChartProps> = ({ tran
     <div className="glass-card chart-card-sm">
       <div className="card-header">
         <h3>Asset Allocation Breakdown</h3>
-        <span className="pill-tag cyan" style={{ fontSize: '0.65rem' }}>REAL-TIME</span>
+        <span className="pill-tag cyan" style={{ fontSize: '0.65rem' }}>ASSETS</span>
       </div>
 
       <div className="chart-wrapper-sm">
@@ -128,7 +128,7 @@ export const AssetAllocationChart: React.FC<AssetAllocationChartProps> = ({ tran
       </div>
       <p style={{ fontSize: '0.72rem', color: '#475569', marginTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.6rem' }}>
         <i className="fa-solid fa-circle-info" style={{ marginRight: '4px' }}></i>
-        Breakdown dynamically computed from live ledger entries.
+        Breakdown computed from ledger entries.
       </p>
     </div>
   );

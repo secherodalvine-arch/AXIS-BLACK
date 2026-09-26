@@ -478,9 +478,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 style={{ padding: '14px 28px', fontSize: '0.95rem', width: 'auto' }}
               >
                 {saving ? (
-                  <><i className="fa-solid fa-circle-notch fa-spin"></i> Saving Profile...</>
+                  <><i className="fa-solid fa-circle-notch fa-spin"></i> Saving...</>
                 ) : (
-                  <><i className="fa-solid fa-user-check"></i> Save Profile Changes</>
+                  <><i className="fa-solid fa-check"></i> Save Changes</>
                 )}
               </button>
             </div>
@@ -494,7 +494,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             Currency & Localization Preferences
           </h3>
           <p style={{ fontSize: '0.88rem', color: '#9ca3af', marginTop: '6px', marginBottom: '20px', lineHeight: '1.5' }}>
-            Select your preferred base display currency for all financial cards, ledger entries, and business unit analytics. Changes save directly to your database profile.
+            Select your preferred base display currency for all financial cards, ledger entries, and business unit analytics.
           </p>
 
           <div style={{ display: 'flex', gap: '14px', marginBottom: '20px' }}>
@@ -520,7 +520,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div>
               <span style={{ color: '#00d4ff', fontWeight: 600 }}>Active Exchange Rate:</span> 1 USD = <strong>130.00 KES</strong>
             </div>
-            <span className="pill-tag cyan" style={{ fontSize: '0.7rem' }}>LIVE SYNC & DB PERSISTED</span>
           </div>
         </div>
 

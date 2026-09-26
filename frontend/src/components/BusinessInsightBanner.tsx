@@ -12,7 +12,22 @@ export const BusinessInsightBanner: React.FC<BusinessInsightBannerProps> = ({
   metrics,
   currency = 'USD'
 }) => {
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('axis_insight_banner_dismissed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleDismiss = () => {
+    setDismissed(true);
+    try {
+      localStorage.setItem('axis_insight_banner_dismissed', 'true');
+    } catch {
+      // storage unavailable
+    }
+  };
 
   if (dismissed) return null;
 
@@ -28,10 +43,10 @@ export const BusinessInsightBanner: React.FC<BusinessInsightBannerProps> = ({
           <i className="fa-solid fa-circle-notch fa-spin"></i>
         </div>
         <div className="banner-content">
-          <h4>Loading Business Telemetry...</h4>
-          <p>Connecting to your live financial data. This will only take a moment.</p>
+          <h4>Loading Business Insight...</h4>
+          <p>Connecting to your financial records. This will only take a moment.</p>
         </div>
-        <button className="banner-close" onClick={() => setDismissed(true)} aria-label="Dismiss banner">
+        <button className="banner-close" onClick={handleDismiss} aria-label="Dismiss banner">
           &times;
         </button>
       </div>
@@ -50,20 +65,20 @@ export const BusinessInsightBanner: React.FC<BusinessInsightBannerProps> = ({
         <i className="fa-solid fa-lightbulb"></i>
       </div>
       <div className="banner-content">
-        <h4>Live Business Telemetry &amp; Insight</h4>
+        <h4>Business Financial Insight</h4>
         <p>
           {formattedLiquidity
             ? <>Verified net liquidity of <strong>{formattedLiquidity}</strong> across active ledger entries. </>
             : null}
           {runwayMonths
-            ? <>Operating runway calculated at <strong>{runwayMonths} months</strong> based on real-time cash flow telemetry.</>
-            : <>Dashboard metrics loaded. Open Axis Agent for AI-powered analysis.</>}
+            ? <>Operating runway calculated at <strong>{runwayMonths} month{runwayMonths === 1 ? '' : 's'}</strong> based on cash flow analysis.</>
+            : <>Dashboard metrics loaded. Explore your transactions to view complete details.</>}
         </p>
       </div>
       <button className="banner-action" onClick={onExploreClick}>
-        Explore Insight <i className="fa-solid fa-arrow-right"></i>
+        Inspect Ledger <i className="fa-solid fa-arrow-right"></i>
       </button>
-      <button className="banner-close" onClick={() => setDismissed(true)} aria-label="Dismiss banner">
+      <button className="banner-close" onClick={handleDismiss} aria-label="Dismiss banner">
         &times;
       </button>
     </div>

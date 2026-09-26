@@ -139,7 +139,7 @@ class AxisAgent:
             try:
                 from google.genai import types
 
-                user_prompt = f"User Query: '{query}'\nCompany Business Telemetry Context: {context}"
+                user_prompt = f"User Query: '{query}'\nCompany Business Data Context: {context}"
                 if subagent_analysis:
                     user_prompt += f"\nDomain Initial Analysis: {subagent_analysis}"
 
@@ -164,52 +164,75 @@ class AxisAgent:
             except Exception as e:
                 logger.error(f"Axis Agent Gemini API call error: {e}")
 
-        # Intelligent Fallback / Rule-based response
+        # Extract actual company metrics from context
+        metrics_list = context.get("metrics") or []
+        fin_metric = next((m for m in metrics_list if isinstance(m, dict) and m.get("id") == "financial"), {})
+        inv_metric = next((m for m in metrics_list if isinstance(m, dict) and m.get("id") == "inventory"), {})
+        ops_metric = next((m for m in metrics_list if isinstance(m, dict) and m.get("id") == "operations"), {})
+        growth_metric = next((m for m in metrics_list if isinstance(m, dict) and m.get("id") == "growth"), {})
+
+        total_rev = float(fin_metric.get("numericValue", 0.0) or 0.0)
+        net_liq = float(fin_metric.get("netLiquidity", 0.0) or 0.0)
+        monthly_burn = float(fin_metric.get("monthlyBurn", 0.0) or 0.0)
+        runway = float(fin_metric.get("runwayMonths", 0.0) or (12.0 if net_liq > 0 else 0.0))
+
+        active_skus = int(inv_metric.get("activeSKUs", 0) or 0)
+        stock_val = float(inv_metric.get("stockValuation", 0.0) or 0.0)
+        wh_health = float(inv_metric.get("warehouseHealth", 100.0) or 100.0)
+
+        ops_eff = float(ops_metric.get("numericValue", 100.0) or 100.0)
+        new_arr = float(growth_metric.get("numericValue", 0.0) or 0.0)
+
+        # Dynamic Rule-based response computed strictly from actual company records
         q_clean = re.sub(r'[^\w\s]', '', query.lower()).strip()
         
         if is_conv:
             if any(w in q_clean for w in ["who", "what"]):
-                fallback_text = "Greetings! I am Axis, your real-time business data assistant. I help you track metrics, model scenarios, and optimize financial strategy in clear, plain language."
+                fallback_text = "Greetings! I am Axis, your business financial intelligence assistant. I help you track metrics, model scenarios, and optimize financial strategy in clear, plain language."
             else:
-                fallback_text = "Greetings! I am Axis, your real-time business data assistant. How can I assist your financial strategy today?"
+                fallback_text = "Greetings! I am Axis, your business financial intelligence assistant. How can I assist your financial strategy today?"
         elif "cash" in q_clean and "90" in q_clean:
+            est_90d_burn = monthly_burn * 3.0
+            proj_cash_90d = max(0.0, net_liq - est_90d_burn)
             fallback_text = (
                 "### 90-Day Cash Balance Projection\n\n"
-                "Based on current financial data ($1.84M cash balance with a net monthly burn rate of ~$142.8K):\n\n"
-                "- **Current Cash Balance:** $1,840,250\n"
-                "- **Estimated 90-Day Expenses:** $428,400\n"
-                "- **Projected Cash Balance in 90 Days:** **$1,411,850**\n\n"
-                "Your projected cash runway remains healthy at **12.9+ months**."
+                f"Based on your actual verified ledger records (${net_liq:,.2f} net liquidity with a monthly burn of ${monthly_burn:,.2f}):\n\n"
+                f"- **Current Cash Balance:** ${net_liq:,.2f}\n"
+                f"- **Estimated 90-Day Expenses:** ${est_90d_burn:,.2f}\n"
+                f"- **Projected Cash Balance in 90 Days:** **${proj_cash_90d:,.2f}**\n\n"
+                f"Your operating runway is calculated at **{runway} month{'s' if runway != 1 else ''}**."
             )
         elif "cost" in q_clean or "optimization" in q_clean:
+            savings_est = round(monthly_burn * 0.08, 2)
             fallback_text = (
-                "### Top 3 Cost Savings Opportunities\n\n"
-                "1. **Cloud Server Optimization:** Save **$3,200/mo** by turning off unused test servers.\n"
-                "2. **Software Licenses:** Save **$1,800/mo** by canceling 6 inactive software seats.\n"
-                "3. **Checking Account Interest:** Earn **+$1,415/mo** by moving $350K idle cash into a short-term treasury yield account."
+                "### Cost Optimization Opportunities\n\n"
+                f"Based on your monthly operating expenses of **${monthly_burn:,.2f}**:\n\n"
+                f"1. **Operational Expenses:** Potential savings of **${savings_est:,.2f}/mo** through contract renegotiation and audit of recurring overhead.\n"
+                "2. **Treasury Management:** Maintain liquidity buffers in short-term interest-bearing accounts.\n"
+                f"3. **Inventory Rebalancing:** Active stock valuation is **${stock_val:,.2f}** across {active_skus} SKUs. Rationalize low-turnover items to liberate working capital."
             )
         elif "engineer" in q_clean or "hire" in q_clean or "hiring" in q_clean:
+            add_monthly_cost = 60000.0
+            new_burn = monthly_burn + add_monthly_cost
+            new_runway = round(net_liq / new_burn, 1) if new_burn > 0 else 0.0
             fallback_text = (
-                "### Hiring Simulation: 4 Senior Engineers (October)\n\n"
-                "Hiring 4 senior engineers will help build products faster and increase revenue. Here is the financial breakdown starting in October:\n\n"
-                "- **Cost per Engineer:** $180,000 / year\n"
-                "- **Total Annual Cost (4 Engineers):** $720,000 / year\n"
-                "- **New Monthly Salary Expense:** $60,000 / month\n\n"
-                "#### Financial Overview:\n"
-                "- **Current Monthly Expenses:** $142,800 / month\n"
-                "- **New Total Monthly Expenses:** $202,800 / month ($142,800 + $60,000)\n"
-                "- **Current Cash Balance:** $1,840,250\n"
-                "- **New Cash Runway:** **9.1 Months** (down from 12.9 months)\n\n"
-                "**Key Takeaway:** Adding 4 senior engineers increases monthly costs by $60,000 and reduces your cash runway from 12.9 months to 9.1 months."
+                "### Hiring Simulation: 4 Senior Engineers\n\n"
+                "Here is the financial projection modeled against your live ledger:\n\n"
+                "- **Estimated Added Monthly Payroll:** $60,000 / month\n"
+                f"- **Current Monthly Operating Expenses:** ${monthly_burn:,.2f} / month\n"
+                f"- **New Total Monthly Expenses:** ${new_burn:,.2f} / month\n"
+                f"- **Current Cash Balance:** ${net_liq:,.2f}\n"
+                f"- **Updated Operating Runway:** **{new_runway} Months** (previously {runway} months)\n\n"
+                f"**Key Takeaway:** Adding 4 senior engineers increases monthly commitments by $60,000, adjusting your runway to {new_runway} months."
             )
         else:
             fallback_text = (
-                "### Business Performance Overview\n\n"
-                "- **Annual Revenue (ARR):** **$4.28M** (+18.4% YoY growth)\n"
-                "- **Cash Runway:** **14.8 Months** ($1.84M Cash Balance)\n"
-                "- **Inventory Turnover Rate:** **1.8x** (96.4% Stock Health)\n"
-                "- **Operational Efficiency:** **94.2%**\n\n"
-                "How would you like to explore these metrics today?"
+                "### Company Business Performance\n\n"
+                f"- **Net Liquidity:** **${net_liq:,.2f}** across ledger accounts\n"
+                f"- **Operating Runway:** **{runway} Month{'s' if runway != 1 else ''}** (Monthly Burn: ${monthly_burn:,.2f})\n"
+                f"- **Active SKUs Tracked:** **{active_skus}** (Total Stock Value: ${stock_val:,.2f})\n"
+                f"- **Operations Efficiency:** **{ops_eff}%** Cleared\n\n"
+                "How would you like to model your business numbers today?"
             )
 
         return {

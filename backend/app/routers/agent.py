@@ -36,10 +36,17 @@ async def query_axis_agent(
     """
     user_id = current_user.get("user_id", "usr_guest")
     metrics = await AxisDataStore.get_dashboard_metrics(user_id)
+    txns = await AxisDataStore.get_transactions(user_id)
+    inventory = await AxisDataStore.get_inventory(user_id)
     
     response = await AxisAgent.process_query(
         query=payload.query,
-        context={"user": current_user, "metrics": metrics},
+        context={
+            "user": current_user,
+            "metrics": metrics,
+            "transactions": txns,
+            "inventory": inventory
+        },
         advisor_type=payload.advisor_type
     )
     return response

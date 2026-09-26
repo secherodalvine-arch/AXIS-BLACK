@@ -196,7 +196,49 @@ export const App: React.FC = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(DEFAULT_CHAT_MESSAGES);
   const [searchQuery, setSearchQuery] = useState('');
   const [notifications, setNotifications] = useState<SystemNotification[]>([]);
-  const [showTelemetryPopup, setShowTelemetryPopup] = useState(true);
+  const [deletedNotifIds, setDeletedNotifIds] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('axis_deleted_notif_ids') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const [readNotifIds, setReadNotifIds] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('axis_read_notif_ids') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const [showTelemetryPopup, setShowTelemetryPopup] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('axis_financial_popup_dismissed') !== 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleDismissPopup = () => {
+    setShowTelemetryPopup(false);
+    try {
+      localStorage.setItem('axis_financial_popup_dismissed', 'true');
+    } catch {
+      // storage unavailable
+    }
+  };
+
+  // Auto-dismiss floating insight notification after 8 seconds
+  useEffect(() => {
+    if (showTelemetryPopup) {
+      const timer = setTimeout(() => {
+        handleDismissPopup();
+      }, 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [showTelemetryPopup]);
+
   const [inventoryAlerts, setInventoryAlerts] = useState<SystemNotification[]>([]);
 
   // Calculate real net liquidity and operating runway
@@ -245,19 +287,19 @@ export const App: React.FC = () => {
       list.push({
         id: 'notif-welcome',
         title: 'Enterprise Workspace Active',
-        message: `Welcome, ${user.name || user.email || 'Operator'}! Live ledger & intelligence telemetry connected.`,
+        message: `Welcome, ${user.name || user.email || 'Operator'}! Your ledger & financial workspace is active.`,
         time: 'Just now',
         type: 'info',
         read: false
       });
     }
 
-    // 2. Live Business Telemetry & Insight
+    // 2. Business Financial Insight
     list.push({
-      id: 'notif-telemetry',
-      title: 'Live Business Telemetry & Insight',
-      message: `Verified net liquidity of ${formatCurrency(netLiquidity, currency)} across active ledger entries. Operating runway calculated at ${runwayMonths} month${runwayMonths === 1 ? '' : 's'} based on real-time cash flow telemetry.`,
-      time: 'Live',
+      id: 'notif-financial-insight',
+      title: 'Business Financial Insight',
+      message: `Verified net liquidity of ${formatCurrency(netLiquidity, currency)} across active ledger entries. Operating runway calculated at ${runwayMonths} month${runwayMonths === 1 ? '' : 's'} based on cash flow analysis.`,
+      time: 'Insight',
       type: 'success',
       read: false
     });
@@ -279,28 +321,57 @@ export const App: React.FC = () => {
       });
     }
 
-    setNotifications(prev => {
-      const readMap = new Map(prev.map(p => [p.id, p.read]));
-      return list.map(item => ({
-        ...item,
-        read: readMap.get(item.id) ?? item.read
-      }));
-    });
-  }, [user, netLiquidity, runwayMonths, currency, inventoryAlerts, transactions]);
+    // Filter out user-deleted notifications and apply persisted read state
+    const filtered = list.filter(item => !deletedNotifIds.includes(item.id));
+    setNotifications(filtered.map(item => ({
+      ...item,
+      read: readNotifIds.includes(item.id)
+    })));
+  }, [user, netLiquidity, runwayMonths, currency, inventoryAlerts, transactions, deletedNotifIds, readNotifIds]);
 
   const handleClearNotifications = () => {
+    const allIds = notifications.map(n => n.id);
+    const updated = Array.from(new Set([...deletedNotifIds, ...allIds]));
+    setDeletedNotifIds(updated);
+    try {
+      localStorage.setItem('axis_deleted_notif_ids', JSON.stringify(updated));
+    } catch {}
     setNotifications([]);
   };
 
   const handleDeleteNotification = (id: string) => {
+    const updated = Array.from(new Set([...deletedNotifIds, id]));
+    setDeletedNotifIds(updated);
+    try {
+      localStorage.setItem('axis_deleted_notif_ids', JSON.stringify(updated));
+    } catch {}
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
   const handleToggleNotificationRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: !n.read } : n));
+    const current = notifications.find(n => n.id === id);
+    if (!current) return;
+    const willBeRead = !current.read;
+    let updated: string[];
+    if (willBeRead) {
+      updated = Array.from(new Set([...readNotifIds, id]));
+    } else {
+      updated = readNotifIds.filter(rid => rid !== id);
+    }
+    setReadNotifIds(updated);
+    try {
+      localStorage.setItem('axis_read_notif_ids', JSON.stringify(updated));
+    } catch {}
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: willBeRead } : n));
   };
 
   const handleMarkAllNotificationsRead = () => {
+    const allIds = notifications.map(n => n.id);
+    const updated = Array.from(new Set([...readNotifIds, ...allIds]));
+    setReadNotifIds(updated);
+    try {
+      localStorage.setItem('axis_read_notif_ids', JSON.stringify(updated));
+    } catch {}
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
@@ -556,6 +627,7 @@ export const App: React.FC = () => {
                   aiStream={aiStream}
                   currency={currency}
                   onNavigateToAgent={() => setCurrentTab('agent')}
+                  onNavigateToLedger={() => setCurrentTab('transactions')}
                   onAIActionClick={handleAIActionClick}
                   onQuickAISubmit={handleQuickAISubmit}
                   onExportCSV={handleExportCSV}
@@ -623,7 +695,7 @@ export const App: React.FC = () => {
         }}
       />
 
-      {/* IN-APP / POPUP NOTIFICATION: Live Business Telemetry & Insight */}
+      {/* IN-APP / POPUP NOTIFICATION: Business Financial Insight */}
       {showTelemetryPopup && (
         <div 
           className="telemetry-popup-notification"
@@ -644,17 +716,11 @@ export const App: React.FC = () => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span className="pill-tag cyan" style={{ fontSize: '0.68rem', padding: '3px 8px', letterSpacing: '0.05em' }}>
-                <i className="fa-solid fa-signal" style={{ marginRight: '5px' }}></i>
-                LIVE TELEMETRY
-              </span>
-              <span style={{ fontSize: '0.72rem', color: '#9ca3af', fontFamily: 'JetBrains Mono' }}>
-                Real-Time
-              </span>
-            </div>
+            <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#ffffff', fontFamily: 'Plus Jakarta Sans' }}>
+              Business Financial Insight
+            </h4>
             <button
-              onClick={() => setShowTelemetryPopup(false)}
+              onClick={handleDismissPopup}
               style={{
                 background: 'none',
                 border: 'none',
@@ -671,17 +737,13 @@ export const App: React.FC = () => {
             </button>
           </div>
 
-          <h4 style={{ margin: '0 0 6px 0', fontSize: '0.95rem', fontWeight: 700, color: '#ffffff', fontFamily: 'Plus Jakarta Sans' }}>
-            Live Business Telemetry & Insight
-          </h4>
-
           <p style={{ margin: '0 0 14px 0', fontSize: '0.82rem', color: '#cbd5e1', lineHeight: '1.45' }}>
-            Verified net liquidity of <strong style={{ color: '#00d4ff' }}>{formatCurrency(netLiquidity, currency)}</strong> across active ledger entries. Operating runway calculated at <strong style={{ color: '#cebdff' }}>{runwayMonths} month{runwayMonths === 1 ? '' : 's'}</strong> based on real-time cash flow telemetry.
+            Verified net liquidity of <strong style={{ color: '#00d4ff' }}>{formatCurrency(netLiquidity, currency)}</strong> across active ledger entries. Operating runway calculated at <strong style={{ color: '#cebdff' }}>{runwayMonths} month{runwayMonths === 1 ? '' : 's'}</strong> based on cash flow analysis.
           </p>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
             <button
-              onClick={() => setShowTelemetryPopup(false)}
+              onClick={handleDismissPopup}
               className="action-btn-secondary"
               style={{ padding: '6px 12px', fontSize: '0.78rem' }}
             >
@@ -690,7 +752,7 @@ export const App: React.FC = () => {
             <button
               onClick={() => {
                 setCurrentTab('transactions');
-                setShowTelemetryPopup(false);
+                handleDismissPopup();
               }}
               className="action-btn-primary"
               style={{ padding: '6px 14px', fontSize: '0.78rem' }}

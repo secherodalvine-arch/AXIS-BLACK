@@ -13,9 +13,9 @@ PLATFORM_GUIDE_KNOWLEDGE = {
         "description": "Provides real-time visibility into total portfolio yield, ARR growth, liquidity turnover, server telemetry, and live AI advisory alerts."
     },
     "transactions": {
-        "name": "Multi-Currency Ledger",
+        "name": "Ledger",
         "route": "transactions",
-        "description": "View, record, filter, and audit expenses and revenues across USD, KSh, EUR, and GBP. Allows manual entry or instant voice logging."
+        "description": "View, record, filter, and audit expenses and revenues across accounts. Allows manual entry or instant voice logging."
     },
     "inventory": {
         "name": "Inventory & Asset Warehouse",

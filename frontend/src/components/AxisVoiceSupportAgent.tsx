@@ -212,7 +212,7 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = ({
             </button>
             <button onClick={() => handleTopicClick('transactions', 'How do I record and audit ledger transactions?')} style={styles.quickBtn}>
               <i className="fa-solid fa-credit-card" style={{ color: '#00d4ff', marginRight: '6px' }}></i>
-              Multi-Currency Ledger
+              Ledger Guide
             </button>
             <button onClick={() => handleTopicClick('forecast', 'Explain the runway simulator and hiring scenario models')} style={styles.quickBtn}>
               <i className="fa-solid fa-chart-line" style={{ color: '#00d4ff', marginRight: '6px' }}></i>

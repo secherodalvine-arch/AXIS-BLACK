@@ -123,19 +123,15 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
       {/* Page Header */}
       <div className="view-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-            <span className="pill-tag cyan">MULTI-CURRENCY LEDGER</span>
-            <span className="pill-tag lilac">REAL-TIME DOUBLE ENTRY</span>
-          </div>
           <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', margin: 0, fontFamily: 'Plus Jakarta Sans' }}>
-            Multi-Currency Ledger
+            Ledger
           </h2>
           <p className="subtitle" style={{ color: '#9ca3af', marginTop: '0.25rem' }}>
-            Structured financial history, running cash balance, and account-level ledger telemetry
+            Structured financial history, running balance, and account records
           </p>
         </div>
         <button className="action-btn-primary" onClick={onOpenModal}>
-          <i className="fa-solid fa-plus"></i> Record Ledger Entry
+          <i className="fa-solid fa-plus"></i> Record Entry
         </button>
       </div>
 

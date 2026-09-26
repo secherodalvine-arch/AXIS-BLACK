@@ -278,7 +278,7 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
             Business Financial Performance
           </h2>
           <p className="subtitle" style={{ color: '#9ca3af', marginTop: '0.25rem' }}>
-            Financial performance and cost breakdowns extracted from real ledger transactions
+            Financial performance and cost breakdowns across your business.
           </p>
         </div>
 

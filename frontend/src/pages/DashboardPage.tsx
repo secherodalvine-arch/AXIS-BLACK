@@ -10,7 +10,8 @@ interface OverviewDashboardProps {
   transactions: Transaction[];
   aiStream: AIStreamItem[];
   currency?: Currency;
-  onNavigateToAgent: () => void;
+  onNavigateToAgent?: () => void;
+  onNavigateToLedger?: () => void;
   onAIActionClick: (title: string) => void;
   onQuickAISubmit: (query: string) => void;
   onExportCSV: () => void;
@@ -22,13 +23,16 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
   aiStream: _aiStream,
   currency = 'USD',
   onNavigateToAgent,
+  onNavigateToLedger,
   onAIActionClick: _onAIActionClick,
   onQuickAISubmit: _onQuickAISubmit,
   onExportCSV
 }) => {
+  const handleExplore = onNavigateToLedger || onNavigateToAgent || (() => {});
+
   return (
     <div className="tab-view active">
-      <BusinessInsightBanner onExploreClick={onNavigateToAgent} metrics={metrics} currency={currency} />
+      <BusinessInsightBanner onExploreClick={handleExplore} metrics={metrics} currency={currency} />
 
       {/* 1. Financial Performance & Growth */}
       <FinancialGrowthChart transactions={transactions} currency={currency} />

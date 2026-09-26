@@ -148,8 +148,8 @@ export const FinancialGrowthChart: React.FC<FinancialGrowthChartProps> = ({ tran
           <h3>Financial Performance &amp; Growth</h3>
           <p className="subtitle">
             {hasTransactions 
-              ? 'Revenue, margin, and expenditure trends calculated live from your ledger' 
-              : 'Add transactions to see live growth curves and telemetry'}
+              ? 'Revenue, margin, and expenditure trends calculated from your ledger' 
+              : 'Add transactions to see growth curves and metrics'}
           </p>
         </div>
         <div className="card-actions">
@@ -168,7 +168,7 @@ export const FinancialGrowthChart: React.FC<FinancialGrowthChartProps> = ({ tran
             <i className="fa-solid fa-chart-line" style={{ fontSize: '2.5rem', marginBottom: '1rem', opacity: 0.35, color: '#00d4ff' }}></i>
             <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>No Financial Data Recorded Yet</div>
             <div style={{ fontSize: '0.82rem', maxWidth: '440px', textAlign: 'center', lineHeight: '1.45' }}>
-              As you record revenue and expenses in the Multi-Currency Ledger, this chart dynamically plots your revenue stream, operating expenses, and net margins.
+              As you record revenue and expenses in the Ledger, this chart dynamically plots your revenue stream, operating expenses, and net margins.
             </div>
           </div>
         )}

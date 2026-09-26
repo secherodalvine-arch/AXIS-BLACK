@@ -157,15 +157,11 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
       {/* View Header */}
       <div className="view-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-            <span className="pill-tag cyan">INVENTORY MANAGEMENT</span>
-            <span className="pill-tag lilac">STOCK LEVEL METRICS</span>
-          </div>
           <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', margin: 0, fontFamily: 'Plus Jakarta Sans' }}>
             Inventory
           </h2>
           <p className="subtitle" style={{ color: '#9ca3af', marginTop: '0.25rem' }}>
-            Real-time item stock levels, valuation, and automated low-stock reorder alerts
+            Item stock levels, valuation, and automated low-stock reorder alerts
           </p>
         </div>
 

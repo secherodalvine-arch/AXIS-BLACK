@@ -26,7 +26,7 @@ export const AxisAgentWidget: React.FC<AxisAgentWidgetProps> = ({
       <div className="card-header">
         <div className="card-title-group">
           <h3><i className="fa-solid fa-brain accent-icon-cyan"></i> Axis Agent Stream</h3>
-          <p className="subtitle">Live SME Intelligence & Business Telemetry Stream</p>
+          <p className="subtitle">Business Intelligence &amp; Insights Stream</p>
         </div>
         <span className="pulse-badge"><span className="pulse-dot"></span> Active</span>
       </div>
