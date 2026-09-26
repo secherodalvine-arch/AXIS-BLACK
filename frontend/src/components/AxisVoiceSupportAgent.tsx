@@ -172,7 +172,7 @@ const VoiceModal: React.FC<Omit<AxisVoiceSupportAgentProps, 'isOpen'> & { onClos
 
 // ── Outer wrapper — provides ConversationProvider with agentId ──
 export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = (props) => {
-  const { isOpen, onClose } = props;
+  const { isOpen } = props;
   const [agentId, setAgentId] = useState<string>(DEFAULT_AGENT_ID);
 
   useEffect(() => {
