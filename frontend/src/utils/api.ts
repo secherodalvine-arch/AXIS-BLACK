@@ -13,6 +13,13 @@ export interface UserProfile {
   income_frequency?: string;
   avatar_url?: string;
   personality?: string;
+  is_sub_user?: boolean;
+  owner_id?: string;
+  role_id?: string;
+  branch_id?: string;
+  must_change_password?: boolean;
+  theme?: 'light' | 'dark' | 'system';
+  notification_settings?: any;
   location?: {
     city?: string;
     country?: string;
@@ -229,6 +236,11 @@ export const getUserProfileApi = async (): Promise<any> => {
     location: profile.location,
     avatar_url: profile.avatar_url,
     personality: profile.personality,
+    is_sub_user: profile.is_sub_user,
+    owner_id: profile.owner_id,
+    role_id: profile.role_id,
+    branch_id: profile.branch_id,
+    must_change_password: profile.must_change_password,
   });
   return profile;
 };
@@ -250,6 +262,11 @@ export const updateUserProfileApi = async (updateData: any): Promise<any> => {
     location: updated.location,
     avatar_url: updated.avatar_url,
     personality: updated.personality,
+    is_sub_user: updated.is_sub_user,
+    owner_id: updated.owner_id,
+    role_id: updated.role_id,
+    branch_id: updated.branch_id,
+    must_change_password: updated.must_change_password,
   });
   return updated;
 };
@@ -349,8 +366,14 @@ export const getRolesApi = async () =>
 export const createRoleApi = async (data: any) =>
   request<any>('/business/roles', { method: 'POST', body: JSON.stringify(data) });
 
+export const updateRoleApi = async (roleId: string, data: any) =>
+  request<any>(`/business/roles/${roleId}`, { method: 'PUT', body: JSON.stringify(data) });
+
 export const deleteRoleApi = async (roleId: string) =>
   request<any>(`/business/roles/${roleId}`, { method: 'DELETE' });
+
+export const getBranchDetailsApi = async (branchId: string) =>
+  request<any>(`/business/branches/${branchId}/details`);
 
 // ── Team / Sub-Users API ──
 export const getTeamApi = async () =>
@@ -421,4 +444,59 @@ export const createInventoryItemApi = async (itemData: any) => {
     body: JSON.stringify(itemData),
   });
 };
+
+// ── Analytics API with optional branchId ──
+export const getAnalyticsApi = async (branchId?: string) => {
+  const url = branchId ? `/analytics/me?branch_id=${branchId}` : '/analytics/me';
+  return await request<any>(url);
+};
+
+// ── Activity Logs API ──
+export const getActivitiesApi = async (branchId?: string) => {
+  const url = branchId ? `/business/activities?branch_id=${branchId}` : '/business/activities';
+  return await request<any[]>(url);
+};
+
+// ── Notifications API ──
+export const getNotificationsApi = async () => {
+  return await request<any[]>('/business/notifications');
+};
+
+export const markNotificationReadApi = async (notifId: string) => {
+  return await request<any>(`/business/notifications/${notifId}/read`, {
+    method: 'POST'
+  });
+};
+
+// ── Transaction Deletion ──
+export const deleteTransactionApi = async (id: string) => {
+  return await request<any>(`/transactions/me/${id}`, {
+    method: 'DELETE'
+  });
+};
+
+// ── Inventory Update & Deletion ──
+export const updateInventoryItemApi = async (sku: string, itemData: any) => {
+  return await request<any>(`/inventory/items/${sku}`, {
+    method: 'PUT',
+    body: JSON.stringify(itemData)
+  });
+};
+
+export const deleteInventoryItemApi = async (sku: string) => {
+  return await request<any>(`/inventory/items/${sku}`, {
+    method: 'DELETE'
+  });
+};
+
+// ── Test Summary Notification Dispatch ──
+export const sendTestNotificationApi = async (settingsPayload?: any) => {
+  return await request<any>('/users/me/test-notification', {
+    method: 'POST',
+    body: settingsPayload ? JSON.stringify(settingsPayload) : undefined
+  });
+};
+
+
+
 

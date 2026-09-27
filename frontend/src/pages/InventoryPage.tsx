@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Currency } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
-import { getInventoryApi, createInventoryItemApi, importInventoryCsvApi, getBranchesApi } from '../utils/api';
+import { getInventoryApi, createInventoryItemApi, importInventoryCsvApi, getBranchesApi, getStoredUser } from '../utils/api';
 
 interface InventoryViewProps {
   currency?: Currency;
@@ -20,6 +20,9 @@ interface InventoryItem {
 }
 
 export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', searchQuery = '' }) => {
+  const currentUser = getStoredUser();
+  const isSubUserWithBranch = Boolean(currentUser?.is_sub_user && currentUser?.branch_id);
+
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
@@ -38,14 +41,15 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
   const [submitting, setSubmitting] = useState(false);
   const [branchFilter, setBranchFilter] = useState<string>('');
   const [branches, setBranches] = useState<any[]>([]);
+  const [itemBranchId, setItemBranchId] = useState<string>(currentUser?.branch_id || '');
   const [csvImporting, setCsvImporting] = useState(false);
   const [csvStatus, setCsvStatus] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const csvInputRef = useRef<HTMLInputElement | null>(null);
 
-
   const fetchInventory = () => {
     setIsLoading(true);
-    getInventoryApi()
+    const activeBranch = isSubUserWithBranch ? currentUser?.branch_id : (branchFilter || undefined);
+    getInventoryApi(activeBranch)
       .then((data) => {
         if (data && data.length) {
           const mapped: InventoryItem[] = data.map((d: any) => ({
@@ -72,8 +76,19 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
 
   useEffect(() => {
     fetchInventory();
-    getBranchesApi().then(b => setBranches(Array.isArray(b) ? b : [])).catch(() => {});
-  }, []);
+  }, [branchFilter]);
+
+  useEffect(() => {
+    getBranchesApi().then(b => {
+      const list = Array.isArray(b) ? b : [];
+      setBranches(list);
+      if (isSubUserWithBranch && currentUser?.branch_id) {
+        setItemBranchId(currentUser.branch_id);
+      } else if (list.length > 0) {
+        setItemBranchId(list[0].id);
+      }
+    }).catch(() => {});
+  }, [isSubUserWithBranch]);
 
   const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -109,7 +124,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
       reorder_point: parseInt(reorderPoint) || 50,
       unit_cost: parseFloat(unitCost) || 100,
       selling_price: parseFloat(sellingPrice) || 200,
-      supplier: supplier || 'Primary Supplier'
+      supplier: supplier || 'Primary Supplier',
+      branch_id: isSubUserWithBranch ? currentUser?.branch_id : (itemBranchId || (branches[0]?.id || null))
     };
 
     try {
@@ -192,7 +208,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
         </div>
 
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-          {branches.length > 0 && (
+          {branches.length > 0 && !isSubUserWithBranch && (
             <select
               value={branchFilter}
               onChange={e => setBranchFilter(e.target.value)}
@@ -201,6 +217,22 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
               <option value="">All Branches</option>
               {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
+          )}
+          {isSubUserWithBranch && (
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'rgba(0, 212, 255, 0.1)',
+              border: '1px solid rgba(0, 212, 255, 0.3)',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              fontSize: '0.8rem',
+              color: '#00d4ff'
+            }}>
+              <i className="fa-solid fa-code-branch"></i>
+              <span>{branches.find(b => b.id === currentUser?.branch_id)?.name || 'Assigned Branch'}</span>
+            </div>
           )}
           <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvImport} />
           <button
@@ -375,7 +407,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
       {/* ADD NEW INVENTORY ITEM MODAL */}
       {isModalOpen && (
         <div className="modal-overlay active">
-          <div className="modal-card glass-card" style={{ background: '#141418', border: '1px solid rgba(0, 212, 255, 0.35)', boxShadow: '0 24px 80px rgba(0,0,0,0.9), 0 0 40px rgba(0, 212, 255, 0.2)' }}>
+          <div className="modal-card glass-card" style={{ background: '#141418', border: '1px solid rgba(0, 212, 255, 0.35)', boxShadow: '0 24px 80px rgba(0,0,0,0.9), 0 0 40px rgba(0, 212, 255, 0.2)', maxHeight: '88vh', overflowY: 'auto' }}>
             <div className="modal-header" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '12px', marginBottom: '20px' }}>
               <h3 style={{ margin: 0, color: '#ffffff', fontFamily: 'Plus Jakarta Sans', fontSize: '1.25rem', fontWeight: 800 }}>
                 Add New Inventory Item
@@ -384,6 +416,48 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
             </div>
             
             <form onSubmit={handleCreateSKU}>
+              {isSubUserWithBranch ? (
+                <div style={{
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  background: 'rgba(0, 212, 255, 0.08)',
+                  border: '1px solid rgba(0, 212, 255, 0.25)',
+                  color: '#00d4ff',
+                  fontSize: '0.85rem',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <i className="fa-solid fa-building-circle-check"></i>
+                  <span>Branch: <strong>{branches.find(b => b.id === currentUser?.branch_id)?.name || 'Assigned Branch'}</strong> (Auto-locked)</span>
+                </div>
+              ) : branches.length > 0 ? (
+                <div className="form-group" style={{ marginBottom: '16px' }}>
+                  <label style={{ fontSize: '0.8rem', color: '#00d4ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    <i className="fa-solid fa-code-branch" style={{ marginRight: '6px' }}></i> Assign to Branch *
+                  </label>
+                  <select
+                    className="select-text"
+                    value={itemBranchId}
+                    onChange={(e) => setItemBranchId(e.target.value)}
+                    required
+                    style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(0, 212, 255, 0.35)', borderRadius: '10px', padding: '12px' }}
+                  >
+                    {branches.map(b => (
+                      <option key={b.id} value={b.id} style={{ background: '#141418', color: '#ffffff' }}>
+                        {b.name} {b.location ? `(${b.location})` : ''} {b.is_main ? '· [HQ / Main Branch]' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div style={{ padding: '12px 14px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#f59e0b', fontSize: '0.85rem', marginBottom: '16px' }}>
+                  <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '8px' }}></i>
+                  Set up your business &amp; branch in <strong>My Business</strong> to categorize inventory across branches.
+                </div>
+              )}
+
               <div className="form-group">
                 <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Item Name / Description

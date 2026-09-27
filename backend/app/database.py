@@ -131,9 +131,13 @@ class CloudinaryManager:
 # ── Axis Black Data Store Operations ──
 class AxisDataStore:
     @staticmethod
-    async def get_dashboard_metrics(user_id: str) -> List[Dict[str, Any]]:
+    async def get_dashboard_metrics(user_id: str, branch_id: Optional[str] = None) -> List[Dict[str, Any]]:
         txns = await AxisDataStore.get_transactions(user_id)
         inventory_items = await AxisDataStore.get_inventory(user_id)
+
+        if branch_id:
+            txns = [t for t in txns if t.get("branch_id") == branch_id]
+            inventory_items = [i for i in inventory_items if i.get("branch_id") == branch_id]
 
         # Dynamic Financial Calculation from real transactions
         total_revenue = sum(t["amount"] for t in txns if t.get("amount", 0) > 0)
@@ -247,6 +251,9 @@ class AxisDataStore:
             "status": txn_data.get("status", "Cleared"),
             "amount": float(txn_data.get("amount", 0.0)),
             "notes": txn_data.get("notes", ""),
+            "branch_id": txn_data.get("branch_id"),
+            "created_by": txn_data.get("created_by"),
+            "created_by_name": txn_data.get("created_by_name"),
             "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
 
@@ -283,7 +290,11 @@ class AxisDataStore:
             "unit_cost": float(item_data.get("unit_cost", 100.0)),
             "selling_price": float(item_data.get("selling_price", 150.0)),
             "supplier": item_data.get("supplier", "Global Supplier"),
-            "velocity": "1.8x/mo"
+            "velocity": "1.8x/mo",
+            "branch_id": item_data.get("branch_id"),
+            "created_by": item_data.get("created_by"),
+            "created_by_name": item_data.get("created_by_name"),
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
 
         if db_manager.is_connected:
@@ -295,3 +306,147 @@ class AxisDataStore:
         db_manager.save_memory_store()
 
         return {k: v for k, v in doc.items() if k != "_id"}
+
+    @staticmethod
+    async def update_inventory_item(user_id: str, sku: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        updates["updated_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        if db_manager.is_connected:
+            await db_manager.db.inventory.update_one(
+                {"user_id": user_id, "sku": sku},
+                {"$set": updates}
+            )
+            item = await db_manager.db.inventory.find_one({"user_id": user_id, "sku": sku})
+            if item:
+                item.pop("_id", None)
+                return item
+
+        items = db_manager.memory_store.get("inventory", {}).get(user_id, [])
+        for i, item in enumerate(items):
+            if item.get("sku") == sku:
+                items[i].update(updates)
+                db_manager.save_memory_store()
+                return items[i]
+        return None
+
+    @staticmethod
+    async def delete_inventory_item(user_id: str, sku: str) -> bool:
+        if db_manager.is_connected:
+            res = await db_manager.db.inventory.delete_one({"user_id": user_id, "sku": sku})
+            return res.deleted_count > 0
+        items = db_manager.memory_store.get("inventory", {}).get(user_id, [])
+        before = len(items)
+        db_manager.memory_store["inventory"][user_id] = [i for i in items if i.get("sku") != sku]
+        db_manager.save_memory_store()
+        return len(db_manager.memory_store["inventory"][user_id]) < before
+
+    @staticmethod
+    async def delete_transaction(user_id: str, txn_id: str) -> bool:
+        if db_manager.is_connected:
+            res = await db_manager.db.transactions.delete_one({"user_id": user_id, "id": txn_id})
+            return res.deleted_count > 0
+        txns = db_manager.memory_store.get("transactions", {}).get(user_id, [])
+        before = len(txns)
+        db_manager.memory_store["transactions"][user_id] = [t for t in txns if t.get("id") != txn_id]
+        db_manager.save_memory_store()
+        return len(db_manager.memory_store["transactions"][user_id]) < before
+
+    # ── Activity Audit Logging ──
+    @staticmethod
+    async def log_activity(
+        owner_id: str,
+        actor_id: str,
+        actor_name: str,
+        actor_role: str,
+        action: str,
+        title: str,
+        details: str,
+        branch_id: Optional[str] = None,
+        branch_name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        import uuid
+        doc = {
+            "id": f"act-{uuid.uuid4().hex[:10]}",
+            "owner_id": owner_id,
+            "actor_id": actor_id,
+            "actor_name": actor_name,
+            "actor_role": actor_role,
+            "action": action,
+            "title": title,
+            "details": details,
+            "branch_id": branch_id,
+            "branch_name": branch_name,
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+        if db_manager.is_connected:
+            await db_manager.db.activities.insert_one(doc)
+        if "activities" not in db_manager.memory_store:
+            db_manager.memory_store["activities"] = {}
+        if owner_id not in db_manager.memory_store["activities"]:
+            db_manager.memory_store["activities"][owner_id] = []
+        db_manager.memory_store["activities"][owner_id].insert(0, doc)
+        db_manager.save_memory_store()
+        return {k: v for k, v in doc.items() if k != "_id"}
+
+    @staticmethod
+    async def get_activities(owner_id: str, branch_id: Optional[str] = None, limit: int = 150) -> List[Dict[str, Any]]:
+        if db_manager.is_connected:
+            q: Dict[str, Any] = {"owner_id": owner_id}
+            if branch_id:
+                q["branch_id"] = branch_id
+            docs = await db_manager.db.activities.find(q).sort("timestamp", -1).to_list(length=limit)
+            return [{k: v for k, v in d.items() if k != "_id"} for d in docs]
+        all_acts = db_manager.memory_store.get("activities", {}).get(owner_id, [])
+        if branch_id:
+            return [a for a in all_acts if a.get("branch_id") == branch_id][:limit]
+        return all_acts[:limit]
+
+    # ── Real-Time Notifications Storage ──
+    @staticmethod
+    async def add_notification(
+        recipient_id: str,
+        title: str,
+        message: str,
+        notif_type: str = "info",
+        meta: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        import uuid
+        doc = {
+            "id": f"notif-{uuid.uuid4().hex[:10]}",
+            "recipient_id": recipient_id,
+            "title": title,
+            "message": message,
+            "type": notif_type,
+            "read": False,
+            "meta": meta or {},
+            "time": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+        if db_manager.is_connected:
+            await db_manager.db.notifications.insert_one(doc)
+        if "notifications" not in db_manager.memory_store:
+            db_manager.memory_store["notifications"] = {}
+        if recipient_id not in db_manager.memory_store["notifications"]:
+            db_manager.memory_store["notifications"][recipient_id] = []
+        db_manager.memory_store["notifications"][recipient_id].insert(0, doc)
+        db_manager.save_memory_store()
+        return {k: v for k, v in doc.items() if k != "_id"}
+
+    @staticmethod
+    async def get_notifications(recipient_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+        if db_manager.is_connected:
+            docs = await db_manager.db.notifications.find({"recipient_id": recipient_id}).sort("time", -1).to_list(length=limit)
+            return [{k: v for k, v in d.items() if k != "_id"} for d in docs]
+        return db_manager.memory_store.get("notifications", {}).get(recipient_id, [])[:limit]
+
+    @staticmethod
+    async def mark_notification_read(recipient_id: str, notif_id: str) -> bool:
+        if db_manager.is_connected:
+            await db_manager.db.notifications.update_one(
+                {"recipient_id": recipient_id, "id": notif_id},
+                {"$set": {"read": True}}
+            )
+        items = db_manager.memory_store.get("notifications", {}).get(recipient_id, [])
+        for item in items:
+            if item["id"] == notif_id:
+                item["read"] = True
+        db_manager.save_memory_store()
+        return True

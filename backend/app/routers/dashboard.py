@@ -9,6 +9,9 @@ router = APIRouter(prefix="/api/dashboard", tags=["Dashboard Telemetry"])
 @router.get("/me", response_model=List[Dict[str, Any]])
 async def get_dashboard_data(current_user: dict = Depends(get_current_user)):
     """
-    Get live dashboard metrics and advisor telemetry for current user from MongoDB.
+    Get live dashboard metrics and advisor telemetry for current user or assigned branch.
     """
-    return await AxisDataStore.get_dashboard_metrics(current_user.get("user_id", "default_user"))
+    is_sub_user = bool(current_user.get("is_sub_user"))
+    owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
+    branch_id = current_user.get("branch_id") if is_sub_user else None
+    return await AxisDataStore.get_dashboard_metrics(owner_id, branch_id=branch_id)

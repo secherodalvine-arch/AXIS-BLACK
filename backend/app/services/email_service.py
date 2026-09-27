@@ -37,6 +37,45 @@ _EMAIL_BASE_STYLE = """
 """
 
 
+def send_via_smtp(to_email: str, subject: str, body_html: str, body_text: str, reply_to: Optional[str] = None) -> bool:
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    smtp_user = getattr(settings, "SMTP_USER", "") or os.getenv("EMAIL_USER", "wizargriff@gmail.com")
+    smtp_pass = getattr(settings, "SMTP_PASSWORD", "") or os.getenv("EMAIL_PASS", "kbpggaolddvlxqtq")
+    smtp_host = getattr(settings, "SMTP_HOST", "smtp.gmail.com")
+    smtp_port = getattr(settings, "SMTP_PORT", 587)
+
+    if not smtp_user or not smtp_pass:
+        logger.warning("[SMTP] Missing SMTP credentials, skipping SMTP fallback.")
+        return False
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = f"Axis Black <{smtp_user}>"
+    msg["To"] = to_email
+    if reply_to:
+        msg["Reply-To"] = reply_to
+
+    if body_text:
+        msg.attach(MIMEText(body_text, "plain"))
+    if body_html:
+        msg.attach(MIMEText(body_html, "html"))
+
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=12) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_user, [to_email], msg.as_string())
+        logger.info(f"[SMTP SUCCESS] Email successfully sent to {to_email} | Subject: {subject}")
+        return True
+    except Exception as e:
+        logger.error(f"[SMTP ERROR] Failed sending to {to_email}: {e}")
+        return False
+
+
 def send_email_notification(
     to_email: str,
     subject: str,
@@ -45,7 +84,7 @@ def send_email_notification(
     reply_to: Optional[str] = None,
 ) -> bool:
     """
-    Sends an email directly via the Vercel Email API microservice.
+    Sends an email directly via the Vercel Email API microservice with automatic SMTP fallback.
     """
     to_email = to_email.strip().lower()
     if not body_text:
@@ -55,39 +94,138 @@ def send_email_notification(
     email_api_url = getattr(settings, "EMAIL_API_URL", "").rstrip("/")
     email_api_key = getattr(settings, "EMAIL_API_KEY", "")
 
-    if not email_api_url or not email_api_key:
-        logger.error("[EMAIL API ERROR] EMAIL_API_URL or EMAIL_API_KEY is not configured in settings.")
-        return False
+    # Try standalone microservice first if configured
+    if email_api_url and email_api_key and not email_api_url.startswith("http://127.0.0.1:8000"):
+        endpoint = f"{email_api_url}/send_email"
+        payload = {
+            "to_email": to_email,
+            "subject": subject,
+            "html": body_html,
+            "text": body_text,
+        }
+        if reply_to:
+            payload["reply_to"] = reply_to.strip()
 
-    endpoint = f"{email_api_url}/send_email"
-    payload = {
-        "to_email": to_email,
-        "subject": subject,
-        "html": body_html,
-        "text": body_text,
-    }
-    if reply_to:
-        payload["reply_to"] = reply_to.strip()
+        headers = {
+            "Authorization": f"Bearer {email_api_key}",
+            "Content-Type": "application/json",
+        }
 
-    headers = {
-        "Authorization": f"Bearer {email_api_key}",
-        "Content-Type": "application/json",
-    }
+        try:
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(endpoint, data=data, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                response_body = resp.read().decode("utf-8")
+                logger.info(f"[EMAIL API SUCCESS] Email sent to {to_email} | Subject: {subject} | Response: {response_body}")
+                return True
+        except Exception as exc:
+            logger.warning(f"[EMAIL API FAILED] Falling back to direct SMTP for {to_email}: {exc}")
 
-    try:
-        data = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(endpoint, data=data, headers=headers, method="POST")
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            response_body = resp.read().decode("utf-8")
-            logger.info(f"[EMAIL API SUCCESS] Email sent to {to_email} | Subject: {subject} | Response: {response_body}")
-            return True
-    except urllib.error.HTTPError as http_err:
-        err_body = http_err.read().decode("utf-8") if http_err.fp else ""
-        logger.error(f"[EMAIL API HTTP ERROR {http_err.code}] Failed sending to {to_email}: {err_body}")
-        return False
-    except Exception as exc:
-        logger.error(f"[EMAIL API ERROR] Failed sending to {to_email}: {exc}")
-        return False
+    # Fallback to direct SMTP
+    return send_via_smtp(to_email, subject, body_html, body_text, reply_to)
+
+
+def send_business_summary_email(
+    to_email: str,
+    business_name: str,
+    summary_data: Dict[str, Any]
+) -> bool:
+    """Dispatches a clean business performance, stock, and ledger summary report."""
+    rev = summary_data.get("total_revenue", 0.0)
+    exp = summary_data.get("total_expenses", 0.0)
+    net_margin = summary_data.get("net_margin", 0.0)
+    margin_pct = summary_data.get("margin_percentage", 0.0)
+    is_profit = net_margin >= 0
+    total_products = summary_data.get("total_inventory_items", 0)
+    low_stock = summary_data.get("low_stock_items", 0)
+    txn_count = summary_data.get("transactions_count", 0)
+    frequency_label = str(summary_data.get("frequency", "Daily")).capitalize()
+
+    status_color = "#4ade80" if is_profit else "#ff6b6b"
+    status_label = "NET PROFIT" if is_profit else "NET LOSS"
+    margin_sign = "+" if is_profit else ""
+
+    subject = f"[{business_name}] {frequency_label} Business Summary & Performance Report (6:00 PM)"
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{subject}</title>
+  <style>{_EMAIL_BASE_STYLE}</style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="header">
+        <div class="brand">
+          <span class="brand-name">AXIS <span>BLACK</span></span>
+        </div>
+        <div class="header-title">{business_name} — {frequency_label} Summary</div>
+        <p class="header-sub">Dispatched at 6:00 PM Executive Digest</p>
+      </div>
+      <div class="body">
+        <h3 style="color:#ffffff;margin-top:0;font-size:16px;">Profit & Loss Margin Summary</h3>
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:18px;margin-bottom:20px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+            <span style="color:#94a3b8;">Total Revenue (Income):</span>
+            <strong style="color:#4ade80;">${rev:,.2f}</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+            <span style="color:#94a3b8;">Total Expenses (Costs):</span>
+            <strong style="color:#ff8e8e;">${exp:,.2f}</strong>
+          </div>
+          <hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:12px 0;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="color:#ffffff;font-weight:700;">{status_label}:</span>
+            <strong style="color:{status_color};font-size:18px;">${abs(net_margin):,.2f} ({margin_sign}{margin_pct:.1f}% margin)</strong>
+          </div>
+        </div>
+
+        <h3 style="color:#ffffff;font-size:16px;">Inventory & Stock Health</h3>
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px;margin-bottom:20px;">
+          <p style="margin:0 0 6px;color:#cbd5e1;">Total Product Items in Stock: <strong style="color:#00d4ff;">{total_products} products</strong></p>
+          <p style="margin:0;color:{'#fbbf24' if low_stock > 0 else '#4ade80'};">Products Needing Reorder (Low Stock): <strong>{low_stock} items</strong></p>
+        </div>
+
+        <h3 style="color:#ffffff;font-size:16px;">Ledger Transactions</h3>
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px;margin-bottom:24px;">
+          <p style="margin:0;color:#cbd5e1;">Total Recorded Transactions: <strong style="color:#cebdff;">{txn_count} entries</strong></p>
+        </div>
+
+        <div class="btn-wrap">
+          <a href="{settings.FRONTEND_URL}" class="btn">Open Live Business Dashboard</a>
+        </div>
+      </div>
+      <div class="footer">
+        Axis Black Business Intelligence &bull; Automated 6:00 PM Summary
+      </div>
+    </div>
+  </div>
+</body>
+</html>"""
+
+    text_content = (
+        f"{business_name} - {frequency_label} Business Summary (6:00 PM)\n\n"
+        f"PROFIT & LOSS SUMMARY:\n"
+        f"- Total Revenue: ${rev:,.2f}\n"
+        f"- Total Expenses: ${exp:,.2f}\n"
+        f"- {status_label}: ${abs(net_margin):,.2f} ({margin_sign}{margin_pct:.1f}% margin)\n\n"
+        f"STOCK & INVENTORY HEALTH:\n"
+        f"- Total Product Items in Stock: {total_products}\n"
+        f"- Products Low on Stock / Needing Reorder: {low_stock}\n\n"
+        f"LEDGER TRANSACTIONS:\n"
+        f"- Total Recorded Transactions: {txn_count}\n\n"
+        f"Dashboard: {settings.FRONTEND_URL}\n"
+    )
+
+    return send_email_notification(
+        to_email=to_email,
+        subject=subject,
+        body_html=html_content,
+        body_text=text_content
+    )
+
 
 
 def send_verification_email(to_email: str, user_name: str, verify_url: str) -> bool:

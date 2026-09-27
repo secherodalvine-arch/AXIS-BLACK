@@ -49,4 +49,9 @@ class Settings:
     ELEVENLABS_AGENT_ID: str = os.getenv("ELEVENLABS_AGENT_ID", "")
     ELEVENLABS_API_KEY: str = os.getenv("ELEVENLABS_API_KEY", "")
 
+    # TalkSasa SMS Notifications (referenced from HOUSEKONECT)
+    TALKSASA_API_KEY: str = os.getenv("TALKSASA_API_KEY", "4310|Doz00xhJWd1U1LzI8ayNCSZ5h47AyWeUurAuI5Ud963dd83f")
+    TALKSASA_SENDER_ID: str = os.getenv("TALKSASA_SENDER_ID", "TALKSASA")
+    TALKSASA_API_URL: str = os.getenv("TALKSASA_API_URL", "https://bulksms.talksasa.com/api/v3/sms/send")
+
 settings = Settings()

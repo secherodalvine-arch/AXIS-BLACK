@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Transaction, Currency } from '../types';
 import { USD_TO_KES_RATE, getCurrencySymbol } from '../utils/currencyUtils';
-import { getBranchesApi } from '../utils/api';
+import { getBranchesApi, getStoredUser } from '../utils/api';
 
 interface NewTransactionModalProps {
   isOpen: boolean;
@@ -16,6 +16,9 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   onClose,
   onSubmit
 }) => {
+  const currentUser = getStoredUser();
+  const isSubUserWithBranch = Boolean(currentUser?.is_sub_user && currentUser?.branch_id);
+
   const [counterparty, setCounterparty] = useState('');
   const [type, setType] = useState<'Expense' | 'Revenue'>('Expense');
   const [category, setCategory] = useState<string>('Operations & Logistics');
@@ -25,14 +28,17 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
-  const [branchId, setBranchId] = useState('');
+  const [branchId, setBranchId] = useState(currentUser?.branch_id || '');
   const [branches, setBranches] = useState<any[]>([]);
 
   useEffect(() => {
     if (isOpen) {
+      if (isSubUserWithBranch && currentUser?.branch_id) {
+        setBranchId(currentUser.branch_id);
+      }
       getBranchesApi().then(b => setBranches(Array.isArray(b) ? b : [])).catch(() => {});
     }
-  }, [isOpen]);
+  }, [isOpen, isSubUserWithBranch]);
 
   if (!isOpen) return null;
 
@@ -77,7 +83,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
 
   return (
     <div className="modal-overlay active">
-      <div className="modal-card glass-card" style={{ background: '#141418', border: '1px solid rgba(0, 212, 255, 0.35)', boxShadow: '0 24px 80px rgba(0,0,0,0.9), 0 0 40px rgba(0, 212, 255, 0.2)' }}>
+      <div className="modal-card glass-card" style={{ background: '#141418', border: '1px solid rgba(0, 212, 255, 0.35)', boxShadow: '0 24px 80px rgba(0,0,0,0.9), 0 0 40px rgba(0, 212, 255, 0.2)', maxHeight: '88vh', overflowY: 'auto' }}>
         <div className="modal-header" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '12px', marginBottom: '20px' }}>
           <h3 style={{ margin: 0, color: '#ffffff', fontFamily: 'Plus Jakarta Sans', fontSize: '1.25rem', fontWeight: 800 }}>
             Record Ledger Entry
@@ -223,22 +229,40 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
             />
           </div>
 
-          {branches.length > 0 && (
-            <div className="form-group">
-              <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Branch
-              </label>
-              <select
-                value={branchId}
-                onChange={e => setBranchId(e.target.value)}
-                style={{ background: '#1a1a22', color: branchId ? '#00d4ff' : '#9ca3af', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px', width: '100%' }}
-              >
-                <option value="">All Branches / HQ</option>
-                {branches.map((b: any) => (
-                  <option key={b.id} value={b.id} style={{ color: '#fff' }}>{b.name}</option>
-                ))}
-              </select>
+          {isSubUserWithBranch ? (
+            <div style={{
+              background: 'rgba(0, 212, 255, 0.08)',
+              border: '1px solid rgba(0, 212, 255, 0.25)',
+              borderRadius: '10px',
+              padding: '10px 14px',
+              color: '#00d4ff',
+              fontSize: '0.82rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '16px'
+            }}>
+              <i className="fa-solid fa-building-circle-check"></i>
+              <span>Branch: <strong>{branches.find((b: any) => b.id === currentUser?.branch_id)?.name || 'Assigned Branch'}</strong> (Auto-locked)</span>
             </div>
+          ) : (
+            branches.length > 0 && (
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Branch
+                </label>
+                <select
+                  value={branchId}
+                  onChange={e => setBranchId(e.target.value)}
+                  style={{ background: '#1a1a22', color: branchId ? '#00d4ff' : '#9ca3af', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px', width: '100%' }}
+                >
+                  <option value="">All Branches / HQ</option>
+                  {branches.map((b: any) => (
+                    <option key={b.id} value={b.id} style={{ color: '#fff' }}>{b.name}</option>
+                  ))}
+                </select>
+              </div>
+            )
           )}
 
           <div className="modal-actions" style={{ marginTop: '24px' }}>

@@ -51,4 +51,6 @@ class UserProfileUpdate(BaseModel):
     country: Optional[str] = None
     avatar_url: Optional[str] = None
     personality: Optional[str] = None
+    theme: Optional[str] = None
+    notification_settings: Optional[Dict[str, Any]] = None
 

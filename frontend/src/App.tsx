@@ -15,6 +15,7 @@ import { AxisAgentWorkspace as AgentPage } from './pages/AxisAgentPage';
 import { RunwaySimulator as ForecastPage } from './pages/RunwaySimulatorPage';
 import { SettingsView as SettingsPage } from './pages/SettingsPage';
 import { MyBusinessPage } from './pages/MyBusinessPage';
+import { ActivitiesPage } from './pages/ActivitiesPage';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -31,7 +32,9 @@ import {
   createTransactionApi, 
   getDashboardMetricsApi,
   getInventoryApi,
-  verifyEmailApi
+  verifyEmailApi,
+  getNotificationsApi,
+  markNotificationReadApi
 } from './utils/api';
 
 import './styles/globals.css';
@@ -145,6 +148,43 @@ export const App: React.FC = () => {
   const [isVoiceAgentOpen, setIsVoiceAgentOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
+    const saved = localStorage.getItem('axis_theme') as ('light' | 'dark' | 'system' | null);
+    if (saved === 'light' || saved === 'dark' || saved === 'system') return saved;
+    return (getStoredUser()?.theme as ('light' | 'dark' | 'system')) || 'system';
+  });
+
+  useEffect(() => {
+    const applyTheme = () => {
+      let resolvedTheme: 'light' | 'dark' = 'dark';
+      if (theme === 'system') {
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        resolvedTheme = prefersDark ? 'dark' : 'light';
+      } else {
+        resolvedTheme = theme;
+      }
+
+      if (resolvedTheme === 'light') {
+        document.body.classList.remove('dark-theme');
+        document.body.classList.add('light-theme');
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.body.classList.remove('light-theme');
+        document.body.classList.add('dark-theme');
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    };
+
+    applyTheme();
+    localStorage.setItem('axis_theme', theme);
+
+    if (theme === 'system' && window.matchMedia) {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const listener = () => applyTheme();
+      mediaQuery.addEventListener('change', listener);
+      return () => mediaQuery.removeEventListener('change', listener);
+    }
+  }, [theme]);
 
   // Check URL parameters & validate active user session on mount
   useEffect(() => {
@@ -175,6 +215,9 @@ export const App: React.FC = () => {
             setUser(profile);
             if (profile.currency) {
               setCurrency(profile.currency as Currency);
+            }
+            if (profile.theme && (profile.theme === 'dark' || profile.theme === 'light')) {
+              setTheme(profile.theme);
             }
           }
           setViewState('dashboard');
@@ -240,6 +283,8 @@ export const App: React.FC = () => {
     }
   }, [showTelemetryPopup]);
 
+  const [serverNotifications, setServerNotifications] = useState<any[]>([]);
+  const [activeInAppPopup, setActiveInAppPopup] = useState<SystemNotification | null>(null);
   const [inventoryAlerts, setInventoryAlerts] = useState<SystemNotification[]>([]);
 
   // Calculate real net liquidity and operating runway
@@ -282,6 +327,18 @@ export const App: React.FC = () => {
   // Aggregate dynamic real notifications
   useEffect(() => {
     const list: SystemNotification[] = [];
+
+    // 0. Server notifications from backend (e.g. role assigned, branch created)
+    serverNotifications.forEach(sn => {
+      list.push({
+        id: sn.id,
+        title: sn.title,
+        message: sn.message,
+        time: sn.time || new Date().toISOString(),
+        type: sn.type === 'role_assigned' ? 'info' : (sn.type === 'branch_created' ? 'success' : 'info'),
+        read: sn.read || false
+      });
+    });
 
     // 1. Welcome notification upon registration / login
     if (user) {
@@ -346,9 +403,9 @@ export const App: React.FC = () => {
     const filtered = list.filter(item => !deletedNotifIds.includes(item.id));
     setNotifications(filtered.map(item => ({
       ...item,
-      read: readNotifIds.includes(item.id)
+      read: item.read || readNotifIds.includes(item.id)
     })));
-  }, [user, netLiquidity, runwayMonths, currency, inventoryAlerts, transactions, deletedNotifIds, readNotifIds]);
+  }, [user, netLiquidity, runwayMonths, currency, inventoryAlerts, transactions, deletedNotifIds, readNotifIds, serverNotifications]);
 
   const handleClearNotifications = () => {
     const allIds = notifications.map(n => n.id);
@@ -406,6 +463,32 @@ export const App: React.FC = () => {
       getTransactionsApi()
         .then(res => { if (res && res.length) setTransactions(res); })
         .catch(err => console.log('Transactions fetch error:', err));
+
+      getNotificationsApi()
+        .then(serverNotifs => {
+          if (Array.isArray(serverNotifs)) {
+            setServerNotifications(serverNotifs);
+            try {
+              const dismissedPopups = JSON.parse(localStorage.getItem('axis_dismissed_popups') || '[]');
+              const pendingPopup = serverNotifs.find((sn: any) => 
+                (sn.type === 'role_assigned' || sn.type === 'branch_created') && 
+                !sn.read && 
+                !dismissedPopups.includes(sn.id)
+              );
+              if (pendingPopup) {
+                setActiveInAppPopup({
+                  id: pendingPopup.id,
+                  title: pendingPopup.title,
+                  message: pendingPopup.message,
+                  time: pendingPopup.time,
+                  type: pendingPopup.type === 'role_assigned' ? 'info' : 'success',
+                  read: false
+                });
+              }
+            } catch {}
+          }
+        })
+        .catch(err => console.log('Notifications fetch error:', err));
     }
   }, [user?.user_id]);
 
@@ -683,6 +766,9 @@ export const App: React.FC = () => {
               {currentTab === 'business' && (
                 <MyBusinessPage currency={currency} user={user} />
               )}
+              {currentTab === 'activities' && (
+                <ActivitiesPage userRole={user?.role} isOwner={!user?.is_sub_user} />
+              )}
               {currentTab === 'forecast' && <ForecastPage currency={currency} />}
               {currentTab === 'settings' && (
                 <SettingsPage 
@@ -691,9 +777,17 @@ export const App: React.FC = () => {
                     setCurrency(c);
                     showToast(`Base currency switched to ${c === 'KES' ? 'Kenya Shillings (KSh)' : 'US Dollars ($)'}`);
                   }}
+                  theme={theme}
+                  onThemeChange={(t) => {
+                    setTheme(t);
+                    showToast(`Theme switched to ${t === 'light' ? 'Light' : t === 'dark' ? 'Dark' : 'System'} mode`);
+                  }}
                   user={user}
                   onUserUpdate={(updatedUser) => {
                     setUser(updatedUser);
+                    if (updatedUser.theme && updatedUser.theme !== theme) {
+                      setTheme(updatedUser.theme as 'light' | 'dark' | 'system');
+                    }
                     showToast('Profile updated successfully!');
                   }}
                 />
@@ -794,6 +888,80 @@ export const App: React.FC = () => {
           <div className="toast">
             <i className="fa-solid fa-circle-check" style={{ color: '#00d4ff' }}></i>
             <span>{toastMessage}</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── In-App Role Assignment & Branch Announcement Modal ── */}
+      {activeInAppPopup && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.78)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '1.25rem'
+        }}>
+          <div style={{
+            background: '#0d131f',
+            border: '1px solid rgba(0, 212, 255, 0.45)',
+            boxShadow: '0 24px 70px rgba(0, 0, 0, 0.9), 0 0 50px rgba(0, 212, 255, 0.25)',
+            borderRadius: '16px',
+            maxWidth: '520px',
+            width: '100%',
+            padding: '1.75rem',
+            position: 'relative'
+          }}>
+            <div style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: '14px',
+              background: 'rgba(0, 212, 255, 0.15)',
+              border: '1px solid rgba(0, 212, 255, 0.35)',
+              color: '#00d4ff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.35rem',
+              marginBottom: '1.2rem'
+            }}>
+              <i className="fa-solid fa-bell"></i>
+            </div>
+
+            <h3 style={{ margin: '0 0 0.5rem 0', color: '#ffffff', fontSize: '1.2rem', fontWeight: 700 }}>
+              {activeInAppPopup.title}
+            </h3>
+
+            <p style={{ margin: '0 0 1.5rem 0', color: '#9ca3af', fontSize: '0.9rem', lineHeight: 1.6 }}>
+              {activeInAppPopup.message}
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                onClick={() => {
+                  markNotificationReadApi(activeInAppPopup.id).catch(() => {});
+                  const dismissed = JSON.parse(localStorage.getItem('axis_dismissed_popups') || '[]');
+                  localStorage.setItem('axis_dismissed_popups', JSON.stringify([...dismissed, activeInAppPopup.id]));
+                  setActiveInAppPopup(null);
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, #00d4ff 0%, #0099ff 100%)',
+                  color: '#000000',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '0.65rem 1.4rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 15px rgba(0, 212, 255, 0.4)'
+                }}
+              >
+                Understood &amp; Continue
+              </button>
+            </div>
           </div>
         </div>
       )}

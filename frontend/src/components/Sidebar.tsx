@@ -95,6 +95,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {!isCollapsed && <span className="nav-label">My Business</span>}
         </button>
 
+        <button 
+          className={`nav-item ${currentTab === 'activities' ? 'active' : ''}`}
+          onClick={() => onTabChange('activities')}
+          title={isCollapsed ? "Activities" : undefined}
+        >
+          <div className="nav-icon-wrapper"><i className="fa-solid fa-clock-rotate-left"></i></div>
+          {!isCollapsed && <span className="nav-label">Activities</span>}
+        </button>
+
         <div className="nav-section-title">STRATEGY &amp; PLANNING</div>
         <button 
           className={`nav-item ${currentTab === 'forecast' ? 'active' : ''}`}

@@ -6,6 +6,7 @@ export type NavTab =
   | 'agent'
   | 'forecast'
   | 'business'
+  | 'activities'
   | 'settings';
 
 export type Currency = 'USD' | 'KES';
@@ -67,6 +68,7 @@ export interface Branch {
   phone?: string;
   email?: string;
   is_active: boolean;
+  is_main?: boolean;
   created_at?: string;
 }
 
@@ -115,3 +117,18 @@ export interface BranchPerformance {
   gross_margin_percent: number;
   transaction_count: number;
 }
+
+export interface ActivityLog {
+  id: string;
+  owner_id: string;
+  actor_id: string;
+  actor_name: string;
+  actor_role: string;
+  action: string;
+  title: string;
+  details: string;
+  branch_id?: string;
+  branch_name?: string;
+  timestamp: string;
+}
+

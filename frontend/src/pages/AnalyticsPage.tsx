@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import ChartJS from 'chart.js/auto';
 import { Currency, Transaction } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
+import { getBranchesApi, getAnalyticsApi } from '../utils/api';
 
 interface BusinessAnalyticsProps {
   currency?: Currency;
@@ -39,6 +40,10 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
   const chartInstanceRef = useRef<any>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [timeframe, setTimeframe] = useState<'24H' | '7D' | '30D' | '1Y'>('1Y');
+  const [branchFilter, setBranchFilter] = useState<string>('');
+  const [branches, setBranches] = useState<any[]>([]);
+  const [backendAnalytics, setBackendAnalytics] = useState<any | null>(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(() => {
     const cur = new Date().getMonth();
     return cur >= 0 && cur <= 11 ? cur : 7;
@@ -55,7 +60,19 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
     cat4Short: 'Growth & Admin'
   };
 
-  // Filter transactions by active timeframe and search query
+  useEffect(() => {
+    getBranchesApi().then(b => setBranches(Array.isArray(b) ? b : [])).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    setLoadingAnalytics(true);
+    getAnalyticsApi(branchFilter || undefined)
+      .then(data => setBackendAnalytics(data))
+      .catch(err => console.log('Analytics load error:', err))
+      .finally(() => setLoadingAnalytics(false));
+  }, [branchFilter]);
+
+  // Filter transactions by active timeframe, branchFilter, and search query
   const effectiveTransactions = useMemo(() => {
     if (!transactions || transactions.length === 0) return [];
     const now = Date.now();
@@ -70,6 +87,9 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
     const query = (searchQuery || '').toLowerCase().trim();
 
     return transactions.filter(t => {
+      if (branchFilter && t.branch_id && t.branch_id !== branchFilter) {
+        return false;
+      }
       if (t.date) {
         const tTime = new Date(t.date).getTime();
         if (!isNaN(tTime) && tTime < cutoff) return false;
@@ -82,7 +102,7 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
       }
       return true;
     });
-  }, [transactions, timeframe, searchQuery]);
+  }, [transactions, timeframe, searchQuery, branchFilter]);
 
   // Dynamically compute monthly records from real transactions
   const monthlyData: MonthlyRecord[] = useMemo(() => {
@@ -267,25 +287,62 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
   const totalCat4 = monthlyData.reduce((acc, curr) => acc + curr.cat4, 0);
   const grandAnnualTotal = totalCat1 + totalCat2 + totalCat3 + totalCat4;
 
+  // Selected branch label
+  const activeBranchName = branchFilter
+    ? branches.find(b => b.id === branchFilter)?.name || 'Selected Branch'
+    : 'Whole Business (All Branches)';
+
   return (
     <div className="tab-view active">
       {/* Header View */}
       <div className="view-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-            <span className="pill-tag cyan">PERFORMANCE DATA</span>
-            <span className="pill-tag lilac">BUSINESS UNIT OVERVIEW</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+            <span className="pill-tag cyan">BUSINESS INTELLIGENCE</span>
+            <span className="pill-tag lilac">{activeBranchName.toUpperCase()}</span>
           </div>
           <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', margin: 0, fontFamily: 'Plus Jakarta Sans' }}>
-            Business Financial Performance
+            Operations & Scalability Analytics
           </h2>
           <p className="subtitle" style={{ color: '#9ca3af', marginTop: '0.25rem' }}>
-            Financial performance and cost breakdowns across your business.
+            Multi-branch operational performance, unit economics, and scalability metrics.
           </p>
         </div>
 
-        {/* Timeframe presets and Quarter View */}
+        {/* Controls: Branch Scope & Timeframes */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
+          {/* Branch Filter Selector */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0, 212, 255, 0.08)', border: '1px solid rgba(0, 212, 255, 0.3)', borderRadius: '10px', padding: '4px 10px' }}>
+            <span style={{ fontSize: '0.72rem', fontFamily: 'JetBrains Mono', color: '#00d4ff', fontWeight: 700 }}>
+              <i className="fa-solid fa-code-branch" style={{ marginRight: '4px' }}></i> BRANCH:
+            </span>
+            <select
+              value={branchFilter}
+              onChange={e => setBranchFilter(e.target.value)}
+              style={{
+                background: '#141418',
+                color: '#fff',
+                border: 'none',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                outline: 'none',
+                cursor: 'pointer',
+                padding: '4px 6px'
+              }}
+            >
+              <option value="">Whole Business (All Branches)</option>
+              {branches.map(b => (
+                <option key={b.id} value={b.id}>
+                  {b.name} {b.is_main ? '· (HQ)' : ''}
+                </option>
+              ))}
+            </select>
+            {loadingAnalytics && (
+              <i className="fa-solid fa-spinner fa-spin" style={{ color: '#00d4ff', fontSize: '0.75rem' }}></i>
+            )}
+          </div>
+
+          {/* Timeframe presets */}
           <div className="timeframe-selector" style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.15)', padding: '4px' }}>
             <span style={{ fontSize: '0.7rem', fontFamily: 'JetBrains Mono', color: '#9ca3af', marginRight: '6px', alignSelf: 'center', paddingLeft: '6px' }}>TIMEFRAME:</span>
             {(['24H', '7D', '30D', '1Y'] as const).map(tf => (
@@ -301,12 +358,113 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
 
           <div className="timeframe-selector" style={{ background: 'rgba(0, 212, 255, 0.08)', border: '1px solid rgba(0, 212, 255, 0.25)', padding: '4px' }}>
             <span style={{ fontSize: '0.7rem', fontFamily: 'JetBrains Mono', color: '#9ca3af', marginRight: '6px', alignSelf: 'center', paddingLeft: '6px' }}>VIEW:</span>
-            <button className="tf-btn" onClick={() => handleScrollToRange(0)}>Q1 (Jan-Apr)</button>
-            <button className="tf-btn" onClick={() => handleScrollToRange(4)}>Q2/Q3 (May-Aug)</button>
-            <button className="tf-btn" onClick={() => handleScrollToRange(8)}>Q4 (Sep-Dec)</button>
+            <button className="tf-btn" onClick={() => handleScrollToRange(0)}>Q1</button>
+            <button className="tf-btn" onClick={() => handleScrollToRange(4)}>Q2/Q3</button>
+            <button className="tf-btn" onClick={() => handleScrollToRange(8)}>Q4</button>
           </div>
         </div>
       </div>
+
+      {/* High-Level Financial & Scalability KPI Row */}
+      {backendAnalytics && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+          {[
+            { label: 'Total Revenue', value: formatCurrency(backendAnalytics.total_revenue || 0, currency), icon: 'fa-arrow-trend-up', color: '#4ade80' },
+            { label: 'Operating Expenses', value: formatCurrency(backendAnalytics.total_expenses || 0, currency), icon: 'fa-arrow-trend-down', color: '#f87171' },
+            { label: 'Net Cash Balance', value: formatCurrency(backendAnalytics.cash_balance || 0, currency), icon: 'fa-wallet', color: (backendAnalytics.cash_balance || 0) >= 0 ? '#00d4ff' : '#f59e0b' },
+            { label: 'Operating Margin', value: `${backendAnalytics.net_margin || 0}%`, icon: 'fa-percent', color: '#a78bfa' },
+            { label: 'Projected Runway', value: `${backendAnalytics.projected_runway_months || 0} mos`, icon: 'fa-hourglass-half', color: '#3cd7ff' },
+            { label: 'Stock Valuation', value: formatCurrency(backendAnalytics.inventory_summary?.total_valuation || 0, currency), icon: 'fa-boxes-stacked', color: '#f59e0b' },
+          ].map(({ label, value, icon, color }) => (
+            <div key={label} className="glass-card" style={{ padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <i className={`fa-solid ${icon}`} style={{ color, fontSize: '0.9rem' }}></i>
+                <span style={{ fontSize: '0.72rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase' }}>{label}</span>
+              </div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color, fontFamily: 'Plus Jakarta Sans' }}>{value}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* MULTI-BRANCH COMPARISON & SCALABILITY SECTION */}
+      {!branchFilter && backendAnalytics?.branch_breakdown && backendAnalytics.branch_breakdown.length > 0 && (
+        <div className="glass-card" style={{ padding: '24px', borderRadius: '16px', border: '1px solid rgba(0, 212, 255, 0.25)', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <i className="fa-solid fa-code-compare" style={{ color: '#00d4ff' }}></i>
+                Branch Performance & Scalability Comparison
+              </h3>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: '#9ca3af' }}>
+                Cross-branch operational efficiency, revenue contribution share, and growth scalability ratings.
+              </p>
+            </div>
+            {backendAnalytics.top_performing_branch && (
+              <div style={{ padding: '6px 14px', borderRadius: '20px', background: 'rgba(74, 222, 128, 0.12)', border: '1px solid rgba(74, 222, 128, 0.35)', color: '#4ade80', fontSize: '0.78rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center' }}>
+                <i className="fa-solid fa-trophy" style={{ color: '#fbbf24', marginRight: '6px' }}></i> Top Performer: {backendAnalytics.top_performing_branch}
+              </div>
+            )}
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#9ca3af', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <th style={{ padding: '10px 14px' }}>Branch</th>
+                  <th style={{ padding: '10px 14px' }}>Location</th>
+                  <th style={{ padding: '10px 14px' }}>Revenue</th>
+                  <th style={{ padding: '10px 14px' }}>Expenses</th>
+                  <th style={{ padding: '10px 14px' }}>Net Profit</th>
+                  <th style={{ padding: '10px 14px' }}>Margin</th>
+                  <th style={{ padding: '10px 14px' }}>Share of Business</th>
+                  <th style={{ padding: '10px 14px' }}>Scalability Rating</th>
+                </tr>
+              </thead>
+              <tbody>
+                {backendAnalytics.branch_breakdown.map((b: any) => (
+                  <tr key={b.branch_id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.2s ease' }}>
+                    <td style={{ padding: '12px 14px', fontWeight: 700, color: '#fff' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <i className="fa-solid fa-store" style={{ color: '#00d4ff', fontSize: '0.85rem' }}></i>
+                        {b.name}
+                        {b.is_main && <span style={{ fontSize: '0.62rem', background: '#00d4ff20', color: '#00d4ff', padding: '1px 6px', borderRadius: '10px' }}>HQ</span>}
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: '0.8rem' }}>{b.location}</td>
+                    <td style={{ padding: '12px 14px', color: '#4ade80', fontFamily: 'JetBrains Mono', fontWeight: 700 }}>{formatCurrency(b.revenue, currency)}</td>
+                    <td style={{ padding: '12px 14px', color: '#f87171', fontFamily: 'JetBrains Mono' }}>{formatCurrency(b.expenses, currency)}</td>
+                    <td style={{ padding: '12px 14px', color: b.net_cash >= 0 ? '#00d4ff' : '#f59e0b', fontFamily: 'JetBrains Mono', fontWeight: 700 }}>{formatCurrency(b.net_cash, currency)}</td>
+                    <td style={{ padding: '12px 14px', color: '#a78bfa', fontWeight: 600 }}>{b.margin_percent}%</td>
+                    <td style={{ padding: '12px 14px', minWidth: '130px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ flex: 1, height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                          <div style={{ width: `${Math.min(100, b.revenue_share_percent)}%`, height: '100%', background: 'linear-gradient(90deg, #00d4ff, #a78bfa)', borderRadius: '3px' }} />
+                        </div>
+                        <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#e5e2e1', width: '36px' }}>{b.revenue_share_percent}%</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px 14px' }}>
+                      <span style={{
+                        fontSize: '0.72rem', padding: '3px 10px', borderRadius: '20px', fontWeight: 600,
+                        background: b.scalability_badge === 'success' ? 'rgba(74, 222, 128, 0.15)' :
+                          b.scalability_badge === 'cyan' ? 'rgba(0, 212, 255, 0.15)' :
+                          b.scalability_badge === 'warning' ? 'rgba(251, 191, 36, 0.15)' : 'rgba(255, 142, 142, 0.15)',
+                        color: b.scalability_badge === 'success' ? '#4ade80' :
+                          b.scalability_badge === 'cyan' ? '#00d4ff' :
+                          b.scalability_badge === 'warning' ? '#fbbf24' : '#ff8e8e',
+                        border: '1px solid currentColor'
+                      }}>
+                        {b.scalability_grade}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Real data notification banner if no transactions logged yet */}
       {!hasAnyData && (
@@ -322,21 +480,21 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
         }}>
           <i className="fa-solid fa-circle-info" style={{ color: '#00d4ff', fontSize: '1.2rem', flexShrink: 0 }}></i>
           <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
-            <strong style={{ color: '#fff' }}>No transaction records for the current year yet.</strong> As you log revenue and expenses in the Ledger, this dashboard dynamically aggregates and visualizes your monthly business unit metrics.
+            <strong style={{ color: '#fff' }}>No transaction records for the selected scope.</strong> As you log revenue and expenses in the Ledger, this dashboard dynamically aggregates and visualizes your monthly business unit metrics.
           </div>
         </div>
       )}
 
       {/* Main Layout Grid (Left: 12-Month Scrollable Graph | Right: Historical Data Sidebar) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
         
         {/* LEFT PANEL: 12-Month Performance Scrollable Graph */}
         <div className="glass-card" style={{ padding: '1.5rem', borderRadius: '1.1rem', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '10px' }}>
             <div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff', fontFamily: 'Plus Jakarta Sans', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <i className="fa-solid fa-chart-simple" style={{ color: '#00d4ff' }}></i>
-                Business Unit Performance (12 Months)
+                Unit Economics Breakdown (12 Months)
               </h3>
               <span style={{ fontSize: '0.78rem', color: '#9ca3af' }}>
                 Showing <strong>4 months visible at a time</strong>. Scroll horizontally or drag to inspect all 12 months.
