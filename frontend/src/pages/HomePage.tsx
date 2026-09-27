@@ -16,12 +16,12 @@ const XIcon: React.FC<{ size?: number; color?: string; style?: React.CSSProperti
 );
 
 const FEATURES = [
-  { icon: 'fa-chart-line', color: '#00d4ff', glow: 'rgba(0, 212, 255, 0.3)', title: 'Financial Growth', desc: 'Real-time revenue tracking, gross margin growth, and expense breakdowns in clear visual charts.', badge: 'Visual Charts' },
-  { icon: 'fa-boxes-stacked', color: '#cebdff', glow: 'rgba(206, 189, 255, 0.3)', title: 'Inventory Management', desc: 'Real-time stock tracking, reorder alerts, and product inventory management across your business.', badge: 'Live Stock' },
-  { icon: 'fa-coins', color: '#a78bfa', glow: 'rgba(167, 139, 250, 0.3)', title: 'Multi-Currency Flow', desc: 'Unified transaction records with native multi-currency support in US Dollars (USD) and Kenya Shillings (KES).', badge: 'USD & KES' },
-  { icon: 'fa-square-poll-vertical', color: '#00d4ff', glow: 'rgba(0, 212, 255, 0.3)', title: 'Business Analytics', desc: '12-month business performance tracking with monthly historical breakdowns and trend insights.', badge: 'Analytics' },
-  { icon: 'fa-cubes-stacked', color: '#cebdff', glow: 'rgba(206, 189, 255, 0.3)', title: 'Runway Simulator', desc: 'Financial scenario planning to project your cash runway, monthly burn rate, and growth impact.', badge: 'Simulations' },
-  { icon: 'fa-receipt', color: '#a78bfa', glow: 'rgba(167, 139, 250, 0.3)', title: 'Ledger & Transactions', desc: 'Double-entry transaction records with categorical tracking and instantaneous audit-ready exports.', badge: 'Ledger Data' },
+  { icon: 'fa-chart-line', color: '#00d4ff', glow: 'rgba(0, 212, 255, 0.3)', title: 'Financial Growth', desc: 'Track your revenue, profit margins, and daily expenses in clear, easy-to-read charts.', badge: 'Visual Charts' },
+  { icon: 'fa-boxes-stacked', color: '#cebdff', glow: 'rgba(206, 189, 255, 0.3)', title: 'Inventory Management', desc: 'Real-time stock tracking, low-inventory alerts, and simple product management across your business.', badge: 'Live Stock' },
+  { icon: 'fa-coins', color: '#a78bfa', glow: 'rgba(167, 139, 250, 0.3)', title: 'Multi-Currency Flow', desc: 'Keep all transactions organized with built-in support for US Dollars (USD) and Kenya Shillings (KES).', badge: 'USD & KES' },
+  { icon: 'fa-square-poll-vertical', color: '#00d4ff', glow: 'rgba(0, 212, 255, 0.3)', title: 'Business Analytics', desc: '12-month business performance tracking with simple monthly summaries and helpful trend insights.', badge: 'Analytics' },
+  { icon: 'fa-cubes-stacked', color: '#cebdff', glow: 'rgba(206, 189, 255, 0.3)', title: 'Runway Simulator', desc: 'Plan ahead to see how long your cash will last, track monthly spending, and test new hiring or costs safely.', badge: 'Cash Planning' },
+  { icon: 'fa-receipt', color: '#a78bfa', glow: 'rgba(167, 139, 250, 0.3)', title: 'Ledger & Transactions', desc: 'Simple record-keeping for money coming in and going out, with one-click downloads whenever you need them.', badge: 'Clean Records' },
 ];
 
 const OFFICES = [
@@ -36,23 +36,23 @@ const PRIVACY_SECTIONS = [
     content: [
       { sub: 'Account & Identity Data', text: 'When you register for Axis Black, we collect your name, email address, company name, job title, and billing information to provide access to our platform.' },
       { sub: 'Financial & Operational Data', text: 'We process financial data that you input or import into the platform, including transaction records, revenue figures, expense data, inventory records, and cash flow projections.' },
-      { sub: 'Usage & Communication Data', text: 'We automatically collect interaction metrics to continuously improve platform performance, along with support message archives.' },
+      { sub: 'Usage & Communication Data', text: 'We collect standard app usage information to keep the platform fast and reliable, along with messages sent to our support team.' },
     ],
   },
   {
     id: '2',
     title: '2. How We Use Your Information',
     content: [
-      { sub: 'Service Delivery & Business Intelligence', text: 'Your financial data is processed securely to generate cash flow analytics, unit economics, and runway forecasts without training third-party public models.' },
-      { sub: 'Security & Compliance', text: 'To detect anomalous access and comply with applicable data protection regulations including the Kenya Data Protection Act (2019) and GDPR.' },
+      { sub: 'Service Delivery & Business Insights', text: 'Your business numbers are processed privately to calculate your profits, cash flow, and runway estimates. We never sell your data or share it with third parties.' },
+      { sub: 'Security & Compliance', text: 'To detect unauthorized access and comply with applicable data protection regulations including the Kenya Data Protection Act (2019) and GDPR.' },
     ],
   },
   {
     id: '3',
     title: '3. Data Security & Your Rights',
     content: [
-      { sub: 'Security Standard', text: 'AES-256 encryption at rest and TLS 1.3 in transit with dedicated regional infrastructure nodes.' },
-      { sub: 'Your Rights', text: 'Full right of access, portability, correction, and deletion at any time by contacting secherodalvine@gmail.com.' },
+      { sub: 'Security Standard', text: 'Bank-grade encryption protects your information at all times, both in storage and during transmission.' },
+      { sub: 'Your Rights', text: 'Full right to view, download, correct, or delete your information at any time by contacting secherodalvine@gmail.com.' },
     ],
   },
 ];
@@ -279,13 +279,11 @@ export const HomePage: React.FC<HomePageProps> = ({
           >
             <div style={{ textAlign: 'center', maxWidth: '960px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <h1 className="home-hero-title">
-                Optimize Your<br />
-                <span className="home-hero-gradient">Financial Operations</span>
+                Take Control of Your<br />
+                <span className="home-hero-gradient">Business Finances</span>
               </h1>
               <p className="home-hero-sub">
-                Axis Black is a business management platform built for founders,
-                operators, and teams who need clear, real-time visibility across revenue, inventory,
-                cash flow, and growth — all in one place.
+                Axis Black brings your transactions, inventory, cash flow, and runway predictions into one clear workspace. Built for business owners and operators who want clarity, control, and peace of mind.
               </p>
               <div className="home-hero-actions">
                 <button className="home-btn-primary" onClick={onNavigateRegister || onNavigateLogin}>
@@ -307,7 +305,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                   <span className="home-preview-dot" style={{ background: '#febc2e' }}></span>
                   <span className="home-preview-dot" style={{ background: '#28c840' }}></span>
                   <span style={{ fontSize: '0.8rem', color: '#9ca3af', fontFamily: 'JetBrains Mono', marginLeft: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <i className="fa-solid fa-gauge-high" style={{ color: '#00d4ff' }}></i> Dashboard · Live Financial Telemetry
+                    <i className="fa-solid fa-gauge-high" style={{ color: '#00d4ff' }}></i> Dashboard · Live Financial Overview
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -328,10 +326,10 @@ export const HomePage: React.FC<HomePageProps> = ({
                     </div>
                     <div>
                       <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#ffffff', fontFamily: 'Plus Jakarta Sans' }}>
-                        Automated Financial Intelligence: Positive Cash Position &amp; Stable Runway
+                        Automated Financial Summary: Positive Cash Position &amp; Healthy Runway
                       </div>
                       <div style={{ fontSize: '0.76rem', color: '#9ca3af', marginTop: '2px' }}>
-                        Operating profit margin is healthy at 56.2%. Cash reserves projected to sustain 14.8 months of operational burn.
+                        Operating profit margin is healthy at 56.2%. Cash reserves are projected to last 14.8 months at current spending.
                       </div>
                     </div>
                   </div>
@@ -367,7 +365,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                     </div>
                     <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ffffff', fontFamily: 'JetBrains Mono' }}>$198,000</div>
                     <div style={{ fontSize: '0.72rem', color: '#cebdff', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <i className="fa-solid fa-arrow-trend-down"></i> Money Out · Ops &amp; COGS
+                      <i className="fa-solid fa-arrow-trend-down"></i> Money Out · Running Costs &amp; Bills
                     </div>
                   </div>
 
@@ -388,14 +386,14 @@ export const HomePage: React.FC<HomePageProps> = ({
                   {/* Projected Runway */}
                   <div style={{ background: 'rgba(255, 255, 255, 0.025)', border: '1px solid rgba(0, 212, 255, 0.25)', borderRadius: '14px', padding: '16px 18px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '0.72rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Projected Runway</span>
+                      <span style={{ fontSize: '0.72rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Cash Runway</span>
                       <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: 'rgba(0, 212, 255, 0.15)', color: '#00d4ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem' }}>
                         <i className="fa-solid fa-hourglass-half"></i>
                       </div>
                     </div>
                     <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#00d4ff', fontFamily: 'JetBrains Mono' }}>14.8 Months</div>
                     <div style={{ fontSize: '0.72rem', color: '#4ade80', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <i className="fa-solid fa-shield-halved"></i> Stable Runway Buffer
+                      <i className="fa-solid fa-shield-halved"></i> Healthy Cash Buffer
                     </div>
                   </div>
 
@@ -494,7 +492,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#fff', fontFamily: 'Plus Jakarta Sans', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <i className="fa-solid fa-pie-chart" style={{ color: '#a78bfa' }}></i>
-                        Capital &amp; Asset Distribution
+                        Cash &amp; Asset Breakdown
                       </div>
                       <span style={{ fontSize: '0.72rem', color: '#9ca3af', fontFamily: 'JetBrains Mono' }}>Total: $740,000</span>
                     </div>
@@ -503,7 +501,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#cbd5e1', marginBottom: '3px' }}>
-                          <span>Liquid Cash Reserves</span>
+                          <span>Available Cash in Bank</span>
                           <span style={{ color: '#00d4ff', fontFamily: 'JetBrains Mono', fontWeight: 600 }}>45% ($333,000)</span>
                         </div>
                         <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
@@ -513,7 +511,7 @@ export const HomePage: React.FC<HomePageProps> = ({
 
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#cbd5e1', marginBottom: '3px' }}>
-                          <span>Active Warehouse Stock</span>
+                          <span>Inventory &amp; Stock on Hand</span>
                           <span style={{ color: '#cebdff', fontFamily: 'JetBrains Mono', fontWeight: 600 }}>35% ($259,000)</span>
                         </div>
                         <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
@@ -523,7 +521,7 @@ export const HomePage: React.FC<HomePageProps> = ({
 
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#cbd5e1', marginBottom: '3px' }}>
-                          <span>Accounts Receivable</span>
+                          <span>Money Owed by Customers</span>
                           <span style={{ color: '#a78bfa', fontFamily: 'JetBrains Mono', fontWeight: 600 }}>20% ($148,000)</span>
                         </div>
                         <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
@@ -534,7 +532,7 @@ export const HomePage: React.FC<HomePageProps> = ({
 
                     {/* Quick Verified Ledger Entries Snippet */}
                     <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <span style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Recent Verified Movements</span>
+                      <span style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Recent Verified Transactions</span>
                       
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', padding: '4px 0' }}>
                         <span style={{ color: '#ffffff', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -562,8 +560,8 @@ export const HomePage: React.FC<HomePageProps> = ({
           {/* FEATURES SECTION CONTAINER (WITHOUT "Platform Capabilities" EYEBROW BADGE) */}
           <section id="features" className="home-features scroll-reveal">
             <div className="home-section-header">
-              <h2 className="home-section-title">Everything you need to run<br /><span className="home-hero-gradient">a world-class operation</span></h2>
-              <p className="home-section-sub">Six powerful connected financial and management tools built for clear decision making.</p>
+              <h2 className="home-section-title">Everything you need to run<br /><span className="home-hero-gradient">a thriving business</span></h2>
+              <p className="home-section-sub">Six simple, connected tools to keep your money, stock, and records organized.</p>
             </div>
             <div className="home-features-grid">
               {FEATURES.map((f, i) => (
@@ -597,7 +595,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               <div className="home-cta-glow-cyan" />
               <div className="home-cta-glow-lilac" />
               <h2 className="home-cta-title">Your business dashboard<br />is ready</h2>
-              <p className="home-cta-sub">Step into Axis Black and get clear, real-time visibility into your business finances.</p>
+              <p className="home-cta-sub">Step into Axis Black and get clear, real-time control of your business finances.</p>
               <button className="home-btn-primary home-cta-btn" onClick={onEnterDashboard}>
                 <i className="fa-solid fa-gauge-high"></i> Launch Dashboard
               </button>
@@ -615,11 +613,11 @@ export const HomePage: React.FC<HomePageProps> = ({
           
           <div className="home-section-header" style={{ textAlign: 'left', marginBottom: '40px' }}>
             <h1 className="home-section-title" style={{ fontSize: '2.5rem' }}>
-              The Operating System for<br />
+              The Clear Workspace for<br />
               <span className="home-hero-gradient">Modern Business Operations</span>
             </h1>
             <p className="home-section-sub" style={{ margin: '14px 0 0 0', maxWidth: '800px', fontSize: '1.05rem', lineHeight: 1.6 }}>
-              Axis Black connects your transactions, inventory, cash flow, and runway predictions into one real-time workspace. Built for business operators who demand clarity, precision, and speed.
+              Axis Black brings your transactions, inventory, cash flow, and runway predictions into one real-time workspace. Built for business owners and operators who want clarity, control, and peace of mind.
             </p>
           </div>
 
@@ -639,23 +637,23 @@ export const HomePage: React.FC<HomePageProps> = ({
           {/* 3 Step Workflow */}
           <div style={{ background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(167, 139, 250, 0.05))', border: '1px solid rgba(0, 212, 255, 0.2)', borderRadius: '20px', padding: '36px', marginBottom: '48px' }}>
             <h2 style={{ color: '#fff', fontSize: '1.6rem', marginBottom: '8px', fontFamily: 'Plus Jakarta Sans' }}>How It Works</h2>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '28px', fontSize: '0.92rem' }}>From data entry to executive strategic decisions in seconds.</p>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '28px', fontSize: '0.92rem' }}>From recording daily numbers to making smart business decisions in seconds.</p>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px' }}>
               <div>
                 <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#00d4ff', fontFamily: 'JetBrains Mono', marginBottom: '8px' }}>01</div>
                 <h4 style={{ color: '#fff', fontSize: '1.1rem', marginBottom: '6px' }}>Log or Import Data</h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.5 }}>Record daily sales, supplier costs, stock arrivals, or import CSV files directly into your ledgers.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.5 }}>Record daily sales, supplier costs, stock arrivals, or import CSV spreadsheets directly into your records.</p>
               </div>
               <div>
                 <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#cebdff', fontFamily: 'JetBrains Mono', marginBottom: '8px' }}>02</div>
-                <h4 style={{ color: '#fff', fontSize: '1.1rem', marginBottom: '6px' }}>Live Engine Telemetry</h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.5 }}>Calculations happen in real-time — gross margins, inventory turnover, and cash burn rate adjust automatically.</p>
+                <h4 style={{ color: '#fff', fontSize: '1.1rem', marginBottom: '6px' }}>Instant Automatic Calculations</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.5 }}>Calculations happen in real time — profit margins, stock levels, and monthly spending adjust automatically.</p>
               </div>
               <div>
                 <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#4ade80', fontFamily: 'JetBrains Mono', marginBottom: '8px' }}>03</div>
-                <h4 style={{ color: '#fff', fontSize: '1.1rem', marginBottom: '6px' }}>Take Decisive Action</h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.5 }}>Order inventory before stockouts occur, forecast new hiring scenarios, and protect business profitability.</p>
+                <h4 style={{ color: '#fff', fontSize: '1.1rem', marginBottom: '6px' }}>Take Confident Action</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.5 }}>Order inventory before stock runs out, test new hiring plans safely, and protect business profitability.</p>
               </div>
             </div>
           </div>
@@ -664,7 +662,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           <div style={{ textAlign: 'center', padding: '32px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
             <h3 style={{ color: '#fff', fontSize: '1.4rem', marginBottom: '10px' }}>Experience Axis Black Today</h3>
             <p style={{ color: 'var(--text-muted)', marginBottom: '20px', maxWidth: '560px', margin: '0 auto 24px auto' }}>
-              Join operators who have replaced scattered spreadsheets with real-time financial control.
+              Join business operators who have replaced scattered spreadsheets with real-time financial control.
             </p>
             <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button className="home-btn-primary" onClick={onNavigateRegister || onNavigateLogin}>
@@ -691,7 +689,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               <span className="home-hero-gradient">of every kind</span>
             </h1>
             <p className="home-section-sub" style={{ margin: '14px 0 0 0', maxWidth: '780px', fontSize: '1.05rem', lineHeight: 1.6 }}>
-              Axis Black was engineered to eliminate spreadsheet chaos and bring enterprise-grade financial intelligence to business operators across Africa and globally.
+              Axis Black was built to eliminate spreadsheet chaos and bring clear, professional financial management to business owners and operators across Africa and worldwide.
             </p>
           </div>
 
@@ -701,14 +699,14 @@ export const HomePage: React.FC<HomePageProps> = ({
               <div style={{ color: '#00d4ff', fontSize: '2rem', marginBottom: '16px' }}><i className="fa-solid fa-bullseye"></i></div>
               <h3 style={{ color: '#fff', fontSize: '1.4rem', marginBottom: '12px' }}>Our Mission</h3>
               <p style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}>
-                To make powerful business financial tools accessible to every business — from single-location startups to multi-branch enterprises — with real-time analytics, transparent bookkeeping, and native multi-currency support at every stage of growth.
+                To make simple, powerful business financial tools accessible to every business — from local shops and startups to multi-branch companies — with clear visual tracking, honest bookkeeping, and easy multi-currency support at every stage of growth.
               </p>
             </div>
             <div className="info-card info-card-lilac" style={{ background: 'rgba(206, 189, 255, 0.04)', border: '1px solid rgba(206, 189, 255, 0.2)', borderRadius: '16px', padding: '32px' }}>
               <div style={{ color: '#cebdff', fontSize: '2rem', marginBottom: '16px' }}><i className="fa-solid fa-eye"></i></div>
               <h3 style={{ color: '#fff', fontSize: '1.4rem', marginBottom: '12px' }}>Our Vision</h3>
               <p style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}>
-                A world where every business operator has access to the same financial transparency and operational intelligence that power the world's most sophisticated companies — with seamless multi-currency support and local context.
+                A world where every business owner has total clarity on their money, profits, and stock — with easy multi-currency support and tools built for real businesses.
               </p>
             </div>
           </div>
@@ -752,7 +750,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               <span className="home-hero-gradient">hear from you</span>
             </h1>
             <p className="home-section-sub" style={{ margin: '12px 0 0 0', maxWidth: '780px', fontSize: '1.05rem', lineHeight: 1.6 }}>
-              Have questions, need an enterprise demo, or ready to onboard your team? Connect with our team directly or send us a message below.
+              Have questions, want a product walk-through, or ready to get started? Connect with our team directly or send us a message below.
             </p>
           </div>
 
@@ -917,10 +915,10 @@ export const HomePage: React.FC<HomePageProps> = ({
                       style={{ width: '100%', padding: '12px 16px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', color: '#fff' }}
                     >
                       <option value="">Select a subject...</option>
-                      <option value="Demo">Platform Demo</option>
-                      <option value="Pricing">Enterprise Pricing</option>
-                      <option value="Support">Technical Support</option>
-                      <option value="Partnership">Partnership</option>
+                      <option value="Demo">Product Walkthrough</option>
+                      <option value="Pricing">Pricing &amp; Plans</option>
+                      <option value="Support">Customer Support</option>
+                      <option value="Partnership">Partnerships</option>
                     </select>
                   </div>
                   <div>
@@ -1041,8 +1039,8 @@ export const HomePage: React.FC<HomePageProps> = ({
               <span className="home-nav-wordmark">AXIS<span>BLACK</span></span>
             </div>
             <p className="home-footer-tagline">
-              Business financial management for operators who need clarity and control.
-              Real-time visibility. Built for any business.
+              Simple financial management for business owners who want clarity and peace of mind.
+              Real-time numbers. Built for any business.
             </p>
             <div className="home-footer-socials">
               <a
