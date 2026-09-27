@@ -939,6 +939,8 @@ html, body {
   .global-search-bar {
     max-width: 640px !important;
   }
+}
+
 @keyframes fadeInUp {
   from {
     opacity: 0;
