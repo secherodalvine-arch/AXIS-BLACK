@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { NavTab, Timeframe, Currency } from '../types';
 import { formatNotificationTime, formatNotificationDetailTime } from '../utils/dateUtils';
-import { usePwaInstall } from '../utils/usePwaInstall';
 
 export interface SystemNotification {
   id: string;
@@ -28,7 +27,7 @@ interface HeaderProps {
   onMarkAllRead?: () => void;
   onCurrencyChange?: (c: Currency) => void;
   onTimeframeChange?: (tf: Timeframe) => void;
-  onOpenNewTxnModal: () => void;
+  onOpenNewTxnModal?: () => void;
   onOpenVoiceAgent?: () => void;
   onToggleMobileMenu: () => void;
   onSearchChange: (query: string) => void;
@@ -65,7 +64,7 @@ export const Header: React.FC<HeaderProps> = ({
   onMarkAllRead,
   onCurrencyChange: _onCurrencyChange,
   onTimeframeChange: _onTimeframeChange,
-  onOpenNewTxnModal,
+  onOpenNewTxnModal: _onOpenNewTxnModal,
   onOpenVoiceAgent,
   onToggleMobileMenu,
   onSearchChange,
@@ -78,7 +77,6 @@ export const Header: React.FC<HeaderProps> = ({
   const [localNotifications, setLocalNotifications] = useState<SystemNotification[]>([]);
   const [notifFilter, setNotifFilter] = useState<'all' | 'unread'>('all');
   const [selectedNotif, setSelectedNotif] = useState<SystemNotification | null>(null);
-  const { isInstallable, isInstalled, installApp } = usePwaInstall();
 
   const notifications = propNotifications ?? localNotifications;
   const setNotifications = setLocalNotifications;
@@ -152,31 +150,6 @@ export const Header: React.FC<HeaderProps> = ({
 
       <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'nowrap' }}>
 
-        {isInstallable && !isInstalled && (
-          <button 
-            className="action-btn-secondary pwa-header-btn" 
-            onClick={installApp}
-            style={{
-              background: 'rgba(206, 189, 255, 0.12)',
-              border: '1px solid rgba(206, 189, 255, 0.35)',
-              color: 'var(--primary-lilac-glow, #cebdff)',
-              padding: '7px 12px',
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontWeight: 600,
-              fontSize: '0.82rem',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap'
-            }}
-            title="Install Axis Black PWA App"
-          >
-            <i className="fa-solid fa-download"></i>
-            <span>Install App</span>
-          </button>
-        )}
-
         {onOpenVoiceAgent && (
           <button 
             className="action-btn-secondary voice-header-btn" 
@@ -201,11 +174,6 @@ export const Header: React.FC<HeaderProps> = ({
             <span>Voice Support</span>
           </button>
         )}
-
-        <button className="action-btn-primary" onClick={onOpenNewTxnModal} style={{ padding: '7px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-          <i className="fa-solid fa-plus"></i>
-          <span>New Entry</span>
-        </button>
 
         <div className="header-divider" style={{ width: '1px', height: '24px', background: 'var(--header-divider, rgba(255, 255, 255, 0.12))', margin: '0 2px' }}></div>
 

@@ -74,39 +74,48 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
           <h3>Scenario Parameters</h3>
           
           <div className="form-group" style={{ marginTop: '20px' }}>
-            <label style={{ fontSize: '0.82rem', color: '#9ca3af' }}>Monthly Revenue Growth: <strong>{revGrowth}%</strong></label>
+            <label className="runway-param-label">
+              <span>Monthly Revenue Growth</span>
+              <strong className="runway-param-value">{revGrowth}%</strong>
+            </label>
             <input 
               type="range" 
+              className="runway-slider"
               min="-10" 
               max="30" 
               value={revGrowth}
               onChange={(e) => setRevGrowth(Number(e.target.value))}
-              style={{ width: '100%', marginTop: '6px' }}
             />
           </div>
 
           <div className="form-group" style={{ marginTop: '20px' }}>
-            <label style={{ fontSize: '0.82rem', color: '#9ca3af' }}>Headcount Expansion (Hires / month): <strong>{newHires}</strong></label>
+            <label className="runway-param-label">
+              <span>Headcount Expansion (Hires / mo)</span>
+              <strong className="runway-param-value">{newHires}</strong>
+            </label>
             <input 
               type="range" 
+              className="runway-slider"
               min="0" 
               max="10" 
               value={newHires}
               onChange={(e) => setNewHires(Number(e.target.value))}
-              style={{ width: '100%', marginTop: '6px' }}
             />
           </div>
 
           <div className="form-group" style={{ marginTop: '20px' }}>
-            <label style={{ fontSize: '0.82rem', color: '#9ca3af' }}>Marketing Expenditure Shift: <strong>{formatCurrency(mktBudget, currency)}</strong></label>
+            <label className="runway-param-label">
+              <span>Marketing Expenditure Shift</span>
+              <strong className="runway-param-value">{formatCurrency(mktBudget, currency)}</strong>
+            </label>
             <input 
               type="range" 
+              className="runway-slider"
               min="0" 
               max="50000" 
               step="5000"
               value={mktBudget}
               onChange={(e) => setMktBudget(Number(e.target.value))}
-              style={{ width: '100%', marginTop: '6px' }}
             />
           </div>
         </div>
@@ -114,14 +123,14 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
         <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
           {isLoading ? (
             <>
-              <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '2rem', color: '#00d4ff', marginBottom: '1rem' }}></i>
-              <p style={{ color: '#9ca3af', fontSize: '0.9rem' }}>Fetching your real financial data...</p>
+              <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '2rem', color: 'var(--secondary-cyan, #00d4ff)', marginBottom: '1rem' }}></i>
+              <p className="runway-outcome-desc">Fetching your real financial data...</p>
             </>
           ) : calculatedRunway === null ? (
             <>
               <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: '2rem', color: '#fb923c', marginBottom: '1rem' }}></i>
-              <h3 style={{ margin: '0 0 8px', color: '#fff' }}>Data Unavailable</h3>
-              <p style={{ fontSize: '0.85rem', color: '#9ca3af', maxWidth: '340px', margin: 0 }}>
+              <h3 className="runway-outcome-title" style={{ margin: '0 0 8px' }}>Data Unavailable</h3>
+              <p className="runway-outcome-desc" style={{ maxWidth: '340px' }}>
                 Unable to load your financial baseline from the server. Please check your connection and try refreshing.
               </p>
             </>
@@ -130,18 +139,18 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
               <span className="pill-tag cyan" style={{ fontSize: '0.7rem', marginBottom: '8px' }}>
                 MONTE CARLO SIMULATED • {confidence} CONFIDENCE
               </span>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>Projected Runway Outcome</h3>
+              <h3 className="runway-outcome-title">Projected Runway Outcome</h3>
               <div style={{ margin: '24px 0' }}>
-                <span style={{ fontFamily: 'JetBrains Mono', fontSize: '4rem', fontWeight: 800, color: '#00d4ff' }}>
+                <span className="runway-outcome-number">
                   {calculatedRunway}
                 </span>
-                <div style={{ fontSize: '1.1rem', color: '#cebdff', fontWeight: 600 }}>Months of Solvency</div>
+                <div className="runway-solvency-label">Months of Solvency</div>
               </div>
-              <p style={{ fontSize: '0.85rem', color: '#9ca3af', maxWidth: '400px', margin: 0 }}>
+              <p className="runway-outcome-desc">
                 Based on cash reserves of <strong>{baseCash !== null ? formatCurrency(baseCash, currency) : '—'}</strong> with projected net burn of <strong>{netBurn !== null ? `${formatCurrency(netBurn, currency)}/mo` : '—'}</strong>.
               </p>
               {recommendation && (
-                <div style={{ marginTop: '16px', padding: '10px 14px', background: 'rgba(0, 212, 255, 0.08)', borderRadius: '8px', border: '1px solid rgba(0, 212, 255, 0.25)', fontSize: '0.8rem', color: '#00d4ff' }}>
+                <div className="runway-recommendation-box">
                   <i className="fa-solid fa-lightbulb" style={{ marginRight: '6px' }}></i> {recommendation}
                 </div>
               )}

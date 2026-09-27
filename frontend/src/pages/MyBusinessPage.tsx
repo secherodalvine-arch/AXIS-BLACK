@@ -348,25 +348,11 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
   // Filter out system static roles to eliminate confusion
   const displayRoles = roles.filter(r => r.id !== 'role-owner' && r.id !== 'role-manager');
 
-  const tabStyle = (tab: string) => ({
-    padding: '10px 20px',
-    borderRadius: '10px',
-    border: 'none',
-    cursor: 'pointer',
-    fontFamily: 'Plus Jakarta Sans',
-    fontWeight: 600,
-    fontSize: '0.85rem',
-    transition: 'all 0.2s ease',
-    background: activeTab === tab ? 'rgba(0, 212, 255, 0.15)' : 'transparent',
-    color: activeTab === tab ? '#00d4ff' : '#9ca3af',
-    borderBottom: activeTab === tab ? '2px solid #00d4ff' : '2px solid transparent',
-  });
-
   if (loading) {
     return (
       <div className="tab-view active" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '50vh' }}>
-        <div style={{ textAlign: 'center', color: '#9ca3af' }}>
-          <i className="fa-solid fa-spinner fa-spin" style={{ fontSize: '2rem', color: '#00d4ff', marginBottom: '16px', display: 'block' }}></i>
+        <div style={{ textAlign: 'center', color: 'var(--text-muted, #9ca3af)' }}>
+          <i className="fa-solid fa-spinner fa-spin" style={{ fontSize: '2rem', color: 'var(--secondary-cyan, #00d4ff)', marginBottom: '16px', display: 'block' }}></i>
           Loading business data...
         </div>
       </div>
@@ -383,7 +369,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
             background: profile?.logo_url ? 'transparent' : 'linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(124, 95, 230, 0.2))',
             border: '1.5px solid rgba(0, 212, 255, 0.4)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#00d4ff', fontSize: '1.4rem', flexShrink: 0
+            color: 'var(--secondary-cyan, #00d4ff)', fontSize: '1.4rem', flexShrink: 0
           }}>
             {profile?.logo_url ? (
               <img src={profile.logo_url} alt="Business Logo" style={{ width: '100%', height: '100%', borderRadius: '14px', objectFit: 'cover' }} />
@@ -417,14 +403,18 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
       )}
 
       {/* Tab Navigation */}
-      <div style={{ display: 'flex', gap: '4px', marginBottom: '28px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap' }}>
+      <div className="biz-tabs-nav" style={{ display: 'flex', gap: '4px', marginBottom: '28px', flexWrap: 'wrap' }}>
         {[
           { id: 'overview', label: 'Business Profile', icon: 'fa-building' },
           { id: 'branches', label: 'Branches & Operations', icon: 'fa-code-branch' },
           { id: 'team', label: 'Team & Access', icon: 'fa-users' },
           { id: 'roles', label: 'Roles & Privileges', icon: 'fa-user-shield' },
         ].map(tab => (
-          <button key={tab.id} style={tabStyle(tab.id)} onClick={() => setActiveTab(tab.id as any)}>
+          <button
+            key={tab.id}
+            className={`biz-tab-btn ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.id as any)}
+          >
             <i className={`fa-solid ${tab.icon}`} style={{ marginRight: '6px' }}></i>
             {tab.label}
           </button>
@@ -437,7 +427,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
           {/* Business Profile Form */}
           <div className="glass-card" style={{ padding: '28px', gridColumn: 'span 2' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-              <i className="fa-solid fa-pen-to-square" style={{ color: '#00d4ff' }}></i>
+              <i className="fa-solid fa-pen-to-square" style={{ color: 'var(--secondary-cyan, #00d4ff)' }}></i>
               <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Business Profile Configuration</h3>
             </div>
             <form onSubmit={handleSaveProfile}>
@@ -451,23 +441,23 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                   { label: 'Founded Year', key: 'founded_year', placeholder: '2022' },
                 ].map(({ label, key, placeholder }) => (
                   <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>
+                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>
                     <input
                       type={key === 'founded_year' ? 'number' : 'text'}
                       placeholder={placeholder}
                       value={(profile as any)?.[key] || ''}
                       onChange={e => setProfile(prev => ({ ...prev!, [key]: e.target.value }))}
-                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '0.88rem', outline: 'none' }}
+                      className="biz-form-input"
                     />
                   </div>
                 ))}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Business Category</label>
+                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Business Category</label>
                   <select
                     value={profile?.business_category || ''}
                     onChange={e => setProfile(prev => ({ ...prev!, business_category: e.target.value }))}
-                    style={{ background: '#1a1a22', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '0.88rem' }}
+                    className="biz-form-input"
                   >
                     <option value="">Select category...</option>
                     {BUSINESS_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -475,11 +465,11 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Industry</label>
+                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Industry</label>
                   <select
                     value={profile?.industry || ''}
                     onChange={e => setProfile(prev => ({ ...prev!, industry: e.target.value }))}
-                    style={{ background: '#1a1a22', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '0.88rem' }}
+                    className="biz-form-input"
                   >
                     <option value="">Select industry...</option>
                     {INDUSTRY_LIST.map(i => <option key={i} value={i}>{i}</option>)}
@@ -487,25 +477,26 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>No. of Employees</label>
+                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>No. of Employees</label>
                   <input
                     type="number"
                     min="1"
                     placeholder="2"
                     value={profile?.number_of_employees || ''}
                     onChange={e => setProfile(prev => ({ ...prev!, number_of_employees: parseInt(e.target.value) }))}
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '0.88rem', outline: 'none' }}
+                    className="biz-form-input"
                   />
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: 'span 2' }}>
-                  <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Business Description</label>
+                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Business Description</label>
                   <textarea
                     placeholder="Brief description of products, services, and business model..."
                     rows={3}
                     value={profile?.description || ''}
                     onChange={e => setProfile(prev => ({ ...prev!, description: e.target.value }))}
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '0.88rem', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
+                    className="biz-form-input"
+                    style={{ resize: 'vertical', fontFamily: 'inherit' }}
                   />
                 </div>
               </div>
@@ -522,7 +513,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
           {/* Quick Stats Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px' }}>
             {[
-              { label: 'Active Branches', value: branches.length, icon: 'fa-code-branch', color: '#00d4ff' },
+              { label: 'Active Branches', value: branches.length, icon: 'fa-code-branch', color: 'var(--secondary-cyan, #00d4ff)' },
               { label: 'Team Members', value: team.length, icon: 'fa-users', color: '#a78bfa' },
               { label: 'Configured Roles', value: displayRoles.length, icon: 'fa-user-shield', color: '#4ade80' },
               { label: 'Employees', value: profile?.number_of_employees || 0, icon: 'fa-person', color: '#f59e0b' },
@@ -532,8 +523,8 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                   <i className={`fa-solid ${icon}`}></i>
                 </div>
                 <div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', fontFamily: 'Plus Jakarta Sans' }}>{value}</div>
-                  <div style={{ fontSize: '0.78rem', color: '#9ca3af' }}>{label}</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans' }}>{value}</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)' }}>{label}</div>
                 </div>
               </div>
             ))}
@@ -554,10 +545,10 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>
-                  <i className="fa-solid fa-code-branch" style={{ color: '#00d4ff', marginRight: '10px' }}></i>
+                  <i className="fa-solid fa-code-branch" style={{ color: 'var(--secondary-cyan, #00d4ff)', marginRight: '10px' }}></i>
                   Branches ({branches.length})
                 </h3>
-                <span style={{ fontSize: '0.78rem', color: '#9ca3af' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)' }}>
                   Click on any branch to monitor its ledger, inventory, manager, and performance
                 </span>
               </div>
@@ -571,7 +562,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
             </div>
 
             {branches.length === 0 ? (
-              <div className="glass-card" style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>
+              <div className="glass-card" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted, #9ca3af)' }}>
                 <i className="fa-solid fa-building-circle-xmark" style={{ fontSize: '2.5rem', marginBottom: '16px', display: 'block', opacity: 0.4 }}></i>
                 <div style={{ fontWeight: 600 }}>No branches configured</div>
                 <div style={{ fontSize: '0.85rem', marginTop: '6px' }}>Add your primary store or branch to start recording transactions and inventory.</div>
@@ -586,32 +577,21 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                   return (
                     <div
                       key={branch.id}
-                      className="glass-card"
-                      style={{
-                        padding: '18px 20px', cursor: 'pointer', transition: 'all 0.2s ease',
-                        border: isSelected ? '1.5px solid rgba(0, 212, 255, 0.6)' : '1px solid rgba(255,255,255,0.08)',
-                        background: isSelected ? 'rgba(0, 212, 255, 0.08)' : undefined,
-                        boxShadow: isSelected ? '0 0 20px rgba(0, 212, 255, 0.15)' : undefined
-                      }}
+                      className={`glass-card biz-branch-card ${isSelected ? 'selected' : ''}`}
                       onClick={() => setSelectedBranch(isSelected ? null : branch.id)}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
                         <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-                          <div style={{
-                            width: '44px', height: '44px', borderRadius: '12px', flexShrink: 0,
-                            background: isSelected ? 'rgba(0, 212, 255, 0.25)' : 'rgba(255,255,255,0.06)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: isSelected ? '#00d4ff' : '#9ca3af', fontSize: '1.2rem'
-                          }}>
+                          <div className={`biz-branch-icon ${isSelected ? 'selected' : ''}`}>
                             <i className="fa-solid fa-store"></i>
                           </div>
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                              <span style={{ fontWeight: 700, fontSize: '0.98rem', color: '#fff' }}>{branch.name}</span>
+                              <span style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main, #ffffff)' }}>{branch.name}</span>
                               {branch.is_main && (
                                 <span style={{
                                   fontSize: '0.65rem', padding: '2px 8px', borderRadius: '20px',
-                                  background: 'rgba(0, 212, 255, 0.15)', color: '#00d4ff',
+                                  background: 'rgba(0, 212, 255, 0.15)', color: 'var(--secondary-cyan, #00d4ff)',
                                   border: '1px solid rgba(0, 212, 255, 0.3)', fontWeight: 700
                                 }}>
                                   MAIN / HQ
@@ -628,13 +608,13 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                             </div>
 
                             {branch.location && (
-                              <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginTop: '3px' }}>
+                              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', marginTop: '3px' }}>
                                 <i className="fa-solid fa-location-dot" style={{ marginRight: '5px' }}></i>{branch.location}
                               </div>
                             )}
 
                             {mgrInfo && (
-                              <div style={{ fontSize: '0.78rem', color: mgrInfo.isOwner ? '#00d4ff' : '#a78bfa', marginTop: '3px' }}>
+                              <div style={{ fontSize: '0.78rem', color: mgrInfo.isOwner ? 'var(--secondary-cyan, #00d4ff)' : '#a78bfa', marginTop: '3px' }}>
                                 <i className={`fa-solid ${mgrInfo.isOwner ? 'fa-crown' : 'fa-user-tie'}`} style={{ marginRight: '5px', color: mgrInfo.isOwner ? '#f59e0b' : '#a78bfa' }}></i>
                                 Managed by {mgrInfo.name} {mgrInfo.isOwner ? '(Owner)' : ''}
                               </div>
@@ -648,7 +628,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                                 <span style={{ fontSize: '0.78rem', color: '#f87171', fontWeight: 600 }}>
                                   <i className="fa-solid fa-arrow-trend-down" style={{ marginRight: '4px' }}></i>{formatCurrency(perf.total_expenses, currency)} exp
                                 </span>
-                                <span style={{ fontSize: '0.78rem', color: '#00d4ff', fontWeight: 600 }}>
+                                <span style={{ fontSize: '0.78rem', color: 'var(--secondary-cyan, #00d4ff)', fontWeight: 600 }}>
                                   <i className="fa-solid fa-percent" style={{ marginRight: '4px' }}></i>{perf.gross_margin_percent}% margin
                                 </span>
                               </div>
@@ -659,14 +639,14 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                         <div style={{ display: 'flex', gap: '6px' }}>
                           <button
                             onClick={e => { e.stopPropagation(); openEditBranch(branch); }}
-                            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#9ca3af', cursor: 'pointer', borderRadius: '8px', padding: '6px 10px', fontSize: '0.78rem' }}
+                            className="biz-icon-btn"
                             title="Edit Branch"
                           >
                             <i className="fa-solid fa-pen"></i>
                           </button>
                           <button
                             onClick={e => { e.stopPropagation(); handleDeleteBranch(branch.id); }}
-                            style={{ background: 'rgba(255, 142, 142, 0.08)', border: '1px solid rgba(255, 142, 142, 0.2)', color: '#ff8e8e', cursor: 'pointer', borderRadius: '8px', padding: '6px 10px', fontSize: '0.78rem' }}
+                            className="biz-icon-btn-danger"
                             title="Delete Branch"
                           >
                             <i className="fa-solid fa-trash-can"></i>
@@ -686,16 +666,16 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#fff', fontFamily: 'Plus Jakarta Sans' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans' }}>
                       {selectedBranchData.name}
                     </h3>
                     {selectedBranchData.is_main && (
-                      <span style={{ fontSize: '0.68rem', padding: '2px 8px', borderRadius: '20px', background: 'rgba(0, 212, 255, 0.15)', color: '#00d4ff', border: '1px solid rgba(0, 212, 255, 0.3)', fontWeight: 700 }}>
+                      <span style={{ fontSize: '0.68rem', padding: '2px 8px', borderRadius: '20px', background: 'rgba(0, 212, 255, 0.15)', color: 'var(--secondary-cyan, #00d4ff)', border: '1px solid rgba(0, 212, 255, 0.3)', fontWeight: 700 }}>
                         HQ
                       </span>
                     )}
                   </div>
-                  <span style={{ fontSize: '0.78rem', color: '#9ca3af' }}>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)' }}>
                     {selectedBranchData.location || 'Branch Operations Center'}
                   </span>
                 </div>
@@ -709,7 +689,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                   </button>
                   <button
                     onClick={() => setSelectedBranch(null)}
-                    style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '1.2rem', padding: '4px 8px' }}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted, #9ca3af)', cursor: 'pointer', fontSize: '1.2rem', padding: '4px 8px' }}
                     title="Close Details"
                   >
                     <i className="fa-solid fa-times"></i>
@@ -718,7 +698,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
               </div>
 
               {/* Sub-tabs inside Branch Detail */}
-              <div style={{ display: 'flex', gap: '6px', marginBottom: '18px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="biz-subtabs-nav" style={{ display: 'flex', gap: '6px', marginBottom: '18px' }}>
                 {[
                   { id: 'overview', label: 'Financial Performance', icon: 'fa-chart-pie' },
                   { id: 'ledger', label: 'Branch Ledger', icon: 'fa-receipt' },
@@ -727,16 +707,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                   <button
                     key={st.id}
                     onClick={() => setBranchDetailSubTab(st.id as any)}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      borderBottom: branchDetailSubTab === st.id ? '2px solid #00d4ff' : '2px solid transparent',
-                      color: branchDetailSubTab === st.id ? '#00d4ff' : '#9ca3af',
-                      fontWeight: 600,
-                      fontSize: '0.8rem',
-                      padding: '8px 12px',
-                      cursor: 'pointer'
-                    }}
+                    className={`biz-subtab-btn ${branchDetailSubTab === st.id ? 'active' : ''}`}
                   >
                     <i className={`fa-solid ${st.icon}`} style={{ marginRight: '6px' }}></i>
                     {st.label}
@@ -745,8 +716,8 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
               </div>
 
               {branchDetailsLoading ? (
-                <div style={{ textAlign: 'center', padding: '30px', color: '#9ca3af' }}>
-                  <i className="fa-solid fa-spinner fa-spin" style={{ color: '#00d4ff', fontSize: '1.5rem', marginBottom: '10px', display: 'block' }}></i>
+                <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted, #9ca3af)' }}>
+                  <i className="fa-solid fa-spinner fa-spin" style={{ color: 'var(--secondary-cyan, #00d4ff)', fontSize: '1.5rem', marginBottom: '10px', display: 'block' }}></i>
                   Loading branch details...
                 </div>
               ) : (
@@ -759,29 +730,29 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                           {[
                             { label: 'Total Revenue', value: formatCurrency(selectedBranchPerf.total_revenue, currency), icon: 'fa-arrow-trend-up', color: '#4ade80' },
                             { label: 'Total Expenses', value: formatCurrency(selectedBranchPerf.total_expenses, currency), icon: 'fa-arrow-trend-down', color: '#f87171' },
-                            { label: 'Net Cash', value: formatCurrency(selectedBranchPerf.net_cash, currency), icon: 'fa-coins', color: selectedBranchPerf.net_cash >= 0 ? '#00d4ff' : '#f59e0b' },
+                            { label: 'Net Cash', value: formatCurrency(selectedBranchPerf.net_cash, currency), icon: 'fa-coins', color: selectedBranchPerf.net_cash >= 0 ? 'var(--secondary-cyan, #00d4ff)' : '#f59e0b' },
                             { label: 'Gross Margin', value: `${selectedBranchPerf.gross_margin_percent}%`, icon: 'fa-percent', color: '#a78bfa' },
                             { label: 'Transactions', value: selectedBranchPerf.transaction_count?.toString() || '0', icon: 'fa-receipt', color: '#f59e0b' },
                             { label: 'Stock SKUs', value: selectedBranchPerf.inventory_count?.toString() || '0', icon: 'fa-boxes-stacked', color: '#3cd7ff' },
                           ].map(({ label, value, icon, color }) => (
-                            <div key={label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '12px', padding: '14px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div key={label} className="biz-mini-metric-card">
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
                                 <i className={`fa-solid ${icon}`} style={{ color, fontSize: '0.82rem' }}></i>
-                                <span style={{ fontSize: '0.68rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase' }}>{label}</span>
+                                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase' }}>{label}</span>
                               </div>
                               <div style={{ fontSize: '1.05rem', fontWeight: 800, color, fontFamily: 'Plus Jakarta Sans' }}>{value}</div>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>
+                        <div style={{ textAlign: 'center', color: 'var(--text-muted, #9ca3af)', padding: '16px' }}>
                           No financial transactions recorded for this branch yet.
                         </div>
                       )}
 
                       {/* Manager and Branch Info */}
-                      <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                        <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <div className="biz-info-section">
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #9ca3af)', marginBottom: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                           Branch Information & Management
                         </div>
 
@@ -789,20 +760,20 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                         {(() => {
                           const mgr = getBranchManagerInfo(selectedBranchData.manager_user_id);
                           return mgr ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', borderRadius: '10px', background: mgr.isOwner ? 'rgba(0, 212, 255, 0.08)' : 'rgba(167, 139, 250, 0.08)', border: `1px solid ${mgr.isOwner ? 'rgba(0, 212, 255, 0.25)' : 'rgba(167, 139, 250, 0.25)'}`, marginBottom: '12px' }}>
+                            <div className="biz-mgr-card" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', borderRadius: '10px', marginBottom: '12px' }}>
                               <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: mgr.isOwner ? 'linear-gradient(135deg, #00d4ff, #7c5fe6)' : 'rgba(167, 139, 250, 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '0.85rem' }}>
                                 {mgr.name.charAt(0).toUpperCase()}
                               </div>
                               <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main, #ffffff)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                   {mgr.name}
-                                  {mgr.isOwner && <span style={{ fontSize: '0.62rem', background: '#00d4ff20', color: '#00d4ff', padding: '1px 6px', borderRadius: '10px', border: '1px solid #00d4ff40' }}>Owner Assigned</span>}
+                                  {mgr.isOwner && <span style={{ fontSize: '0.62rem', background: '#00d4ff20', color: 'var(--secondary-cyan, #00d4ff)', padding: '1px 6px', borderRadius: '10px', border: '1px solid #00d4ff40' }}>Owner Assigned</span>}
                                 </div>
-                                <div style={{ fontSize: '0.72rem', color: '#9ca3af' }}>{mgr.email}</div>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)' }}>{mgr.email}</div>
                               </div>
                             </div>
                           ) : (
-                            <div style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '12px' }}>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', marginBottom: '12px' }}>
                               <i className="fa-solid fa-user-xmark" style={{ marginRight: '6px' }}></i> No manager currently assigned to this branch.
                             </div>
                           );
@@ -810,25 +781,25 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.82rem' }}>
                           {selectedBranchData.location && (
-                            <div style={{ color: '#e5e2e1' }}>
-                              <i className="fa-solid fa-location-dot" style={{ color: '#00d4ff', marginRight: '8px', width: '14px' }}></i>
+                            <div style={{ color: 'var(--text-main, #ffffff)' }}>
+                              <i className="fa-solid fa-location-dot" style={{ color: 'var(--secondary-cyan, #00d4ff)', marginRight: '8px', width: '14px' }}></i>
                               {selectedBranchData.location}
                             </div>
                           )}
                           {selectedBranchData.phone && (
-                            <div style={{ color: '#e5e2e1' }}>
+                            <div style={{ color: 'var(--text-main, #ffffff)' }}>
                               <i className="fa-solid fa-phone" style={{ color: '#a78bfa', marginRight: '8px', width: '14px' }}></i>
                               {selectedBranchData.phone}
                             </div>
                           )}
                           {selectedBranchData.email && (
-                            <div style={{ color: '#e5e2e1' }}>
+                            <div style={{ color: 'var(--text-main, #ffffff)' }}>
                               <i className="fa-solid fa-envelope" style={{ color: '#4ade80', marginRight: '8px', width: '14px' }}></i>
                               {selectedBranchData.email}
                             </div>
                           )}
                           {selectedBranchData.created_at && (
-                            <div style={{ color: '#9ca3af', fontSize: '0.75rem', marginTop: '6px' }}>
+                            <div style={{ color: 'var(--text-muted, #9ca3af)', fontSize: '0.75rem', marginTop: '6px' }}>
                               Established {formatRelativeTime(selectedBranchData.created_at)}
                             </div>
                           )}
@@ -841,14 +812,14 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                   {branchDetailSubTab === 'ledger' && (
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                        <span style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600 }}>Transactions Tagged to this Branch</span>
-                        <span style={{ fontSize: '0.75rem', color: '#00d4ff', fontFamily: 'JetBrains Mono' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600 }}>Transactions Tagged to this Branch</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--secondary-cyan, #00d4ff)', fontFamily: 'JetBrains Mono' }}>
                           {selectedBranchDetails?.transactions?.length || 0} Entries
                         </span>
                       </div>
 
                       {(!selectedBranchDetails?.transactions || selectedBranchDetails.transactions.length === 0) ? (
-                        <div style={{ textAlign: 'center', color: '#9ca3af', padding: '30px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
+                        <div className="biz-empty-box" style={{ textAlign: 'center', color: 'var(--text-muted, #9ca3af)', padding: '30px', borderRadius: '12px' }}>
                           <i className="fa-solid fa-receipt" style={{ fontSize: '2rem', marginBottom: '10px', display: 'block', opacity: 0.3 }}></i>
                           No transactions recorded for this branch yet.<br />
                           <span style={{ fontSize: '0.78rem' }}>When recording entries in Ledger, choose this branch to monitor cashflow.</span>
@@ -858,10 +829,10 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                           {selectedBranchDetails.transactions.map((t: any, idx: number) => {
                             const isPositive = Number(t.amount) > 0;
                             return (
-                              <div key={t.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                              <div key={t.id || idx} className="biz-list-item-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: '10px' }}>
                                 <div>
-                                  <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#fff' }}>{t.counterparty}</div>
-                                  <div style={{ fontSize: '0.72rem', color: '#9ca3af' }}>{t.category} · {t.date}</div>
+                                  <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-main, #ffffff)' }}>{t.counterparty}</div>
+                                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)' }}>{t.category} · {t.date}</div>
                                 </div>
                                 <div style={{ fontFamily: 'JetBrains Mono', fontWeight: 700, fontSize: '0.9rem', color: isPositive ? '#4ade80' : '#f87171' }}>
                                   {isPositive ? '+' : ''}{formatCurrency(t.amount, currency)}
@@ -878,14 +849,14 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                   {branchDetailSubTab === 'inventory' && (
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                        <span style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600 }}>Stock Assigned to this Branch</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600 }}>Stock Assigned to this Branch</span>
                         <span style={{ fontSize: '0.75rem', color: '#3cd7ff', fontFamily: 'JetBrains Mono' }}>
                           {selectedBranchDetails?.inventory?.length || 0} SKUs
                         </span>
                       </div>
 
                       {(!selectedBranchDetails?.inventory || selectedBranchDetails.inventory.length === 0) ? (
-                        <div style={{ textAlign: 'center', color: '#9ca3af', padding: '30px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
+                        <div className="biz-empty-box" style={{ textAlign: 'center', color: 'var(--text-muted, #9ca3af)', padding: '30px', borderRadius: '12px' }}>
                           <i className="fa-solid fa-boxes-stacked" style={{ fontSize: '2rem', marginBottom: '10px', display: 'block', opacity: 0.3 }}></i>
                           No inventory items stocked at this branch yet.<br />
                           <span style={{ fontSize: '0.78rem' }}>In the Inventory page, assign items to this branch when creating or importing items.</span>
@@ -895,16 +866,16 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                           {selectedBranchDetails.inventory.map((item: any, idx: number) => {
                             const isLowStock = Number(item.stock_quantity || 0) <= Number(item.reorder_point || 10);
                             return (
-                              <div key={item.sku || item.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                              <div key={item.sku || item.id || idx} className="biz-list-item-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: '10px' }}>
                                 <div>
-                                  <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#fff' }}>{item.name}</div>
-                                  <div style={{ fontSize: '0.72rem', color: '#9ca3af' }}>{item.category} · SKU: {item.sku}</div>
+                                  <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-main, #ffffff)' }}>{item.name}</div>
+                                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)' }}>{item.category} · SKU: {item.sku}</div>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
                                   <div style={{ fontFamily: 'JetBrains Mono', fontWeight: 700, fontSize: '0.9rem', color: isLowStock ? '#fbbf24' : '#4ade80' }}>
                                     {item.stock_quantity} units
                                   </div>
-                                  <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted, #9ca3af)' }}>
                                     {formatCurrency(item.selling_price || 0, currency)}
                                   </div>
                                 </div>
@@ -931,7 +902,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                 <i className="fa-solid fa-users" style={{ color: '#a78bfa', marginRight: '10px' }}></i>
                 Team Members & Access ({team.length})
               </h3>
-              <span style={{ fontSize: '0.78rem', color: '#9ca3af' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)' }}>
                 Add managers and staff. They login with their email as temporary password.
               </span>
             </div>
@@ -951,17 +922,17 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                 {(user?.name || 'O').charAt(0).toUpperCase()}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.94rem' }}>{user?.name || 'Account Owner'}</div>
-                <div style={{ fontSize: '0.78rem', color: '#9ca3af' }}>{user?.email}</div>
+                <div style={{ fontWeight: 700, color: 'var(--text-main, #ffffff)', fontSize: '0.94rem' }}>{user?.name || 'Account Owner'}</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)' }}>{user?.email}</div>
               </div>
-              <span style={{ fontSize: '0.72rem', padding: '4px 12px', borderRadius: '20px', background: 'rgba(0, 212, 255, 0.15)', color: '#00d4ff', border: '1px solid rgba(0, 212, 255, 0.35)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '0.72rem', padding: '4px 12px', borderRadius: '20px', background: 'rgba(0, 212, 255, 0.15)', color: 'var(--secondary-cyan, #00d4ff)', border: '1px solid rgba(0, 212, 255, 0.35)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                 <i className="fa-solid fa-crown" style={{ color: '#f59e0b', fontSize: '0.75rem' }}></i> BUSINESS OWNER
               </span>
             </div>
           </div>
 
           {team.length === 0 ? (
-            <div className="glass-card" style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>
+            <div className="glass-card" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted, #9ca3af)' }}>
               <i className="fa-solid fa-user-slash" style={{ fontSize: '2.5rem', marginBottom: '16px', display: 'block', opacity: 0.4 }}></i>
               <div style={{ fontWeight: 600 }}>No sub-users added yet</div>
               <div style={{ fontSize: '0.85rem', marginTop: '6px' }}>Add managers and staff to assign them roles and branches.</div>
@@ -973,7 +944,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                 const memberBranch = branches.find(b => b.id === member.branch_id);
                 const isSuspended = member.is_active === false;
                 return (
-                  <div key={member.id} className="glass-card" style={{ padding: '16px 20px', border: isSuspended ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(255, 255, 255, 0.08)' }}>
+                  <div key={member.id} className="glass-card biz-team-card" style={{ padding: '16px 20px', border: isSuspended ? '1px solid rgba(239, 68, 68, 0.25)' : undefined }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: '260px' }}>
                         <div style={{
@@ -988,7 +959,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                         </div>
                         <div style={{ flex: 1 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <span style={{ fontWeight: 700, color: '#fff', fontSize: '0.92rem' }}>{member.name}</span>
+                            <span style={{ fontWeight: 700, color: 'var(--text-main, #ffffff)', fontSize: '0.92rem' }}>{member.name}</span>
                             {isSuspended ? (
                               <span style={{ fontSize: '0.68rem', background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', borderRadius: '20px', padding: '2px 8px', border: '1px solid rgba(239, 68, 68, 0.3)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                 <i className="fa-solid fa-ban" style={{ fontSize: '0.62rem' }}></i> Suspended
@@ -1004,7 +975,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                               </span>
                             )}
                           </div>
-                          <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginTop: '2px' }}>{member.email}</div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', marginTop: '2px' }}>{member.email}</div>
                           <div style={{ display: 'flex', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
                             {memberRole && (
                               <span style={{ fontSize: '0.72rem', color: '#a78bfa', background: 'rgba(167, 139, 250, 0.12)', borderRadius: '6px', padding: '2px 8px', border: '1px solid rgba(167, 139, 250, 0.25)' }}>
@@ -1012,11 +983,11 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                               </span>
                             )}
                             {memberBranch ? (
-                              <span style={{ fontSize: '0.72rem', color: '#00d4ff', background: 'rgba(0, 212, 255, 0.12)', borderRadius: '6px', padding: '2px 8px', border: '1px solid rgba(0, 212, 255, 0.25)' }}>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--secondary-cyan, #00d4ff)', background: 'rgba(0, 212, 255, 0.12)', borderRadius: '6px', padding: '2px 8px', border: '1px solid rgba(0, 212, 255, 0.25)' }}>
                                 <i className="fa-solid fa-store" style={{ marginRight: '4px' }}></i>{memberBranch.name}
                               </span>
                             ) : (
-                              <span style={{ fontSize: '0.72rem', color: '#94a3b8', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '6px', padding: '2px 8px' }}>
+                              <span className="biz-branch-badge-all">
                                 <i className="fa-solid fa-globe" style={{ marginRight: '4px' }}></i>All Branches
                               </span>
                             )}
@@ -1081,7 +1052,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                 <i className="fa-solid fa-user-shield" style={{ color: '#4ade80', marginRight: '10px' }}></i>
                 Custom Roles & Privileges ({displayRoles.length})
               </h3>
-              <span style={{ fontSize: '0.78rem', color: '#9ca3af' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)' }}>
                 Create, customize, and edit roles with scoped access permissions for your staff
               </span>
             </div>
@@ -1095,7 +1066,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
           </div>
 
           {displayRoles.length === 0 ? (
-            <div className="glass-card" style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>
+            <div className="glass-card" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted, #9ca3af)' }}>
               <i className="fa-solid fa-shield-halved" style={{ fontSize: '2.5rem', marginBottom: '16px', display: 'block', opacity: 0.4 }}></i>
               <div style={{ fontWeight: 600 }}>No custom roles created</div>
               <div style={{ fontSize: '0.85rem', marginTop: '6px' }}>Click "Create Role" above to set up specific privileges for managers and staff.</div>
@@ -1103,19 +1074,19 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
               {displayRoles.map(role => (
-                <div key={role.id} className="glass-card" style={{ padding: '20px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div key={role.id} className="glass-card biz-role-card">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: '1rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main, #ffffff)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <i className="fa-solid fa-user-shield" style={{ color: '#4ade80' }}></i>
                         {role.role_name}
                       </div>
-                      {role.description && <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginTop: '4px' }}>{role.description}</div>}
+                      {role.description && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', marginTop: '4px' }}>{role.description}</div>}
                     </div>
                     <div style={{ display: 'flex', gap: '6px' }}>
                       <button
                         onClick={() => openEditRole(role)}
-                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#9ca3af', cursor: 'pointer', borderRadius: '8px', padding: '6px 10px', fontSize: '0.78rem' }}
+                        className="biz-icon-btn"
                         title="Edit Role"
                       >
                         <i className="fa-solid fa-pen"></i>
@@ -1129,7 +1100,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                             showStatus('Role deleted.');
                           } catch (e: any) { showStatus(e.message, 'error'); }
                         }}
-                        style={{ background: 'rgba(255, 142, 142, 0.08)', border: '1px solid rgba(255, 142, 142, 0.2)', color: '#ff8e8e', cursor: 'pointer', borderRadius: '8px', padding: '6px 10px', fontSize: '0.78rem' }}
+                        className="biz-icon-btn-danger"
                         title="Delete Role"
                       >
                         <i className="fa-solid fa-trash-can"></i>
@@ -1141,13 +1112,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                     {PERMISSION_OPTIONS.map(perm => {
                       const hasIt = role.permissions.includes(perm.id);
                       return (
-                        <span key={perm.id} style={{
-                          fontSize: '0.68rem', padding: '3px 10px', borderRadius: '20px',
-                          background: hasIt ? 'rgba(74, 222, 128, 0.12)' : 'rgba(255,255,255,0.04)',
-                          color: hasIt ? '#4ade80' : 'rgba(255,255,255,0.25)',
-                          border: `1px solid ${hasIt ? 'rgba(74, 222, 128, 0.3)' : 'rgba(255,255,255,0.08)'}`,
-                          display: 'flex', alignItems: 'center', gap: '4px'
-                        }}>
+                        <span key={perm.id} className={`biz-perm-pill ${hasIt ? 'active' : ''}`}>
                           <i className={`fa-solid ${perm.icon}`} style={{ fontSize: '0.6rem' }}></i>
                           {perm.label}
                         </span>
@@ -1177,28 +1142,30 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                 { label: 'Email', key: 'email', placeholder: 'branch@reinoservices.com' },
               ].map(({ label, key, placeholder }) => (
                 <div key={key}>
-                  <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, display: 'block', marginBottom: '6px' }}>{label}</label>
+                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>{label}</label>
                   <input
                     type="text"
                     placeholder={placeholder}
                     value={(branchForm as any)[key]}
                     onChange={e => setBranchForm(prev => ({ ...prev, [key]: e.target.value }))}
-                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }}
+                    className="biz-form-input"
+                    style={{ width: '100%', boxSizing: 'border-box' }}
                   />
                 </div>
               ))}
 
               <div>
-                <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                   Assign Branch Manager (Owner or Team Member)
                 </label>
                 <select
                   value={branchForm.manager_user_id}
                   onChange={e => setBranchForm(prev => ({ ...prev, manager_user_id: e.target.value }))}
-                  style={{ width: '100%', background: '#1a1a22', border: '1px solid rgba(0, 212, 255, 0.3)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '0.88rem' }}
+                  className="biz-form-input"
+                  style={{ width: '100%' }}
                 >
                   <option value="">No manager assigned</option>
-                  <option value={user?.user_id || user?.id || 'owner'} style={{ color: '#00d4ff', fontWeight: 700 }}>
+                  <option value={user?.user_id || user?.id || 'owner'} style={{ color: 'var(--secondary-cyan, #00d4ff)', fontWeight: 700 }}>
                     {user?.name || 'Account Owner'} (Owner / You)
                   </option>
                   {team.map(u => (
@@ -1207,7 +1174,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                     </option>
                   ))}
                 </select>
-                <span style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '4px', display: 'block' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)', marginTop: '4px', display: 'block' }}>
                   The owner can manage the branch directly or assign it to an appointed manager.
                 </span>
               </div>
@@ -1218,9 +1185,9 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                   id="branch-active"
                   checked={branchForm.is_active}
                   onChange={e => setBranchForm(prev => ({ ...prev, is_active: e.target.checked }))}
-                  style={{ accentColor: '#00d4ff' }}
+                  style={{ accentColor: 'var(--secondary-cyan, #00d4ff)' }}
                 />
-                <label htmlFor="branch-active" style={{ fontSize: '0.85rem', color: '#e5e2e1', cursor: 'pointer' }}>Branch is actively operational</label>
+                <label htmlFor="branch-active" style={{ fontSize: '0.85rem', color: 'var(--text-main, #ffffff)', cursor: 'pointer' }}>Branch is actively operational</label>
               </div>
             </div>
 
@@ -1244,7 +1211,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
               <button className="modal-close" onClick={() => setShowTeamModal(false)}>×</button>
             </div>
 
-            <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '10px', padding: '12px 14px', marginTop: '16px', fontSize: '0.82rem', color: '#f59e0b' }}>
+            <div className="biz-hint-banner-warning" style={{ borderRadius: '10px', padding: '12px 14px', marginTop: '16px', fontSize: '0.82rem' }}>
               <i className="fa-solid fa-circle-info" style={{ marginRight: '8px' }}></i>
               Their <strong>temporary password will be their email address</strong>. They'll be required to change it upon first login.
             </div>
@@ -1255,23 +1222,25 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                 { label: 'Email Address *', key: 'email', placeholder: 'kevin@reinoservices.com', type: 'email' },
               ].map(({ label, key, placeholder, type }) => (
                 <div key={key}>
-                  <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, display: 'block', marginBottom: '6px' }}>{label}</label>
+                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>{label}</label>
                   <input
                     type={type}
                     placeholder={placeholder}
                     value={(teamForm as any)[key]}
                     onChange={e => setTeamForm(prev => ({ ...prev, [key]: e.target.value }))}
-                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }}
+                    className="biz-form-input"
+                    style={{ width: '100%', boxSizing: 'border-box' }}
                   />
                 </div>
               ))}
 
               <div>
-                <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Role *</label>
+                <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Role *</label>
                 <select
                   value={teamForm.role_id}
                   onChange={e => setTeamForm(prev => ({ ...prev, role_id: e.target.value }))}
-                  style={{ width: '100%', background: '#1a1a22', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '0.88rem' }}
+                  className="biz-form-input"
+                  style={{ width: '100%' }}
                 >
                   <option value="">Select a role...</option>
                   {displayRoles.map(r => (
@@ -1281,11 +1250,12 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
               </div>
 
               <div>
-                <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Assign to Branch</label>
+                <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Assign to Branch</label>
                 <select
                   value={teamForm.branch_id}
                   onChange={e => setTeamForm(prev => ({ ...prev, branch_id: e.target.value }))}
-                  style={{ width: '100%', background: '#1a1a22', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '0.88rem' }}
+                  className="biz-form-input"
+                  style={{ width: '100%' }}
                 >
                   <option value="">All branches / HQ</option>
                   {branches.map(b => <option key={b.id} value={b.id}>{b.name} {b.is_main ? '(HQ)' : ''}</option>)}
@@ -1310,7 +1280,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
           <div className="modal-card glass-card" style={{ width: '520px', maxHeight: '88vh', overflowY: 'auto' }}>
             <div className="modal-header">
               <h3 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <i className="fa-solid fa-user-pen" style={{ color: '#00d4ff' }}></i>
+                <i className="fa-solid fa-user-pen" style={{ color: 'var(--secondary-cyan, #00d4ff)' }}></i>
                 Edit Team Member: {editingMember.name}
               </h3>
               <button className="modal-close" onClick={() => { setShowEditTeamModal(false); setEditingMember(null); }}>×</button>
@@ -1318,32 +1288,35 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '16px 0' }}>
               <div>
-                <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Full Name *</label>
+                <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Full Name *</label>
                 <input
                   type="text"
                   value={editMemberForm.name}
                   onChange={e => setEditMemberForm(prev => ({ ...prev, name: e.target.value }))}
-                  style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }}
+                  className="biz-form-input"
+                  style={{ width: '100%', boxSizing: 'border-box' }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Email Address</label>
+                <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Email Address</label>
                 <input
                   type="email"
                   value={editingMember.email}
                   disabled
-                  style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', padding: '10px 14px', color: '#6b7280', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box', cursor: 'not-allowed' }}
+                  className="biz-form-input"
+                  style={{ width: '100%', boxSizing: 'border-box', opacity: 0.6, cursor: 'not-allowed' }}
                 />
-                <span style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: '4px', display: 'block' }}>Email address cannot be changed once created.</span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #6b7280)', marginTop: '4px', display: 'block' }}>Email address cannot be changed once created.</span>
               </div>
 
               <div>
-                <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Role / Privileges *</label>
+                <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Role / Privileges *</label>
                 <select
                   value={editMemberForm.role_id}
                   onChange={e => setEditMemberForm(prev => ({ ...prev, role_id: e.target.value }))}
-                  style={{ width: '100%', background: '#1a1a22', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '0.88rem' }}
+                  className="biz-form-input"
+                  style={{ width: '100%' }}
                 >
                   <option value="">Select a role...</option>
                   {displayRoles.map(r => (
@@ -1353,46 +1326,35 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
               </div>
 
               <div>
-                <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Assigned Branch</label>
+                <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Assigned Branch</label>
                 <select
                   value={editMemberForm.branch_id}
                   onChange={e => setEditMemberForm(prev => ({ ...prev, branch_id: e.target.value }))}
-                  style={{ width: '100%', background: '#1a1a22', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '0.88rem' }}
+                  className="biz-form-input"
+                  style={{ width: '100%' }}
                 >
                   <option value="">All branches / HQ</option>
                   {branches.map(b => <option key={b.id} value={b.id}>{b.name} {b.is_main ? '(HQ)' : ''}</option>)}
                 </select>
-                <span style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '4px', display: 'block' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)', marginTop: '4px', display: 'block' }}>
                   Restricts this team member's operational view and records to this branch only.
                 </span>
               </div>
 
               <div>
-                <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Account Status</label>
+                <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Account Status</label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <button
                     type="button"
                     onClick={() => setEditMemberForm(prev => ({ ...prev, is_active: true }))}
-                    style={{
-                      padding: '10px 14px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                      background: editMemberForm.is_active ? 'rgba(74, 222, 128, 0.15)' : 'rgba(255,255,255,0.03)',
-                      border: editMemberForm.is_active ? '1px solid #4ade80' : '1px solid rgba(255,255,255,0.1)',
-                      color: editMemberForm.is_active ? '#4ade80' : '#9ca3af',
-                      fontWeight: 600, fontSize: '0.85rem'
-                    }}
+                    className={`biz-status-toggle-btn ${editMemberForm.is_active ? 'active-green' : ''}`}
                   >
                     <i className="fa-solid fa-circle-check"></i> Active
                   </button>
                   <button
                     type="button"
                     onClick={() => setEditMemberForm(prev => ({ ...prev, is_active: false }))}
-                    style={{
-                      padding: '10px 14px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                      background: !editMemberForm.is_active ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.03)',
-                      border: !editMemberForm.is_active ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)',
-                      color: !editMemberForm.is_active ? '#ef4444' : '#9ca3af',
-                      fontWeight: 600, fontSize: '0.85rem'
-                    }}
+                    className={`biz-status-toggle-btn ${!editMemberForm.is_active ? 'active-red' : ''}`}
                   >
                     <i className="fa-solid fa-ban"></i> Suspended
                   </button>
@@ -1430,28 +1392,30 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px 0' }}>
               <div>
-                <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Role Name *</label>
+                <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Role Name *</label>
                 <input
                   type="text"
                   placeholder="e.g. Branch Manager, Cashier, Operations Lead"
                   value={roleForm.role_name}
                   onChange={e => setRoleForm(prev => ({ ...prev, role_name: e.target.value }))}
-                  style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }}
+                  className="biz-form-input"
+                  style={{ width: '100%', boxSizing: 'border-box' }}
                 />
               </div>
               <div>
-                <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Description</label>
+                <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Description</label>
                 <input
                   type="text"
                   placeholder="Responsibilities and access scope for this role"
                   value={roleForm.description}
                   onChange={e => setRoleForm(prev => ({ ...prev, description: e.target.value }))}
-                  style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }}
+                  className="biz-form-input"
+                  style={{ width: '100%', boxSizing: 'border-box' }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, display: 'block', marginBottom: '10px' }}>
+                <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, display: 'block', marginBottom: '10px' }}>
                   Assign Privileges / Page Access *
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
@@ -1462,13 +1426,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                         key={perm.id}
                         type="button"
                         onClick={() => togglePermission(perm.id)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
-                          borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s ease',
-                          background: isSelected ? 'rgba(74, 222, 128, 0.12)' : 'rgba(255,255,255,0.04)',
-                          border: isSelected ? '1px solid rgba(74, 222, 128, 0.4)' : '1px solid rgba(255,255,255,0.1)',
-                          color: isSelected ? '#4ade80' : '#9ca3af', textAlign: 'left'
-                        }}
+                        className={`biz-perm-select-btn ${isSelected ? 'active' : ''}`}
                       >
                         <i className={`fa-solid ${perm.icon}`} style={{ width: '14px', textAlign: 'center' }}></i>
                         <span style={{ fontSize: '0.83rem', fontWeight: 600 }}>{perm.label}</span>

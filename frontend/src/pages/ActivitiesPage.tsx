@@ -146,16 +146,16 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
               borderRadius: '8px',
               background: 'rgba(0, 212, 255, 0.15)',
               border: '1px solid rgba(0, 212, 255, 0.3)',
-              color: '#00d4ff',
+              color: 'var(--secondary-cyan, #00d4ff)',
               fontSize: '0.95rem'
             }}>
               <i className="fa-solid fa-clock-rotate-left"></i>
             </span>
-            <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#f9fafb', letterSpacing: '-0.02em' }}>
+            <h1 className="activity-header-title" style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.02em' }}>
               Business Activities &amp; Audit Trail
             </h1>
           </div>
-          <p style={{ margin: 0, color: '#9ca3af', fontSize: '0.85rem' }}>
+          <p className="activity-header-sub" style={{ margin: 0, fontSize: '0.85rem' }}>
             Real-time immutable log of every action performed on inventory, ledger transactions, branch assignments, and team roles.
           </p>
         </div>
@@ -164,24 +164,9 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
           <button
             onClick={fetchData}
             disabled={loading}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              color: '#e5e7eb',
-              borderRadius: '8px',
-              padding: '0.55rem 1rem',
-              fontSize: '0.85rem',
-              fontWeight: 500,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0, 212, 255, 0.5)'}
-            onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)'}
+            className="activity-refresh-btn"
           >
-            <i className={`fa-solid fa-arrows-rotate ${loading ? 'fa-spin' : ''}`} style={{ color: '#00d4ff' }}></i>
+            <i className={`fa-solid fa-arrows-rotate ${loading ? 'fa-spin' : ''}`} style={{ color: 'var(--secondary-cyan, #00d4ff)' }}></i>
             {loading ? 'Refreshing...' : 'Refresh Logs'}
           </button>
         </div>
@@ -194,112 +179,77 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
         gap: '1rem',
         marginBottom: '1.5rem'
       }}>
-        <div style={{
-          background: 'rgba(17, 24, 39, 0.7)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: '12px',
-          padding: '1.1rem',
-          backdropFilter: 'blur(12px)'
-        }}>
+        <div className="activity-stat-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <span className="activity-stat-label">
               Total Activities
             </span>
-            <span style={{ color: '#00d4ff', fontSize: '0.9rem' }}>
+            <span style={{ color: 'var(--secondary-cyan, #00d4ff)', fontSize: '0.9rem' }}>
               <i className="fa-solid fa-list-check"></i>
             </span>
           </div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#f3f4f6' }}>
+          <div className="activity-stat-val">
             {totalEvents}
           </div>
-          <div style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: '0.2rem' }}>
+          <div className="activity-stat-sub">
             Recorded system events
           </div>
         </div>
 
-        <div style={{
-          background: 'rgba(17, 24, 39, 0.7)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: '12px',
-          padding: '1.1rem',
-          backdropFilter: 'blur(12px)'
-        }}>
+        <div className="activity-stat-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <span className="activity-stat-label">
               Team Member Actions
             </span>
             <span style={{ color: '#a78bfa', fontSize: '0.9rem' }}>
               <i className="fa-solid fa-users-gear"></i>
             </span>
           </div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#a78bfa' }}>
+          <div className="activity-stat-val" style={{ color: '#a78bfa' }}>
             {teamEvents}
           </div>
-          <div style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: '0.2rem' }}>
+          <div className="activity-stat-sub">
             By managers &amp; staff
           </div>
         </div>
 
-        <div style={{
-          background: 'rgba(17, 24, 39, 0.7)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: '12px',
-          padding: '1.1rem',
-          backdropFilter: 'blur(12px)'
-        }}>
+        <div className="activity-stat-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <span className="activity-stat-label">
               Inventory Changes
             </span>
             <span style={{ color: '#38bdf8', fontSize: '0.9rem' }}>
               <i className="fa-solid fa-boxes-stacked"></i>
             </span>
           </div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#38bdf8' }}>
+          <div className="activity-stat-val" style={{ color: '#38bdf8' }}>
             {inventoryEvents}
           </div>
-          <div style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: '0.2rem' }}>
+          <div className="activity-stat-sub">
             SKU creations, edits &amp; imports
           </div>
         </div>
 
-        <div style={{
-          background: 'rgba(17, 24, 39, 0.7)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: '12px',
-          padding: '1.1rem',
-          backdropFilter: 'blur(12px)'
-        }}>
+        <div className="activity-stat-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <span className="activity-stat-label">
               Ledger Transactions
             </span>
             <span style={{ color: '#10b981', fontSize: '0.9rem' }}>
               <i className="fa-solid fa-receipt"></i>
             </span>
           </div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#10b981' }}>
+          <div className="activity-stat-val" style={{ color: '#10b981' }}>
             {ledgerEvents}
           </div>
-          <div style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: '0.2rem' }}>
+          <div className="activity-stat-sub">
             Revenue &amp; expenses logged
           </div>
         </div>
       </div>
 
       {/* ── Filters & Search Bar ── */}
-      <div style={{
-        background: 'rgba(17, 24, 39, 0.65)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        borderRadius: '12px',
-        padding: '1rem',
-        marginBottom: '1.5rem',
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '0.85rem',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
+      <div className="activity-filter-bar">
         {/* Search */}
         <div style={{ flex: '1 1 260px', position: 'relative' }}>
           <i className="fa-solid fa-magnifying-glass" style={{
@@ -307,25 +257,15 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
             left: '12px',
             top: '50%',
             transform: 'translateY(-50%)',
-            color: '#6b7280',
+            color: 'var(--text-muted, #6b7280)',
             fontSize: '0.85rem'
           }}></i>
           <input
             type="text"
+            className="activity-search-input"
             placeholder="Search by action, item, counterparty, actor, or SKU..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              background: 'rgba(0, 0, 0, 0.35)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '8px',
-              padding: '0.55rem 0.75rem 0.55rem 2.2rem',
-              color: '#f3f4f6',
-              fontSize: '0.85rem',
-              outline: 'none',
-              boxSizing: 'border-box'
-            }}
           />
         </div>
 
@@ -335,18 +275,7 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
-              style={{
-                background: categoryFilter === cat ? 'rgba(0, 212, 255, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                border: categoryFilter === cat ? '1px solid rgba(0, 212, 255, 0.5)' : '1px solid rgba(255, 255, 255, 0.08)',
-                color: categoryFilter === cat ? '#00d4ff' : '#9ca3af',
-                borderRadius: '6px',
-                padding: '0.4rem 0.75rem',
-                fontSize: '0.78rem',
-                fontWeight: categoryFilter === cat ? 600 : 400,
-                cursor: 'pointer',
-                textTransform: 'capitalize',
-                transition: 'all 0.15s ease'
-              }}
+              className={`activity-cat-pill ${categoryFilter === cat ? 'active' : ''}`}
             >
               {cat === 'all' ? 'All Activities' : cat === 'transaction' ? 'Ledger' : cat}
             </button>
@@ -359,15 +288,7 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
           <select
             value={actorFilter}
             onChange={e => setActorFilter(e.target.value as any)}
-            style={{
-              background: 'rgba(0, 0, 0, 0.4)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '8px',
-              color: '#d1d5db',
-              padding: '0.45rem 0.75rem',
-              fontSize: '0.8rem',
-              outline: 'none'
-            }}
+            className="activity-select"
           >
             <option value="all">All Actors</option>
             <option value="owner">Owner Only</option>
@@ -379,15 +300,7 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
             <select
               value={branchFilter}
               onChange={e => setBranchFilter(e.target.value)}
-              style={{
-                background: 'rgba(0, 0, 0, 0.4)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: '8px',
-                color: '#d1d5db',
-                padding: '0.45rem 0.75rem',
-                fontSize: '0.8rem',
-                outline: 'none'
-              }}
+              className="activity-select"
             >
               <option value="all">All Branches</option>
               {branches.map(b => (
@@ -402,24 +315,12 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
 
       {/* ── Activity Feed Stream ── */}
       {loading ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '4rem 1rem',
-          background: 'rgba(17, 24, 39, 0.5)',
-          borderRadius: '12px',
-          border: '1px solid rgba(255, 255, 255, 0.05)'
-        }}>
-          <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '2rem', color: '#00d4ff', marginBottom: '1rem' }}></i>
-          <p style={{ color: '#9ca3af', fontSize: '0.9rem' }}>Loading activity audit stream...</p>
+        <div className="activity-empty-box">
+          <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '2rem', color: 'var(--secondary-cyan, #00d4ff)', marginBottom: '1rem' }}></i>
+          <p style={{ color: 'var(--text-muted, #9ca3af)', fontSize: '0.9rem' }}>Loading activity audit stream...</p>
         </div>
       ) : filteredActivities.length === 0 ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '4rem 1rem',
-          background: 'rgba(17, 24, 39, 0.5)',
-          borderRadius: '12px',
-          border: '1px solid rgba(255, 255, 255, 0.05)'
-        }}>
+        <div className="activity-empty-box">
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -428,14 +329,14 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
             height: '54px',
             borderRadius: '50%',
             background: 'rgba(255, 255, 255, 0.04)',
-            color: '#6b7280',
+            color: 'var(--text-muted, #6b7280)',
             fontSize: '1.5rem',
             marginBottom: '1rem'
           }}>
             <i className="fa-solid fa-inbox"></i>
           </div>
-          <h3 style={{ margin: '0 0 0.5rem 0', color: '#e5e7eb', fontSize: '1.1rem' }}>No Activities Found</h3>
-          <p style={{ margin: 0, color: '#9ca3af', fontSize: '0.85rem', maxWidth: '420px', marginLeft: 'auto', marginRight: 'auto' }}>
+          <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main, #e5e7eb)', fontSize: '1.1rem' }}>No Activities Found</h3>
+          <p style={{ margin: 0, color: 'var(--text-muted, #9ca3af)', fontSize: '0.85rem', maxWidth: '420px', marginLeft: 'auto', marginRight: 'auto' }}>
             {searchQuery || categoryFilter !== 'all' || branchFilter !== 'all' || actorFilter !== 'all'
               ? 'No activity entries matched your active filters. Try clearing or expanding your search.'
               : 'Every business action performed on the platform by you or your team will be recorded here.'}
@@ -448,17 +349,8 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
                 setBranchFilter('all');
                 setActorFilter('all');
               }}
-              style={{
-                marginTop: '1.25rem',
-                background: 'rgba(0, 212, 255, 0.15)',
-                border: '1px solid rgba(0, 212, 255, 0.4)',
-                color: '#00d4ff',
-                borderRadius: '8px',
-                padding: '0.5rem 1rem',
-                fontSize: '0.82rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
+              className="action-btn-secondary"
+              style={{ marginTop: '1.25rem', padding: '0.5rem 1rem', fontSize: '0.82rem' }}
             >
               Reset Filters
             </button>
@@ -474,25 +366,7 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
               <div
                 key={item.id}
                 onClick={() => setSelectedActivity(item)}
-                style={{
-                  background: 'rgba(17, 24, 39, 0.65)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  borderRadius: '10px',
-                  padding: '1rem 1.25rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '1rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = 'rgba(17, 24, 39, 0.9)';
-                  e.currentTarget.style.borderColor = 'rgba(0, 212, 255, 0.35)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = 'rgba(17, 24, 39, 0.65)';
-                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                }}
+                className="activity-item-card"
               >
                 {/* Action Icon Badge */}
                 <div style={{
@@ -514,7 +388,7 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
                 {/* Main Content */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
-                    <span style={{ fontWeight: 600, color: '#f3f4f6', fontSize: '0.92rem' }}>
+                    <span className="activity-item-title">
                       {item.title}
                     </span>
 
@@ -535,17 +409,7 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
 
                     {/* Branch Tag if available */}
                     {item.branch_name && (
-                      <span style={{
-                        fontSize: '0.68rem',
-                        padding: '0.15rem 0.5rem',
-                        borderRadius: '4px',
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        color: '#9ca3af',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.3rem'
-                      }}>
+                      <span className="activity-branch-tag">
                         <i className="fa-solid fa-code-branch" style={{ fontSize: '0.65rem', color: '#a78bfa' }}></i>
                         {item.branch_name}
                       </span>
@@ -553,13 +417,7 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
                   </div>
 
                   {/* Details Line */}
-                  <div style={{
-                    color: '#9ca3af',
-                    fontSize: '0.82rem',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }}>
+                  <div className="activity-item-details">
                     {item.details}
                   </div>
                 </div>
@@ -573,11 +431,7 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
                   gap: '0.25rem'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <span style={{
-                      fontSize: '0.78rem',
-                      fontWeight: 500,
-                      color: '#e5e7eb'
-                    }}>
+                    <span className="activity-actor-name">
                       {item.actor_name || 'System'}
                     </span>
                     <span style={{
@@ -593,7 +447,7 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
                     </span>
                   </div>
 
-                  <span style={{ fontSize: '0.72rem', color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <span className="activity-timestamp">
                     <i className="fa-regular fa-clock" style={{ fontSize: '0.65rem' }}></i>
                     {formatNotificationTime(item.timestamp)}
                   </span>
@@ -606,40 +460,13 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
 
       {/* ── Activity Detail Modal ── */}
       {selectedActivity && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0, 0, 0, 0.8)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          padding: '1rem'
-        }}>
-          <div style={{
-            background: '#0d131f',
-            border: '1px solid rgba(0, 212, 255, 0.3)',
-            borderRadius: '14px',
-            width: '100%',
-            maxWidth: '540px',
-            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8)',
-            padding: '1.5rem',
-            position: 'relative'
-          }}>
+        <div className="modal-overlay active activity-modal-overlay">
+          <div className="modal-card glass-card activity-modal-card">
             {/* Close Button */}
             <button
               onClick={() => setSelectedActivity(null)}
-              style={{
-                position: 'absolute',
-                top: '1rem',
-                right: '1rem',
-                background: 'transparent',
-                border: 'none',
-                color: '#9ca3af',
-                fontSize: '1.1rem',
-                cursor: 'pointer'
-              }}
+              className="modal-close"
+              style={{ position: 'absolute', top: '1rem', right: '1rem', fontSize: '1.2rem', cursor: 'pointer' }}
             >
               <i className="fa-solid fa-xmark"></i>
             </button>
@@ -661,48 +488,39 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
                 <i className={`fa-solid ${getActionBadge(selectedActivity.action).icon}`}></i>
               </div>
               <div>
-                <h3 style={{ margin: 0, color: '#f3f4f6', fontSize: '1.05rem', fontWeight: 600 }}>
+                <h3 className="activity-modal-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>
                   {selectedActivity.title}
                 </h3>
-                <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                  Action ID: <span style={{ fontFamily: 'monospace', color: '#00d4ff' }}>{selectedActivity.id}</span>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #9ca3af)' }}>
+                  Action ID: <span style={{ fontFamily: 'monospace', color: 'var(--secondary-cyan, #00d4ff)' }}>{selectedActivity.id}</span>
                 </div>
               </div>
             </div>
 
             {/* Details Table */}
-            <div style={{
-              background: 'rgba(0, 0, 0, 0.4)',
-              borderRadius: '8px',
-              border: '1px solid rgba(255, 255, 255, 0.06)',
-              padding: '1rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.75rem',
-              marginBottom: '1.25rem'
-            }}>
+            <div className="activity-modal-box">
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
-                <span style={{ color: '#6b7280' }}>Action Performed:</span>
-                <span style={{ color: '#e5e7eb', fontFamily: 'monospace' }}>{selectedActivity.action}</span>
+                <span className="activity-modal-label">Action Performed:</span>
+                <span className="activity-modal-val" style={{ fontFamily: 'monospace' }}>{selectedActivity.action}</span>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
-                <span style={{ color: '#6b7280' }}>Executed By:</span>
-                <span style={{ color: '#e5e7eb', fontWeight: 500 }}>
+                <span className="activity-modal-label">Executed By:</span>
+                <span className="activity-modal-val" style={{ fontWeight: 500 }}>
                   {selectedActivity.actor_name} ({selectedActivity.actor_role})
                 </span>
               </div>
 
               {selectedActivity.branch_name && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
-                  <span style={{ color: '#6b7280' }}>Branch Scoped:</span>
+                  <span className="activity-modal-label">Branch Scoped:</span>
                   <span style={{ color: '#a78bfa' }}>{selectedActivity.branch_name}</span>
                 </div>
               )}
 
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
-                <span style={{ color: '#6b7280' }}>Exact Timestamp:</span>
-                <span style={{ color: '#e5e7eb' }}>
+                <span className="activity-modal-label">Exact Timestamp:</span>
+                <span className="activity-modal-val">
                   {new Date(selectedActivity.timestamp).toLocaleString(undefined, {
                     dateStyle: 'medium',
                     timeStyle: 'medium'
@@ -713,18 +531,10 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
 
             {/* Full Details Text */}
             <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#9ca3af', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+              <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted, #9ca3af)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
                 Event Log Details:
               </div>
-              <div style={{
-                background: 'rgba(0, 0, 0, 0.25)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '8px',
-                padding: '0.85rem',
-                color: '#d1d5db',
-                fontSize: '0.85rem',
-                lineHeight: 1.5
-              }}>
+              <div className="activity-modal-log-box">
                 {selectedActivity.details}
               </div>
             </div>
@@ -733,16 +543,8 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => setSelectedActivity(null)}
-                style={{
-                  background: 'rgba(0, 212, 255, 0.15)',
-                  border: '1px solid rgba(0, 212, 255, 0.4)',
-                  color: '#00d4ff',
-                  borderRadius: '8px',
-                  padding: '0.55rem 1.25rem',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
+                className="action-btn-primary"
+                style={{ fontSize: '0.85rem', padding: '0.55rem 1.25rem' }}
               >
                 Close Audit Entry
               </button>
@@ -754,3 +556,4 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
     </div>
   );
 };
+

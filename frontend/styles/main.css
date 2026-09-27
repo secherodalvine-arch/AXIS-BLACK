@@ -1104,8 +1104,12 @@ body.light-theme .brand-name {
   color: #0f172a !important;
 }
 
-body.light-theme .nav-section-title {
-  color: #94a3b8 !important;
+body.light-theme .nav-section-title,
+.light-theme .nav-section-title,
+[data-theme="light"] .nav-section-title {
+  color: #475569 !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.12em !important;
 }
 
 body.light-theme .nav-item {

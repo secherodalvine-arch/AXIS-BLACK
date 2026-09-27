@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { sendSupportMessageApi } from '../utils/api';
-import { usePwaInstall } from '../utils/usePwaInstall';
 
 interface HomePageProps {
   onEnterDashboard: () => void;
@@ -82,7 +81,6 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [contactError, setContactError] = useState<string | null>(null);
   const [hoveredPreviewMonth, setHoveredPreviewMonth] = useState<number | null>(5); // default Jun
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { isInstallable, isInstalled, installApp } = usePwaInstall();
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 60);
@@ -198,11 +196,6 @@ export const HomePage: React.FC<HomePageProps> = ({
           <button className={`home-nav-link ${currentView === 'learn-more' ? 'active' : ''}`} onClick={() => navigateTo('learn-more')}>Learn More</button>
           <button className={`home-nav-link ${currentView === 'about' ? 'active' : ''}`} onClick={() => navigateTo('about')}>About Us</button>
           <button className={`home-nav-link ${currentView === 'contact' ? 'active' : ''}`} onClick={() => navigateTo('contact')}>Contact</button>
-          {isInstallable && !isInstalled && (
-            <button className="home-nav-link" onClick={installApp} style={{ color: '#00d4ff' }}>
-              <i className="fa-solid fa-download"></i> Install App
-            </button>
-          )}
           {onNavigateLogin && (
             <button className="home-nav-link" onClick={onNavigateLogin}>
               <i className="fa-solid fa-right-to-bracket"></i> Sign In
@@ -244,11 +237,6 @@ export const HomePage: React.FC<HomePageProps> = ({
           <button className={`home-mobile-nav-link ${currentView === 'contact' ? 'active' : ''}`} onClick={() => navigateTo('contact')}>
             <i className="fa-solid fa-envelope"></i> Contact
           </button>
-          {isInstallable && !isInstalled && (
-            <button className="home-mobile-nav-link" onClick={() => { installApp(); setMobileMenuOpen(false); }} style={{ color: '#00d4ff' }}>
-              <i className="fa-solid fa-download"></i> Install App
-            </button>
-          )}
           <div className="home-mobile-drawer-divider"></div>
           {onNavigateLogin && (
             <button className="home-mobile-nav-link" onClick={() => { onNavigateLogin?.(); setMobileMenuOpen(false); }}>
