@@ -14,6 +14,7 @@ import { TransactionsLedger as TransactionsPage } from './pages/TransactionsPage
 import { AxisAgentWorkspace as AgentPage } from './pages/AxisAgentPage';
 import { RunwaySimulator as ForecastPage } from './pages/RunwaySimulatorPage';
 import { SettingsView as SettingsPage } from './pages/SettingsPage';
+import { MyBusinessPage } from './pages/MyBusinessPage';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -678,6 +679,9 @@ export const App: React.FC = () => {
                   onNewChat={() => setChatMessages([])}
                   user={user}
                 />
+              )}
+              {currentTab === 'business' && (
+                <MyBusinessPage currency={currency} user={user} />
               )}
               {currentTab === 'forecast' && <ForecastPage currency={currency} />}
               {currentTab === 'settings' && (

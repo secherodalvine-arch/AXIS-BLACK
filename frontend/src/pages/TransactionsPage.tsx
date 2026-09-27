@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Transaction, Currency } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
 import { formatRelativeTime } from '../utils/dateUtils';
+import { importTransactionsCsvApi, getBranchesApi } from '../utils/api';
 
 interface TransactionsLedgerProps {
   transactions: Transaction[];
@@ -22,6 +23,34 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [accountLedgerFilter, setAccountLedgerFilter] = useState<string>('ALL');
+  const [branchFilter, setBranchFilter] = useState<string>('');
+  const [branches, setBranches] = useState<any[]>([]);
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvStatus, setCsvStatus] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const csvInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Load branches once
+  React.useEffect(() => {
+    getBranchesApi().then(b => setBranches(Array.isArray(b) ? b : [])).catch(() => {});
+  }, []);
+
+  const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCsvImporting(true);
+    setCsvStatus(null);
+    try {
+      const result = await importTransactionsCsvApi(file, branchFilter || undefined);
+      setCsvStatus({ text: result.message || `Imported ${result.imported} transactions`, type: 'success' });
+    } catch (err: any) {
+      setCsvStatus({ text: err.message || 'Import failed', type: 'error' });
+    } finally {
+      setCsvImporting(false);
+      if (csvInputRef.current) csvInputRef.current.value = '';
+      setTimeout(() => setCsvStatus(null), 6000);
+    }
+  };
+
 
   // Daily Budget & Usage State
   const [dailyBudgetLimit, setDailyBudgetLimit] = useState<number>(25000);
@@ -133,10 +162,49 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
             Structured financial history, running balance, and account records
           </p>
         </div>
-        <button className="action-btn-primary" onClick={onOpenModal}>
-          <i className="fa-solid fa-plus"></i> Record Entry
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {branches.length > 0 && (
+            <select
+              value={branchFilter}
+              onChange={e => setBranchFilter(e.target.value)}
+              style={{ background: '#1a1a22', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '8px 14px', color: branchFilter ? '#00d4ff' : '#9ca3af', fontSize: '0.82rem', cursor: 'pointer' }}
+              title="Filter by branch"
+            >
+              <option value="">All Branches</option>
+              {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          )}
+          <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvImport} />
+          <button
+            className="action-btn-secondary"
+            onClick={() => csvInputRef.current?.click()}
+            disabled={csvImporting}
+            title="Import transactions from CSV"
+            style={{ gap: '8px', fontSize: '0.82rem', display: 'flex', alignItems: 'center' }}
+          >
+            {csvImporting ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-file-import"></i>}
+            {csvImporting ? 'Importing...' : 'Import CSV'}
+          </button>
+          <button className="action-btn-primary" onClick={onOpenModal}>
+            <i className="fa-solid fa-plus"></i> Record Entry
+          </button>
+        </div>
       </div>
+
+      {/* CSV Import Status */}
+      {csvStatus && (
+        <div style={{
+          padding: '10px 14px', borderRadius: '10px', marginBottom: '16px',
+          background: csvStatus.type === 'success' ? 'rgba(74, 222, 128, 0.08)' : 'rgba(255, 142, 142, 0.08)',
+          border: `1px solid ${csvStatus.type === 'success' ? 'rgba(74, 222, 128, 0.3)' : 'rgba(255, 142, 142, 0.3)'}`,
+          color: csvStatus.type === 'success' ? '#4ade80' : '#ff8e8e',
+          fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '10px'
+        }}>
+          <i className={`fa-solid ${csvStatus.type === 'success' ? 'fa-circle-check' : 'fa-triangle-exclamation'}`}></i>
+          {csvStatus.text}
+          {csvStatus.type === 'success' && <span style={{ color: '#9ca3af', fontSize: '0.78rem' }}>· Refresh the page to see imported entries</span>}
+        </div>
+      )}
 
       {/* ACCOUNT LEDGERS SELECTOR BAR */}
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.25rem', padding: '6px', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>

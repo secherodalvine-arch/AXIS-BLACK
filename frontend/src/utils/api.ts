@@ -259,28 +259,6 @@ export const getDashboardMetricsApi = async () => {
   return await request<any[]>('/dashboard/me');
 };
 
-export const getTransactionsApi = async () => {
-  return await request<any[]>('/transactions/me');
-};
-
-export const createTransactionApi = async (txnData: any) => {
-  return await request<any>('/transactions/me', {
-    method: 'POST',
-    body: JSON.stringify(txnData)
-  });
-};
-
-export const getInventoryApi = async () => {
-  return await request<any[]>('/inventory/items');
-};
-
-export const createInventoryItemApi = async (itemData: any) => {
-  return await request<any>('/inventory/items', {
-    method: 'POST',
-    body: JSON.stringify(itemData),
-  });
-};
-
 export const runRunwaySimulationApi = async (monthly_burn_rate: number, capital_efficiency: number) => {
   return await request<any>('/analytics/simulate', {
     method: 'POST',
@@ -341,4 +319,106 @@ export const sendSupportMessageApi = async (payload: {
   });
 };
 
+// ── Business Profile API ──
+export const getBusinessProfileApi = async () =>
+  request<any>('/business/profile');
+
+export const updateBusinessProfileApi = async (data: any) =>
+  request<any>('/business/profile', { method: 'PUT', body: JSON.stringify(data) });
+
+// ── Branch API ──
+export const getBranchesApi = async () =>
+  request<any[]>('/business/branches');
+
+export const createBranchApi = async (data: any) =>
+  request<any>('/business/branches', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateBranchApi = async (branchId: string, data: any) =>
+  request<any>(`/business/branches/${branchId}`, { method: 'PUT', body: JSON.stringify(data) });
+
+export const deleteBranchApi = async (branchId: string) =>
+  request<any>(`/business/branches/${branchId}`, { method: 'DELETE' });
+
+export const getBranchPerformanceApi = async (branchId: string) =>
+  request<any>(`/business/branches/${branchId}/performance`);
+
+// ── Roles API ──
+export const getRolesApi = async () =>
+  request<any[]>('/business/roles');
+
+export const createRoleApi = async (data: any) =>
+  request<any>('/business/roles', { method: 'POST', body: JSON.stringify(data) });
+
+export const deleteRoleApi = async (roleId: string) =>
+  request<any>(`/business/roles/${roleId}`, { method: 'DELETE' });
+
+// ── Team / Sub-Users API ──
+export const getTeamApi = async () =>
+  request<any[]>('/business/team');
+
+export const createSubUserApi = async (data: any) =>
+  request<any>('/business/team', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateSubUserApi = async (userId: string, data: any) =>
+  request<any>(`/business/team/${userId}`, { method: 'PUT', body: JSON.stringify(data) });
+
+export const deleteSubUserApi = async (userId: string) =>
+  request<any>(`/business/team/${userId}`, { method: 'DELETE' });
+
+// ── CSV Import APIs ──
+export const importTransactionsCsvApi = async (file: File, branchId?: string): Promise<any> => {
+  const token = getAccessToken();
+  const formData = new FormData();
+  formData.append('file', file);
+  const url = `${API_BASE_URL}/transactions/me/import-csv${branchId ? `?branch_id=${branchId}` : ''}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.detail || 'CSV import failed');
+  return data;
+};
+
+export const importInventoryCsvApi = async (file: File, branchId?: string): Promise<any> => {
+  const token = getAccessToken();
+  const formData = new FormData();
+  formData.append('file', file);
+  const url = `${API_BASE_URL}/inventory/items/import-csv${branchId ? `?branch_id=${branchId}` : ''}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.detail || 'CSV import failed');
+  return data;
+};
+
+// ── Transactions with branch filter ──
+export const getTransactionsApi = async (branchId?: string) => {
+  const url = branchId ? `/transactions/me?branch_id=${branchId}` : '/transactions/me';
+  return await request<any[]>(url);
+};
+
+export const createTransactionApi = async (txnData: any) => {
+  return await request<any>('/transactions/me', {
+    method: 'POST',
+    body: JSON.stringify(txnData)
+  });
+};
+
+// ── Inventory with branch filter ──
+export const getInventoryApi = async (branchId?: string) => {
+  const url = branchId ? `/inventory/items?branch_id=${branchId}` : '/inventory/items';
+  return await request<any[]>(url);
+};
+
+export const createInventoryItemApi = async (itemData: any) => {
+  return await request<any>('/inventory/items', {
+    method: 'POST',
+    body: JSON.stringify(itemData),
+  });
+};
 

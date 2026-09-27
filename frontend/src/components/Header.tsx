@@ -42,6 +42,7 @@ const TAB_TITLES: Record<NavTab, string> = {
   analytics: 'Analytics',
   transactions: 'Ledger',
   agent: 'Axis Agent',
+  business: 'My Business',
   forecast: 'Runway Simulator',
   settings: 'Settings'
 };

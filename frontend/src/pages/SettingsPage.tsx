@@ -523,6 +523,39 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </div>
 
+        {/* BUSINESS MANAGEMENT SHORTCUT */}
+        <div className="glass-card" style={{ padding: '28px', gridColumn: 'span 2', border: '1px solid rgba(167, 139, 250, 0.2)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+              <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: 'rgba(167, 139, 250, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a78bfa', fontSize: '1.5rem' }}>
+                <i className="fa-solid fa-building"></i>
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#ffffff', fontFamily: 'Plus Jakarta Sans' }}>Business Management</h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: '#9ca3af' }}>
+                  Configure your business profile, add branches, create roles, and manage your team's access
+                </p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {[
+                { label: 'Business Profile', icon: 'fa-building' },
+                { label: 'Branches', icon: 'fa-code-branch' },
+                { label: 'Team & Roles', icon: 'fa-users' },
+              ].map(({ label, icon }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', fontSize: '0.78rem', color: '#9ca3af' }}>
+                  <i className={`fa-solid ${icon}`} style={{ color: '#a78bfa', fontSize: '0.75rem' }}></i>
+                  {label}
+                </div>
+              ))}
+            </div>
+          </div>
+          <p style={{ margin: '16px 0 0 0', padding: '12px 16px', background: 'rgba(167, 139, 250, 0.06)', borderRadius: '10px', fontSize: '0.82rem', color: '#a78bfa', border: '1px solid rgba(167, 139, 250, 0.15)' }}>
+            <i className="fa-solid fa-circle-info" style={{ marginRight: '8px' }}></i>
+            Navigate to <strong>My Business</strong> in the sidebar to set up branches, manage team members, and configure role-based access control.
+          </p>
+        </div>
+
       </div>
     </div>
   );

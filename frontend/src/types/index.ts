@@ -5,6 +5,7 @@ export type NavTab =
   | 'transactions'
   | 'agent'
   | 'forecast'
+  | 'business'
   | 'settings';
 
 export type Currency = 'USD' | 'KES';
@@ -34,6 +35,7 @@ export interface Transaction {
   status: 'Cleared' | 'Pending' | 'Processing';
   amount: number;
   notes?: string;
+  branch_id?: string;
 }
 
 export interface AIStreamItem {
@@ -53,4 +55,63 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
   suggestions?: string[];
+}
+
+// ── Business & Branches ───────────────────────────────────────────────────────
+
+export interface Branch {
+  id: string;
+  name: string;
+  location?: string;
+  manager_user_id?: string;
+  phone?: string;
+  email?: string;
+  is_active: boolean;
+  created_at?: string;
+}
+
+export interface BusinessRole {
+  id: string;
+  role_name: string;
+  permissions: string[];
+  description?: string;
+  branch_id?: string;
+}
+
+export interface SubUser {
+  id: string;
+  name: string;
+  email: string;
+  role_id: string;
+  branch_id?: string;
+  is_active: boolean;
+  must_change_password?: boolean;
+  created_at?: string;
+}
+
+export interface BusinessProfile {
+  owner_id?: string;
+  business_name: string;
+  business_category: string;
+  industry: string;
+  number_of_employees: number;
+  description: string;
+  location: string;
+  phone: string;
+  email: string;
+  website: string;
+  founded_year?: number;
+  logo_url: string;
+  branches: Branch[];
+  roles: BusinessRole[];
+  sub_users: SubUser[];
+}
+
+export interface BranchPerformance {
+  branch_id: string;
+  total_revenue: number;
+  total_expenses: number;
+  net_cash: number;
+  gross_margin_percent: number;
+  transaction_count: number;
 }

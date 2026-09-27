@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Currency } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
-import { getInventoryApi, createInventoryItemApi } from '../utils/api';
+import { getInventoryApi, createInventoryItemApi, importInventoryCsvApi, getBranchesApi } from '../utils/api';
 
 interface InventoryViewProps {
   currency?: Currency;
@@ -36,6 +36,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
   const [sellingPrice, setSellingPrice] = useState('');
   const [supplier, setSupplier] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [branchFilter, setBranchFilter] = useState<string>('');
+  const [branches, setBranches] = useState<any[]>([]);
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvStatus, setCsvStatus] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const csvInputRef = useRef<HTMLInputElement | null>(null);
+
 
   const fetchInventory = () => {
     setIsLoading(true);
@@ -66,7 +72,27 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
 
   useEffect(() => {
     fetchInventory();
+    getBranchesApi().then(b => setBranches(Array.isArray(b) ? b : [])).catch(() => {});
   }, []);
+
+  const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCsvImporting(true);
+    setCsvStatus(null);
+    try {
+      const result = await importInventoryCsvApi(file, branchFilter || undefined);
+      setCsvStatus({ text: result.message || `Imported ${result.imported} items`, type: 'success' });
+      fetchInventory();
+    } catch (err: any) {
+      setCsvStatus({ text: err.message || 'Import failed', type: 'error' });
+    } finally {
+      setCsvImporting(false);
+      if (csvInputRef.current) csvInputRef.current.value = '';
+      setTimeout(() => setCsvStatus(null), 6000);
+    }
+  };
+
 
   const handleCreateSKU = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,11 +191,46 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
           </p>
         </div>
 
-        <button className="action-btn-primary" onClick={() => setIsModalOpen(true)}>
-          <i className="fa-solid fa-boxes-stacked"></i>
-          <span>Add Inventory Item</span>
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {branches.length > 0 && (
+            <select
+              value={branchFilter}
+              onChange={e => setBranchFilter(e.target.value)}
+              style={{ background: '#1a1a22', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '8px 14px', color: branchFilter ? '#00d4ff' : '#9ca3af', fontSize: '0.82rem', cursor: 'pointer' }}
+            >
+              <option value="">All Branches</option>
+              {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          )}
+          <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvImport} />
+          <button
+            className="action-btn-secondary"
+            onClick={() => csvInputRef.current?.click()}
+            disabled={csvImporting}
+            style={{ gap: '8px', fontSize: '0.82rem', display: 'flex', alignItems: 'center' }}
+          >
+            {csvImporting ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-file-import"></i>}
+            {csvImporting ? 'Importing...' : 'Import CSV'}
+          </button>
+          <button className="action-btn-primary" onClick={() => setIsModalOpen(true)}>
+            <i className="fa-solid fa-boxes-stacked"></i>
+            <span>Add Inventory Item</span>
+          </button>
+        </div>
       </div>
+
+      {csvStatus && (
+        <div style={{
+          padding: '10px 14px', borderRadius: '10px', marginBottom: '16px',
+          background: csvStatus.type === 'success' ? 'rgba(74, 222, 128, 0.08)' : 'rgba(255, 142, 142, 0.08)',
+          border: `1px solid ${csvStatus.type === 'success' ? 'rgba(74, 222, 128, 0.3)' : 'rgba(255, 142, 142, 0.3)'}`,
+          color: csvStatus.type === 'success' ? '#4ade80' : '#ff8e8e',
+          fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '10px'
+        }}>
+          <i className={`fa-solid ${csvStatus.type === 'success' ? 'fa-circle-check' : 'fa-triangle-exclamation'}`}></i>
+          {csvStatus.text}
+        </div>
+      )}
 
       {/* Top 4 Inventory Advisor Metric Highlights */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>

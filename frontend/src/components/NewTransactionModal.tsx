@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Transaction, Currency } from '../types';
 import { USD_TO_KES_RATE, getCurrencySymbol } from '../utils/currencyUtils';
+import { getBranchesApi } from '../utils/api';
 
 interface NewTransactionModalProps {
   isOpen: boolean;
@@ -24,6 +25,14 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
+  const [branchId, setBranchId] = useState('');
+  const [branches, setBranches] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      getBranchesApi().then(b => setBranches(Array.isArray(b) ? b : [])).catch(() => {});
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -44,8 +53,9 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
       date,
       status: 'Cleared',
       amount: type === 'Expense' ? -Math.abs(numAmountInUSD) : Math.abs(numAmountInUSD),
-      notes: notes ? `${notes} (Entered in ${currency})` : `Entered in ${currency}`
-    });
+      notes: notes ? `${notes} (Entered in ${currency})` : `Entered in ${currency}`,
+      ...(branchId ? { branch_id: branchId } : {})
+    } as any);
 
     setCounterparty('');
     setAmount('');
@@ -212,6 +222,24 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
               style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px' }}
             />
           </div>
+
+          {branches.length > 0 && (
+            <div className="form-group">
+              <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Branch
+              </label>
+              <select
+                value={branchId}
+                onChange={e => setBranchId(e.target.value)}
+                style={{ background: '#1a1a22', color: branchId ? '#00d4ff' : '#9ca3af', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px', width: '100%' }}
+              >
+                <option value="">All Branches / HQ</option>
+                {branches.map((b: any) => (
+                  <option key={b.id} value={b.id} style={{ color: '#fff' }}>{b.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="modal-actions" style={{ marginTop: '24px' }}>
             <button type="button" className="action-btn-secondary" onClick={onClose}>
