@@ -1293,4 +1293,47 @@ body.light-theme .toast {
   box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15) !important;
 }
 
+/* Comprehensive Component Overrides in Light Theme */
+body.light-theme .chart-stat-val,
+body.light-theme .stat-badge,
+body.light-theme .agent-name,
+body.light-theme .copilot-header h4,
+body.light-theme .stream-header h5,
+body.light-theme .stream-msg,
+body.light-theme .kpi-number,
+body.light-theme .profile-name,
+body.light-theme .pricing-val,
+body.light-theme .timeline-title,
+body.light-theme .table-cell-bold {
+  color: #0f172a !important;
+}
+
+body.light-theme .metric-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 14px -2px rgba(15, 23, 42, 0.05) !important;
+}
+
+body.light-theme .insight-banner {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(2, 132, 199, 0.08)) !important;
+  border: 1px solid rgba(99, 102, 241, 0.2) !important;
+}
+
+body.light-theme .pill-tag.gray {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border-color: #cbd5e1 !important;
+}
+
+body.light-theme .axis-agent-widget {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.15) !important;
+}
+
+body.light-theme .axis-agent-widget h3,
+body.light-theme .axis-agent-widget h4 {
+  color: #0f172a !important;
+}
+
 

@@ -72,6 +72,7 @@ class SubUserUpdate(BaseModel):
     role_id: Optional[str] = None
     branch_id: Optional[str] = None
     is_active: Optional[bool] = None
+    status: Optional[str] = None
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -438,7 +439,23 @@ async def delete_role(role_id: str, current_user: dict = Depends(get_current_use
     owner_id, _, _, actor_id, actor_name, actor_role = get_user_context(current_user)
     doc = await get_business_doc(owner_id)
     target = next((r for r in doc.get("roles", []) if r["id"] == role_id), None)
+    role_name = target.get("role_name", role_id) if target else role_id
+
     doc["roles"] = [r for r in doc.get("roles", []) if r["id"] != role_id]
+
+    # Clean up any team members that had this role
+    reassigned_count = 0
+    for u in doc.get("sub_users", []):
+        if u.get("role_id") == role_id:
+            u["role_id"] = None
+            reassigned_count += 1
+            if db_manager.is_connected:
+                await db_manager.db.users.update_one({"user_id": u["id"]}, {"$set": {"role_id": None}})
+            else:
+                for u_data in db_manager.memory_store.get("users", {}).values():
+                    if u_data.get("user_id") == u["id"]:
+                        u_data["role_id"] = None
+
     await save_business_doc(owner_id, doc)
 
     await AxisDataStore.log_activity(
@@ -447,8 +464,15 @@ async def delete_role(role_id: str, current_user: dict = Depends(get_current_use
         actor_name=actor_name,
         actor_role=actor_role,
         action="role.delete",
-        title=f"Deleted role '{target.get('role_name', role_id) if target else role_id}'",
-        details=f"Role ID: {role_id}"
+        title=f"Deleted role '{role_name}'",
+        details=f"Role ID: {role_id}. {reassigned_count} team member(s) unassigned." if reassigned_count else f"Role ID: {role_id}"
+    )
+
+    await AxisDataStore.add_notification(
+        recipient_id=owner_id,
+        title="Role Deleted",
+        message=f"Custom role '{role_name}' has been deleted.",
+        notif_type="system"
     )
 
     return {"status": "deleted", "role_id": role_id}
@@ -577,21 +601,28 @@ async def update_sub_user(
         if u["id"] == user_id:
             old_role_id = sub_users[i].get("role_id")
             old_branch_id = sub_users[i].get("branch_id")
+            old_is_active = sub_users[i].get("is_active", True)
+            
             update = {k: v for k, v in payload.model_dump().items() if v is not None}
+            if "is_active" in update:
+                update["status"] = "active" if update["is_active"] else "suspended"
+            elif "status" in update:
+                update["is_active"] = (update["status"] != "suspended")
+
             sub_users[i].update(update)
             sub_users[i]["updated_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
             doc["sub_users"] = sub_users
             await save_business_doc(owner_id, doc)
 
-            # Also update user document in users collection
+            # Also update user document in users collection / memory store
             if db_manager.is_connected:
                 await db_manager.db.users.update_one(
-                    {"user_id": user_id},
-                    {"$set": {k: v for k, v in update.items() if k in ["name", "role_id", "branch_id", "is_active"]}}
+                    {"$or": [{"user_id": user_id}, {"email": sub_users[i].get("email")}]},
+                    {"$set": {k: v for k, v in update.items() if k in ["name", "role_id", "branch_id", "is_active", "status"]}}
                 )
             else:
                 for k_email, u_data in db_manager.memory_store.get("users", {}).items():
-                    if u_data.get("user_id") == user_id:
+                    if u_data.get("user_id") == user_id or u_data.get("email") == sub_users[i].get("email"):
                         u_data.update(update)
 
             # Resolve names
@@ -600,18 +631,68 @@ async def update_sub_user(
             branch_obj = next((b for b in doc.get("branches", []) if b["id"] == sub_users[i].get("branch_id")), None)
             branch_title = branch_obj["name"] if branch_obj else "All Branches"
 
-            # Audit log
-            await AxisDataStore.log_activity(
-                owner_id=owner_id,
-                actor_id=actor_id,
-                actor_name=actor_name,
-                actor_role=actor_role,
-                action="team.update",
-                title=f"Updated team member {sub_users[i]['name']}",
-                details=f"Current assignment: {role_title} at {branch_title}",
-                branch_id=sub_users[i].get("branch_id"),
-                branch_name=branch_title
-            )
+            # Handle suspension & activation events specifically
+            if update.get("is_active") is False and old_is_active:
+                await AxisDataStore.log_activity(
+                    owner_id=owner_id,
+                    actor_id=actor_id,
+                    actor_name=actor_name,
+                    actor_role=actor_role,
+                    action="team.suspend",
+                    title=f"Suspended team member {sub_users[i]['name']}",
+                    details=f"Account suspended by business owner.",
+                    branch_id=sub_users[i].get("branch_id"),
+                    branch_name=branch_title
+                )
+                await AxisDataStore.add_notification(
+                    recipient_id=owner_id,
+                    title="Team Member Suspended",
+                    message=f"{sub_users[i]['name']} ({sub_users[i]['email']}) has been suspended from the workspace.",
+                    notif_type="system"
+                )
+                await AxisDataStore.add_notification(
+                    recipient_id=user_id,
+                    title="Account Suspended",
+                    message="Your team account has been suspended by the business owner. Please contact your administrator.",
+                    notif_type="system"
+                )
+            elif update.get("is_active") is True and not old_is_active:
+                await AxisDataStore.log_activity(
+                    owner_id=owner_id,
+                    actor_id=actor_id,
+                    actor_name=actor_name,
+                    actor_role=actor_role,
+                    action="team.activate",
+                    title=f"Re-activated team member {sub_users[i]['name']}",
+                    details=f"Account re-activated by business owner.",
+                    branch_id=sub_users[i].get("branch_id"),
+                    branch_name=branch_title
+                )
+                await AxisDataStore.add_notification(
+                    recipient_id=owner_id,
+                    title="Team Member Re-activated",
+                    message=f"{sub_users[i]['name']} ({sub_users[i]['email']}) has been re-activated.",
+                    notif_type="system"
+                )
+                await AxisDataStore.add_notification(
+                    recipient_id=user_id,
+                    title="Account Re-activated",
+                    message="Your team account has been re-activated by the business owner. You may now resume your tasks.",
+                    notif_type="system"
+                )
+            else:
+                # General update audit log
+                await AxisDataStore.log_activity(
+                    owner_id=owner_id,
+                    actor_id=actor_id,
+                    actor_name=actor_name,
+                    actor_role=actor_role,
+                    action="team.update",
+                    title=f"Updated team member {sub_users[i]['name']}",
+                    details=f"Current assignment: {role_title} at {branch_title}",
+                    branch_id=sub_users[i].get("branch_id"),
+                    branch_name=branch_title
+                )
 
             # If role or branch changed, notify the team member
             if update.get("role_id") != old_role_id or update.get("branch_id") != old_branch_id:
@@ -638,8 +719,36 @@ async def delete_sub_user(user_id: str, current_user: dict = Depends(get_current
     owner_id, _, _, actor_id, actor_name, actor_role = get_user_context(current_user)
     doc = await get_business_doc(owner_id)
     target = next((u for u in doc.get("sub_users", []) if u["id"] == user_id), None)
+    target_name = target.get("name", user_id) if target else user_id
+    target_email = target.get("email") if target else None
+
+    # Remove from business doc sub_users list
     doc["sub_users"] = [u for u in doc.get("sub_users", []) if u["id"] != user_id]
+
+    # Clean up any branch manager assignments pointing to this user
+    for b in doc.get("branches", []):
+        if b.get("manager_user_id") == user_id:
+            b["manager_user_id"] = None
+
     await save_business_doc(owner_id, doc)
+
+    # Mark user as deleted in users collection so they cannot log in and are informed accordingly
+    now_str = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    deletion_update = {
+        "is_deleted": True,
+        "is_active": False,
+        "status": "deleted",
+        "deleted_at": now_str
+    }
+    if db_manager.is_connected:
+        await db_manager.db.users.update_one(
+            {"$or": [{"user_id": user_id}, {"email": target_email}]},
+            {"$set": deletion_update}
+        )
+    else:
+        for k_key, u_data in list(db_manager.memory_store.get("users", {}).items()):
+            if u_data.get("user_id") == user_id or (target_email and u_data.get("email") == target_email):
+                u_data.update(deletion_update)
 
     await AxisDataStore.log_activity(
         owner_id=owner_id,
@@ -647,8 +756,15 @@ async def delete_sub_user(user_id: str, current_user: dict = Depends(get_current
         actor_name=actor_name,
         actor_role=actor_role,
         action="team.delete",
-        title=f"Removed team member {target.get('name', user_id) if target else user_id}",
-        details=f"User ID: {user_id}"
+        title=f"Removed team member {target_name}",
+        details=f"Account deleted by owner. Email: {target_email or user_id}"
+    )
+
+    await AxisDataStore.add_notification(
+        recipient_id=owner_id,
+        title="Team Member Removed",
+        message=f"{target_name} ({target_email or user_id}) has been removed from your business workspace.",
+        notif_type="system"
     )
 
     return {"status": "deleted", "user_id": user_id}

@@ -4,7 +4,7 @@ import {
   getBusinessProfileApi, updateBusinessProfileApi,
   getBranchesApi, createBranchApi, updateBranchApi, deleteBranchApi, getBranchPerformanceApi,
   getRolesApi, createRoleApi, updateRoleApi, deleteRoleApi,
-  getTeamApi, getBranchDetailsApi
+  getTeamApi, createSubUserApi, updateSubUserApi, deleteSubUserApi, getBranchDetailsApi
 } from '../utils/api';
 import { formatCurrency } from '../utils/currencyUtils';
 import { formatRelativeTime } from '../utils/dateUtils';
@@ -66,6 +66,11 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
   const [showTeamModal, setShowTeamModal] = useState(false);
   const [teamForm, setTeamForm] = useState({ name: '', email: '', role_id: '', branch_id: '' });
   const [teamSaving, setTeamSaving] = useState(false);
+
+  // Edit team member modal
+  const [showEditTeamModal, setShowEditTeamModal] = useState(false);
+  const [editingMember, setEditingMember] = useState<SubUser | null>(null);
+  const [editMemberForm, setEditMemberForm] = useState({ name: '', role_id: '', branch_id: '', is_active: true });
 
   const showStatus = (text: string, type: 'success' | 'error' = 'success') => {
     setStatusMsg({ text, type });
@@ -181,7 +186,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
     }
     setTeamSaving(true);
     try {
-      const created = await (await import('../utils/api')).createSubUserApi(teamForm);
+      const created = await createSubUserApi(teamForm);
       setTeam(prev => [...prev, created]);
       showStatus(`Team member ${teamForm.name} added! Their temporary password is their email address.`);
       setShowTeamModal(false);
@@ -190,6 +195,73 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
       showStatus(err.message || 'Failed to add team member', 'error');
     } finally {
       setTeamSaving(false);
+    }
+  };
+
+  const openEditTeamMember = (member: SubUser) => {
+    setEditingMember(member);
+    setEditMemberForm({
+      name: member.name,
+      role_id: member.role_id || '',
+      branch_id: member.branch_id || '',
+      is_active: member.is_active !== false,
+    });
+    setShowEditTeamModal(true);
+  };
+
+  const handleUpdateTeamMember = async () => {
+    if (!editingMember) return;
+    if (!editMemberForm.name.trim()) {
+      showStatus('Member name is required', 'error');
+      return;
+    }
+    setTeamSaving(true);
+    try {
+      const updated = await updateSubUserApi(editingMember.id, {
+        name: editMemberForm.name.trim(),
+        role_id: editMemberForm.role_id,
+        branch_id: editMemberForm.branch_id || null,
+        is_active: editMemberForm.is_active,
+      });
+      setTeam(prev => prev.map(m => m.id === editingMember.id ? { ...m, ...updated, is_active: editMemberForm.is_active } : m));
+      showStatus(`Team member ${updated.name || editingMember.name} updated!`);
+      setShowEditTeamModal(false);
+      setEditingMember(null);
+    } catch (err: any) {
+      showStatus(err.message || 'Failed to update team member', 'error');
+    } finally {
+      setTeamSaving(false);
+    }
+  };
+
+  const handleToggleSuspendTeamMember = async (member: SubUser) => {
+    const isCurrentlyActive = member.is_active !== false;
+    const confirmPrompt = isCurrentlyActive
+      ? `Suspend ${member.name}'s account? They will be blocked from logging into the workspace until re-activated.`
+      : `Re-activate ${member.name}'s account? They will be able to log in and access their assigned workspace.`;
+    
+    if (!confirm(confirmPrompt)) return;
+    try {
+      const updated = await updateSubUserApi(member.id, { is_active: !isCurrentlyActive });
+      setTeam(prev => prev.map(m => m.id === member.id ? { ...m, ...updated, is_active: !isCurrentlyActive } : m));
+      showStatus(
+        !isCurrentlyActive
+          ? `${member.name}'s account has been re-activated.`
+          : `${member.name}'s account has been suspended.`
+      );
+    } catch (err: any) {
+      showStatus(err.message || 'Failed to update account status', 'error');
+    }
+  };
+
+  const handleDeleteTeamMember = async (member: SubUser) => {
+    if (!confirm(`Delete ${member.name} permanently? They will be removed from your team and informed of account deletion if they attempt to log in.`)) return;
+    try {
+      await deleteSubUserApi(member.id);
+      setTeam(prev => prev.filter(u => u.id !== member.id));
+      showStatus(`${member.name} removed from team.`);
+    } catch (err: any) {
+      showStatus(err.message || 'Failed to delete team member', 'error');
     }
   };
 
@@ -898,37 +970,98 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
               {team.map(member => {
                 const memberRole = roles.find(r => r.id === member.role_id);
                 const memberBranch = branches.find(b => b.id === member.branch_id);
+                const isSuspended = member.is_active === false;
                 return (
-                  <div key={member.id} className="glass-card" style={{ padding: '16px 20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(167, 139, 250, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.95rem', color: '#a78bfa', flexShrink: 0 }}>
-                        {member.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontWeight: 700, color: '#fff', fontSize: '0.9rem' }}>{member.name}</span>
-                          {!member.is_active && <span style={{ fontSize: '0.65rem', background: 'rgba(255, 142, 142, 0.15)', color: '#ff8e8e', borderRadius: '20px', padding: '2px 8px', border: '1px solid rgba(255, 142, 142, 0.3)' }}>Inactive</span>}
-                          {member.must_change_password && <span style={{ fontSize: '0.65rem', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', borderRadius: '20px', padding: '2px 8px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>Password Change Pending</span>}
+                  <div key={member.id} className="glass-card" style={{ padding: '16px 20px', border: isSuspended ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(255, 255, 255, 0.08)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: '260px' }}>
+                        <div style={{
+                          width: '42px', height: '42px', borderRadius: '50%',
+                          background: isSuspended ? 'rgba(239, 68, 68, 0.15)' : 'rgba(167, 139, 250, 0.2)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontWeight: 700, fontSize: '0.95rem',
+                          color: isSuspended ? '#ef4444' : '#a78bfa',
+                          flexShrink: 0
+                        }}>
+                          {member.name.charAt(0).toUpperCase()}
                         </div>
-                        <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginTop: '2px' }}>{member.email}</div>
-                        <div style={{ display: 'flex', gap: '10px', marginTop: '6px', flexWrap: 'wrap' }}>
-                          {memberRole && <span style={{ fontSize: '0.72rem', color: '#a78bfa', background: 'rgba(167, 139, 250, 0.12)', borderRadius: '6px', padding: '2px 8px' }}><i className="fa-solid fa-user-shield" style={{ marginRight: '4px' }}></i>{memberRole.role_name}</span>}
-                          {memberBranch && <span style={{ fontSize: '0.72rem', color: '#00d4ff', background: 'rgba(0, 212, 255, 0.12)', borderRadius: '6px', padding: '2px 8px' }}><i className="fa-solid fa-store" style={{ marginRight: '4px' }}></i>{memberBranch.name}</span>}
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 700, color: '#fff', fontSize: '0.92rem' }}>{member.name}</span>
+                            {isSuspended ? (
+                              <span style={{ fontSize: '0.68rem', background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', borderRadius: '20px', padding: '2px 8px', border: '1px solid rgba(239, 68, 68, 0.3)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <i className="fa-solid fa-ban" style={{ fontSize: '0.62rem' }}></i> Suspended
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '0.68rem', background: 'rgba(74, 222, 128, 0.12)', color: '#4ade80', borderRadius: '20px', padding: '2px 8px', border: '1px solid rgba(74, 222, 128, 0.3)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <i className="fa-solid fa-circle-check" style={{ fontSize: '0.62rem' }}></i> Active
+                              </span>
+                            )}
+                            {member.must_change_password && (
+                              <span style={{ fontSize: '0.65rem', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', borderRadius: '20px', padding: '2px 8px', border: '1px solid rgba(245, 158, 11, 0.3)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <i className="fa-solid fa-key" style={{ fontSize: '0.6rem' }}></i> Password Change Pending
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginTop: '2px' }}>{member.email}</div>
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
+                            {memberRole && (
+                              <span style={{ fontSize: '0.72rem', color: '#a78bfa', background: 'rgba(167, 139, 250, 0.12)', borderRadius: '6px', padding: '2px 8px', border: '1px solid rgba(167, 139, 250, 0.25)' }}>
+                                <i className="fa-solid fa-user-shield" style={{ marginRight: '4px' }}></i>{memberRole.role_name}
+                              </span>
+                            )}
+                            {memberBranch ? (
+                              <span style={{ fontSize: '0.72rem', color: '#00d4ff', background: 'rgba(0, 212, 255, 0.12)', borderRadius: '6px', padding: '2px 8px', border: '1px solid rgba(0, 212, 255, 0.25)' }}>
+                                <i className="fa-solid fa-store" style={{ marginRight: '4px' }}></i>{memberBranch.name}
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '0.72rem', color: '#94a3b8', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '6px', padding: '2px 8px' }}>
+                                <i className="fa-solid fa-globe" style={{ marginRight: '4px' }}></i>All Branches
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <button
-                        onClick={async () => {
-                          if (!confirm(`Remove ${member.name} from the team?`)) return;
-                          try {
-                            await (await import('../utils/api')).deleteSubUserApi(member.id);
-                            setTeam(prev => prev.filter(u => u.id !== member.id));
-                            showStatus(`${member.name} removed from team.`);
-                          } catch (e: any) { showStatus(e.message, 'error'); }
-                        }}
-                        style={{ background: 'rgba(255, 142, 142, 0.08)', border: '1px solid rgba(255, 142, 142, 0.2)', color: '#ff8e8e', cursor: 'pointer', borderRadius: '8px', padding: '6px 10px', fontSize: '0.78rem' }}
-                      >
-                        <i className="fa-solid fa-trash-can"></i>
-                      </button>
+
+                      {/* Team Member Action Buttons */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => openEditTeamMember(member)}
+                          className="action-btn-secondary"
+                          style={{ padding: '6px 12px', fontSize: '0.78rem', gap: '6px' }}
+                          title="Edit member details, role, or branch"
+                        >
+                          <i className="fa-solid fa-pen"></i> Edit
+                        </button>
+
+                        <button
+                          onClick={() => handleToggleSuspendTeamMember(member)}
+                          style={{
+                            padding: '6px 12px', fontSize: '0.78rem', borderRadius: '8px', cursor: 'pointer',
+                            display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600,
+                            background: !isSuspended ? 'rgba(245, 158, 11, 0.12)' : 'rgba(74, 222, 128, 0.12)',
+                            border: !isSuspended ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(74, 222, 128, 0.3)',
+                            color: !isSuspended ? '#f59e0b' : '#4ade80'
+                          }}
+                          title={!isSuspended ? "Suspend account access" : "Re-activate account access"}
+                        >
+                          <i className={!isSuspended ? "fa-solid fa-ban" : "fa-solid fa-circle-check"}></i>
+                          {!isSuspended ? 'Suspend' : 'Activate'}
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteTeamMember(member)}
+                          style={{
+                            padding: '6px 12px', fontSize: '0.78rem', borderRadius: '8px', cursor: 'pointer',
+                            display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600,
+                            background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)',
+                            color: '#ef4444'
+                          }}
+                          title="Delete member permanently"
+                        >
+                          <i className="fa-solid fa-trash-can"></i> Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -1164,6 +1297,119 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
               <button className="action-btn-primary" disabled={teamSaving} onClick={handleSaveTeamMember}>
                 {teamSaving ? <i className="fa-solid fa-spinner fa-spin" style={{ marginRight: '6px' }}></i> : <i className="fa-solid fa-user-plus" style={{ marginRight: '6px' }}></i>}
                 {teamSaving ? 'Adding...' : 'Add Team Member'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT TEAM MEMBER MODAL */}
+      {showEditTeamModal && editingMember && (
+        <div className="modal-overlay active">
+          <div className="modal-card glass-card" style={{ width: '520px', maxHeight: '88vh', overflowY: 'auto' }}>
+            <div className="modal-header">
+              <h3 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <i className="fa-solid fa-user-pen" style={{ color: '#00d4ff' }}></i>
+                Edit Team Member: {editingMember.name}
+              </h3>
+              <button className="modal-close" onClick={() => { setShowEditTeamModal(false); setEditingMember(null); }}>×</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '16px 0' }}>
+              <div>
+                <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Full Name *</label>
+                <input
+                  type="text"
+                  value={editMemberForm.name}
+                  onChange={e => setEditMemberForm(prev => ({ ...prev, name: e.target.value }))}
+                  style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Email Address</label>
+                <input
+                  type="email"
+                  value={editingMember.email}
+                  disabled
+                  style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', padding: '10px 14px', color: '#6b7280', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box', cursor: 'not-allowed' }}
+                />
+                <span style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: '4px', display: 'block' }}>Email address cannot be changed once created.</span>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Role / Privileges *</label>
+                <select
+                  value={editMemberForm.role_id}
+                  onChange={e => setEditMemberForm(prev => ({ ...prev, role_id: e.target.value }))}
+                  style={{ width: '100%', background: '#1a1a22', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '0.88rem' }}
+                >
+                  <option value="">Select a role...</option>
+                  {displayRoles.map(r => (
+                    <option key={r.id} value={r.id}>{r.role_name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Assigned Branch</label>
+                <select
+                  value={editMemberForm.branch_id}
+                  onChange={e => setEditMemberForm(prev => ({ ...prev, branch_id: e.target.value }))}
+                  style={{ width: '100%', background: '#1a1a22', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '0.88rem' }}
+                >
+                  <option value="">All branches / HQ</option>
+                  {branches.map(b => <option key={b.id} value={b.id}>{b.name} {b.is_main ? '(HQ)' : ''}</option>)}
+                </select>
+                <span style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '4px', display: 'block' }}>
+                  Restricts this team member's operational view and records to this branch only.
+                </span>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Account Status</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setEditMemberForm(prev => ({ ...prev, is_active: true }))}
+                    style={{
+                      padding: '10px 14px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                      background: editMemberForm.is_active ? 'rgba(74, 222, 128, 0.15)' : 'rgba(255,255,255,0.03)',
+                      border: editMemberForm.is_active ? '1px solid #4ade80' : '1px solid rgba(255,255,255,0.1)',
+                      color: editMemberForm.is_active ? '#4ade80' : '#9ca3af',
+                      fontWeight: 600, fontSize: '0.85rem'
+                    }}
+                  >
+                    <i className="fa-solid fa-circle-check"></i> Active
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditMemberForm(prev => ({ ...prev, is_active: false }))}
+                    style={{
+                      padding: '10px 14px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                      background: !editMemberForm.is_active ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.03)',
+                      border: !editMemberForm.is_active ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)',
+                      color: !editMemberForm.is_active ? '#ef4444' : '#9ca3af',
+                      fontWeight: 600, fontSize: '0.85rem'
+                    }}
+                  >
+                    <i className="fa-solid fa-ban"></i> Suspended
+                  </button>
+                </div>
+                {!editMemberForm.is_active && (
+                  <span style={{ fontSize: '0.72rem', color: '#ef4444', marginTop: '6px', display: 'block' }}>
+                    <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '4px' }}></i>
+                    Suspended members cannot log in. They will see an informative message if they attempt to sign in.
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button className="action-btn-secondary" onClick={() => { setShowEditTeamModal(false); setEditingMember(null); }}>Cancel</button>
+              <button className="action-btn-primary" disabled={teamSaving} onClick={handleUpdateTeamMember}>
+                {teamSaving ? <i className="fa-solid fa-spinner fa-spin" style={{ marginRight: '6px' }}></i> : <i className="fa-solid fa-floppy-disk" style={{ marginRight: '6px' }}></i>}
+                {teamSaving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>

@@ -43,6 +43,18 @@ async def get_current_user(
         if "user_id" not in user:
             user["user_id"] = str(user.get("_id", user_id))
         user.pop("_id", None)
+        
+        # Enforce suspension and deletion checks on all protected routes
+        if user.get("is_deleted") or user.get("status") == "deleted":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your account has been deleted by the business owner. Please contact your business administrator for assistance.",
+            )
+        if user.get("is_active") is False or user.get("status") == "suspended" or user.get("is_suspended") is True:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your account has been suspended by the business owner. Please contact your business administrator for assistance.",
+            )
         return user
     else:
         user = db_manager.memory_store["users"].get(user_id)
@@ -52,6 +64,18 @@ async def get_current_user(
             raise credentials_exception
         if "user_id" not in user:
             user["user_id"] = user_id
+            
+        # Enforce suspension and deletion checks on all protected routes
+        if user.get("is_deleted") or user.get("status") == "deleted":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your account has been deleted by the business owner. Please contact your business administrator for assistance.",
+            )
+        if user.get("is_active") is False or user.get("status") == "suspended" or user.get("is_suspended") is True:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your account has been suspended by the business owner. Please contact your business administrator for assistance.",
+            )
         return user
 
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Currency } from '../types';
-import { getUserProfileApi, updateUserProfileApi, uploadAssetApi, sendTestNotificationApi, UserProfile } from '../utils/api';
+import { getUserProfileApi, updateUserProfileApi, uploadAssetApi, dispatchSummaryNotificationApi, UserProfile } from '../utils/api';
 
 interface SettingsViewProps {
   currency?: Currency;
@@ -37,23 +37,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark' | 'system'>(user?.theme || theme);
 
   // Business summary notification preferences
-  const [notifSettings, setNotifSettings] = useState({
-    enabled: true,
-    frequency: 'daily', // 'daily' | 'weekly' | 'monthly'
-    dispatch_time: '18:00', // 6:00 PM
-    topics: {
-      performance: true,
-      stock: true,
-      ledger: true,
-    },
-    channels: {
-      in_app: true,
-      email: true,
-      sms: false,
-    },
-    email_mode: 'profile', // 'profile' | 'custom'
-    custom_email: '',
-    phone_number: '',
+  const [notifSettings, setNotifSettings] = useState(() => {
+    const existing = user?.notification_settings;
+    return {
+      enabled: existing?.enabled ?? true,
+      frequency: existing?.frequency || 'daily', // 'daily' | 'weekly' | 'monthly'
+      dispatch_time: '18:00', // 6:00 PM
+      topics: {
+        performance: existing?.topics?.performance ?? true,
+        stock: existing?.topics?.stock ?? true,
+        ledger: existing?.topics?.ledger ?? true,
+      },
+      channels: {
+        in_app: existing?.channels?.in_app ?? true,
+        email: existing?.channels?.email ?? true,
+        sms: existing?.channels?.sms ?? false,
+      },
+      email_mode: existing?.email_mode || 'profile', // 'profile' | 'custom'
+      custom_email: existing?.custom_email || '',
+      phone_number: existing?.phone_number || '',
+    };
   });
 
   const [saving, setSaving] = useState(false);
@@ -62,10 +65,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const [savingNotif, setSavingNotif] = useState(false);
-  const [testingNotif, setTestingNotif] = useState(false);
+  const [dispatchingNotif, setDispatchingNotif] = useState(false);
   const [notifSuccess, setNotifSuccess] = useState<string | null>(null);
   const [notifError, setNotifError] = useState<string | null>(null);
-  const [lastTestResult, setLastTestResult] = useState<any>(null);
+  const [lastDispatchResult, setLastDispatchResult] = useState<any>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -304,7 +307,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  const handleSendTestNotification = async () => {
+  const handleDispatchSummary = async () => {
     const activeModes = Object.entries(notifSettings.channels)
       .filter(([_, active]) => active)
       .map(([name]) => name);
@@ -324,21 +327,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       return;
     }
 
-    setTestingNotif(true);
+    setDispatchingNotif(true);
     setNotifSuccess(null);
     setNotifError(null);
-    setLastTestResult(null);
+    setLastDispatchResult(null);
 
     try {
-      const res = await sendTestNotificationApi(notifSettings);
-      setLastTestResult(res);
+      const res = await dispatchSummaryNotificationApi(notifSettings);
+      setLastDispatchResult(res);
       const readableModes = activeModes.map(m => m === 'in_app' ? 'In-App' : m === 'sms' ? 'SMS' : 'Email').join(' & ');
-      setNotifSuccess(`Business summary dispatched to activated mode(s): ${readableModes}! Check your active channels.`);
+      setNotifSuccess(`Business summary report delivered to activated mode(s): ${readableModes}! Check your active channels.`);
       setTimeout(() => setNotifSuccess(null), 6000);
     } catch (err: any) {
-      setNotifError(err.message || 'Failed to dispatch test notification.');
+      setNotifError(err.message || 'Failed to dispatch business summary.');
     } finally {
-      setTestingNotif(false);
+      setDispatchingNotif(false);
     }
   };
 
@@ -479,54 +482,54 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           )}
 
-          {/* Test Result Live Breakdown Card */}
-          {lastTestResult && lastTestResult.summary && (
+          {/* Business Summary Live Breakdown Card */}
+          {lastDispatchResult && lastDispatchResult.summary && (
             <div style={{ padding: '18px', borderRadius: '14px', background: 'rgba(0, 212, 255, 0.05)', border: '1px solid rgba(0, 212, 255, 0.25)', marginBottom: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
                 <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#00d4ff' }}>
-                  <i className="fa-solid fa-bolt" style={{ marginRight: '6px' }}></i> Latest Summary Report (Dispatched)
+                  <i className="fa-solid fa-bolt" style={{ marginRight: '6px' }}></i> Latest Business Summary Delivered
                 </span>
                 <span className="pill-tag cyan" style={{ fontSize: '0.72rem', padding: '3px 8px' }}>
-                  Dispatch Time: 6:00 PM
+                  Dispatch Schedule: 6:00 PM
                 </span>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '12px' }}>
                 <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
                   <span style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block' }}>Revenue (Income)</span>
-                  <strong style={{ fontSize: '1.1rem', color: '#4ade80' }}>${lastTestResult.summary.total_revenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+                  <strong style={{ fontSize: '1.1rem', color: '#4ade80' }}>${lastDispatchResult.summary.total_revenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
                 </div>
 
                 <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
                   <span style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block' }}>Expenses (Costs)</span>
-                  <strong style={{ fontSize: '1.1rem', color: '#ff8e8e' }}>${lastTestResult.summary.total_expenses.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+                  <strong style={{ fontSize: '1.1rem', color: '#ff8e8e' }}>${lastDispatchResult.summary.total_expenses.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
                 </div>
 
                 <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
                   <span style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block' }}>
-                    {lastTestResult.summary.is_profit ? 'Net Profit & Margin' : 'Net Loss & Margin'}
+                    {lastDispatchResult.summary.is_profit ? 'Net Profit & Margin' : 'Net Loss & Margin'}
                   </span>
-                  <strong style={{ fontSize: '1.1rem', color: lastTestResult.summary.is_profit ? '#4ade80' : '#ff8e8e' }}>
-                    ${Math.abs(lastTestResult.summary.net_margin).toLocaleString('en-US', { minimumFractionDigits: 2 })} ({lastTestResult.summary.is_profit ? '+' : '-'}{Math.abs(lastTestResult.summary.margin_percentage).toFixed(1)}%)
+                  <strong style={{ fontSize: '1.1rem', color: lastDispatchResult.summary.is_profit ? '#4ade80' : '#ff8e8e' }}>
+                    ${Math.abs(lastDispatchResult.summary.net_margin).toLocaleString('en-US', { minimumFractionDigits: 2 })} ({lastDispatchResult.summary.is_profit ? '+' : '-'}{Math.abs(lastDispatchResult.summary.margin_percentage).toFixed(1)}%)
                   </strong>
                 </div>
 
                 <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
                   <span style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block' }}>Products in Stock / Low</span>
                   <strong style={{ fontSize: '1.1rem' }}>
-                    {lastTestResult.summary.total_inventory_items} items ({lastTestResult.summary.low_stock_items} low)
+                    {lastDispatchResult.summary.total_inventory_items} items ({lastDispatchResult.summary.low_stock_items} low)
                   </strong>
                 </div>
               </div>
 
               {/* Delivery Channel Status */}
               <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', fontSize: '0.8rem', paddingTop: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                <span>In-App: <strong style={{ color: lastTestResult.channels?.in_app?.success ? '#4ade80' : '#ff8e8e' }}>{lastTestResult.channels?.in_app?.success ? 'Delivered' : 'Inactive'}</strong></span>
+                <span>In-App: <strong style={{ color: lastDispatchResult.channels?.in_app?.success ? '#4ade80' : '#ff8e8e' }}>{lastDispatchResult.channels?.in_app?.success ? 'Delivered' : 'Inactive'}</strong></span>
                 {notifSettings.channels.email && (
-                  <span>Email: <strong style={{ color: lastTestResult.channels?.email?.success ? '#4ade80' : '#ff8e8e' }}>{lastTestResult.channels?.email?.success ? `Sent to ${lastTestResult.channels.email.recipient}` : 'Not sent'}</strong></span>
+                  <span>Email: <strong style={{ color: lastDispatchResult.channels?.email?.success ? '#4ade80' : '#ff8e8e' }}>{lastDispatchResult.channels?.email?.success ? `Sent to ${lastDispatchResult.channels.email.recipient}` : 'Not sent'}</strong></span>
                 )}
                 {notifSettings.channels.sms && (
-                  <span>SMS (TalkSasa): <strong style={{ color: lastTestResult.channels?.sms?.success ? '#4ade80' : '#ff8e8e' }}>{lastTestResult.channels?.sms?.success ? `Sent to ${lastTestResult.channels.sms.recipient || 'recipient'}` : (lastTestResult.channels?.sms?.error || 'Failed')}</strong></span>
+                  <span>SMS (TalkSasa): <strong style={{ color: lastDispatchResult.channels?.sms?.success ? '#4ade80' : '#ff8e8e' }}>{lastDispatchResult.channels?.sms?.success ? `Sent to ${lastDispatchResult.channels.sms.recipient || 'recipient'}` : (lastDispatchResult.channels?.sms?.error || 'Failed')}</strong></span>
                 )}
               </div>
             </div>
@@ -860,15 +863,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 className="action-btn-secondary"
-                onClick={handleSendTestNotification}
-                disabled={testingNotif}
+                onClick={handleDispatchSummary}
+                disabled={dispatchingNotif}
                 style={{ padding: '12px 20px', fontSize: '0.92rem' }}
-                title="Dispatches a real business summary notification across all active channels immediately"
+                title="Dispatches your business summary report across all active delivery channels immediately"
               >
-                {testingNotif ? (
-                  <><i className="fa-solid fa-spinner fa-spin"></i> Sending Summary...</>
+                {dispatchingNotif ? (
+                  <><i className="fa-solid fa-spinner fa-spin"></i> Dispatching Summary...</>
                 ) : (
-                  <><i className="fa-solid fa-paper-plane"></i> Send Summary Test (6:00 PM Preview)</>
+                  <><i className="fa-solid fa-paper-plane"></i> Send Business Summary Now</>
                 )}
               </button>
             </div>

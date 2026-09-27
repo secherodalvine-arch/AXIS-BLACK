@@ -491,7 +491,28 @@ async def login(payload: LoginRequest):
             None,
         )
 
-    if not user or not verify_password(payload.password, user.get("hashed_password", "")):
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Inform team members if their account was deleted by the owner
+    if user.get("is_deleted") or user.get("status") == "deleted":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been deleted by the business owner. Please contact your business administrator for assistance.",
+        )
+
+    # Inform team members if their account was suspended by the owner
+    if user.get("is_active") is False or user.get("status") == "suspended" or user.get("is_suspended") is True:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been suspended by the business owner. Please contact your business administrator for assistance.",
+        )
+
+    if not verify_password(payload.password, user.get("hashed_password", "")):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password.",
@@ -559,6 +580,19 @@ async def refresh_token_endpoint(payload: RefreshTokenRequest):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User no longer exists.",
+        )
+
+    # Reject suspended or deleted accounts on refresh
+    if user.get("is_deleted") or user.get("status") == "deleted":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been deleted by the business owner. Please contact your business administrator for assistance.",
+        )
+
+    if user.get("is_active") is False or user.get("status") == "suspended" or user.get("is_suspended") is True:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been suspended by the business owner. Please contact your business administrator for assistance.",
         )
 
     uid, email, name = _extract_user_info(user)

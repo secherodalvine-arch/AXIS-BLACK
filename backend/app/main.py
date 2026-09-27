@@ -13,7 +13,10 @@ from app.routers import user, dashboard, transactions, voice, auth, storage, inv
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await connect_to_mongo()
+    from app.services.scheduler import start_scheduler, stop_scheduler
+    start_scheduler()
     yield
+    stop_scheduler()
     await close_mongo_connection()
 
 app = FastAPI(

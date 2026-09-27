@@ -4,3 +4,6 @@ __pycache__/
 
 # Pytest cache
 .pytest_cache/
+
+# Local memory store
+local_store.json

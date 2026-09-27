@@ -489,9 +489,9 @@ export const deleteInventoryItemApi = async (sku: string) => {
   });
 };
 
-// ── Test Summary Notification Dispatch ──
-export const sendTestNotificationApi = async (settingsPayload?: any) => {
-  return await request<any>('/users/me/test-notification', {
+// ── Business Summary Notification Dispatch ──
+export const dispatchSummaryNotificationApi = async (settingsPayload?: any) => {
+  return await request<any>('/users/me/dispatch-summary', {
     method: 'POST',
     body: settingsPayload ? JSON.stringify(settingsPayload) : undefined
   });

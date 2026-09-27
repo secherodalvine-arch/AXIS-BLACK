@@ -154,17 +154,27 @@ export const App: React.FC = () => {
     return (getStoredUser()?.theme as ('light' | 'dark' | 'system')) || 'system';
   });
 
+  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('axis_theme');
+    if (saved === 'light') return 'light';
+    if (saved === 'dark') return 'dark';
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+    return 'light';
+  });
+
   useEffect(() => {
     const applyTheme = () => {
-      let resolvedTheme: 'light' | 'dark' = 'dark';
+      let active: 'light' | 'dark' = 'dark';
       if (theme === 'system') {
         const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        resolvedTheme = prefersDark ? 'dark' : 'light';
+        active = prefersDark ? 'dark' : 'light';
       } else {
-        resolvedTheme = theme;
+        active = theme;
       }
 
-      if (resolvedTheme === 'light') {
+      setResolvedTheme(active);
+
+      if (active === 'light') {
         document.body.classList.remove('dark-theme');
         document.body.classList.add('light-theme');
         document.documentElement.setAttribute('data-theme', 'light');
@@ -216,7 +226,7 @@ export const App: React.FC = () => {
             if (profile.currency) {
               setCurrency(profile.currency as Currency);
             }
-            if (profile.theme && (profile.theme === 'dark' || profile.theme === 'light')) {
+            if (profile.theme && (profile.theme === 'dark' || profile.theme === 'light' || profile.theme === 'system')) {
               setTheme(profile.theme);
             }
           }
@@ -675,7 +685,7 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="dark-theme">
+    <div className={`app-root ${resolvedTheme}-theme`} data-theme={resolvedTheme}>
       <AppBackground />
       
       <div className="nebula-glow nebula-top-right"></div>

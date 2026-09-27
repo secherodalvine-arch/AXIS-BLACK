@@ -40,7 +40,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       const res = await loginApi(email, password);
       onLoginSuccess(res.name, res.email);
     } catch (err: any) {
-      if (err.status === 403 || err.requiresVerification) {
+      if (err.requiresVerification) {
         // Unverified account
         setUnverifiedEmail(err.email || email.toLowerCase().trim());
         setError(null);
@@ -116,9 +116,48 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         )}
 
         {error && (
-          <div className="auth-error-banner">
-            <i className="fa-solid fa-triangle-exclamation"></i>
-            <span>{error}</span>
+          <div
+            className="auth-error-banner"
+            style={
+              error.toLowerCase().includes('suspended') || error.toLowerCase().includes('deleted')
+                ? {
+                    background: 'rgba(239, 68, 68, 0.16)',
+                    border: '1px solid rgba(239, 68, 68, 0.4)',
+                    color: '#fca5a5',
+                    padding: '14px 16px',
+                    borderRadius: '12px',
+                    lineHeight: '1.5',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                    textAlign: 'left',
+                  }
+                : undefined
+            }
+          >
+            <i
+              className={
+                error.toLowerCase().includes('suspended')
+                  ? 'fa-solid fa-user-lock'
+                  : error.toLowerCase().includes('deleted')
+                  ? 'fa-solid fa-user-slash'
+                  : 'fa-solid fa-triangle-exclamation'
+              }
+              style={{
+                fontSize: error.toLowerCase().includes('suspended') || error.toLowerCase().includes('deleted') ? '1.25rem' : undefined,
+                color: error.toLowerCase().includes('suspended') || error.toLowerCase().includes('deleted') ? '#ef4444' : undefined,
+                marginTop: error.toLowerCase().includes('suspended') || error.toLowerCase().includes('deleted') ? '2px' : 0,
+                flexShrink: 0
+              }}
+            ></i>
+            <div>
+              {(error.toLowerCase().includes('suspended') || error.toLowerCase().includes('deleted')) && (
+                <strong style={{ display: 'block', color: '#fff', fontSize: '0.9rem', marginBottom: '3px' }}>
+                  {error.toLowerCase().includes('suspended') ? 'Account Suspended' : 'Account Removed'}
+                </strong>
+              )}
+              <span style={{ fontSize: '0.84rem' }}>{error}</span>
+            </div>
           </div>
         )}
 
