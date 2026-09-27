@@ -63,7 +63,7 @@ const renderFormattedText = (text: string) => {
     const parts = line.split(/(\*\*.*?\*\*)/g);
     const renderedLine = parts.map((part, i) => {
       if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={i} style={{ color: '#ffffff', fontWeight: 700 }}>{part.slice(2, -2)}</strong>;
+        return <strong key={i} style={{ color: 'var(--text-main, #ffffff)', fontWeight: 700 }}>{part.slice(2, -2)}</strong>;
       }
       return part;
     });
@@ -77,7 +77,7 @@ const renderFormattedText = (text: string) => {
     }
     if (line.startsWith('- ')) {
       return (
-        <div key={index} style={{ display: 'flex', gap: '8px', marginLeft: '0.5rem', marginBottom: '0.3rem', color: '#e5e2e1' }}>
+        <div key={index} style={{ display: 'flex', gap: '8px', marginLeft: '0.5rem', marginBottom: '0.3rem', color: 'var(--text-main, #e5e2e1)' }}>
           <span style={{ color: '#00d4ff' }}>•</span>
           <div>{renderedLine.slice(1)}</div>
         </div>
@@ -85,7 +85,7 @@ const renderFormattedText = (text: string) => {
     }
     if (line.match(/^\d+\.\s/)) {
       return (
-        <div key={index} style={{ display: 'flex', gap: '8px', marginLeft: '0.5rem', marginBottom: '0.3rem', color: '#e5e2e1' }}>
+        <div key={index} style={{ display: 'flex', gap: '8px', marginLeft: '0.5rem', marginBottom: '0.3rem', color: 'var(--text-main, #e5e2e1)' }}>
           <div>{renderedLine}</div>
         </div>
       );
@@ -93,7 +93,7 @@ const renderFormattedText = (text: string) => {
     if (!line.trim()) {
       return <div key={index} style={{ height: '0.35rem' }} />;
     }
-    return <p key={index} style={{ marginBottom: '0.4rem', lineHeight: '1.5', color: '#e5e2e1' }}>{renderedLine}</p>;
+    return <p key={index} style={{ marginBottom: '0.4rem', lineHeight: '1.5', color: 'var(--text-main, #e5e2e1)' }}>{renderedLine}</p>;
   });
 };
 
@@ -308,11 +308,11 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
           
           {/* Sidebar header with collapse button */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#cebdff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Workspace</span>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary-lilac-glow, #cebdff)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Workspace</span>
             <button
               onClick={() => setSidebarOpen(false)}
               title="Collapse panel"
-              style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '0.85rem', padding: '2px 4px', borderRadius: '4px' }}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-dim, #64748b)', cursor: 'pointer', fontSize: '0.85rem', padding: '2px 4px', borderRadius: '4px' }}
             >
               <i className="fa-solid fa-angles-left"></i>
             </button>
@@ -330,12 +330,12 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
 
           {/* Clickable Scrollable Chat History - ONLY SHOW SESSIONS WITH EXCHANGES */}
           <div>
-            <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#cebdff', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-lilac-glow, #cebdff)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <i className="fa-solid fa-clock-rotate-left" style={{ color: '#00d4ff' }}></i> Chat History ({historySessions.length})
             </h3>
             <div className="copilot-sidebar-scroll">
               {historySessions.length === 0 ? (
-                <div style={{ fontSize: '0.78rem', color: '#9ca3af', fontStyle: 'italic', padding: '6px 4px' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontStyle: 'italic', padding: '6px 4px' }}>
                   No session history yet. History is recorded when you send a query.
                 </div>
               ) : (
@@ -352,8 +352,8 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
                         justifyContent: 'space-between',
                         padding: '10px 12px',
                         borderRadius: '10px',
-                        background: isActive ? 'rgba(0, 212, 255, 0.12)' : 'rgba(255, 255, 255, 0.03)',
-                        border: isActive ? '1px solid rgba(0, 212, 255, 0.35)' : '1px solid rgba(255, 255, 255, 0.06)',
+                        background: isActive ? 'rgba(0, 212, 255, 0.12)' : 'var(--glass-bg, rgba(255, 255, 255, 0.03))',
+                        border: isActive ? '1px solid rgba(0, 212, 255, 0.35)' : '1px solid var(--glass-border, rgba(255, 255, 255, 0.06))',
                         cursor: 'pointer',
                         transition: 'all 0.2s ease'
                       }}
@@ -361,7 +361,7 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden', flex: 1 }}>
                         <i className="fa-solid fa-comments" style={{ color: isActive ? '#00d4ff' : 'var(--text-muted)', fontSize: '0.9rem', flexShrink: 0 }}></i>
                         <div style={{ overflow: 'hidden' }}>
-                          <div style={{ color: isActive ? '#fff' : 'var(--text-main)', fontSize: '0.85rem', fontWeight: isActive ? 700 : 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <div style={{ color: isActive ? '#00d4ff' : 'var(--text-main)', fontSize: '0.85rem', fontWeight: isActive ? 700 : 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {s.title}
                           </div>
                           <div style={{ color: 'var(--text-dim)', fontSize: '0.72rem', marginTop: '2px' }}>
@@ -419,7 +419,7 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
               )}
 
               <div>
-                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#ffffff', fontFamily: 'Plus Jakarta Sans' }}>
+                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans' }}>
                   {activeSession ? activeSession.title : 'New Chat'}
                 </h4>
               </div>
@@ -434,7 +434,7 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
                   <i className="fa-solid fa-brain"></i>
                 </div>
                 <div className="msg-bubble">
-                  <p style={{ marginBottom: '0.4rem', lineHeight: '1.5', color: '#e5e2e1' }}>
+                  <p style={{ marginBottom: '0.4rem', lineHeight: '1.5', color: 'var(--text-main, #e5e2e1)' }}>
                     Greetings! I am Axis, your business financial intelligence assistant. How can I assist your strategy today?
                   </p>
                   <div className="quick-chips" style={{ marginTop: '12px' }}>
@@ -468,7 +468,7 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
                     )}
                     {msg.timestamp && (
                       <div style={{ display: 'flex', justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start', marginTop: '6px' }}>
-                        <span style={{ fontSize: '0.66rem', color: 'rgba(255, 255, 255, 0.4)', fontFamily: 'JetBrains Mono' }}>
+                        <span style={{ fontSize: '0.66rem', color: 'var(--text-dim, rgba(255, 255, 255, 0.4))', fontFamily: 'JetBrains Mono' }}>
                           {formatMessageTime(msg.timestamp)}
                         </span>
                       </div>

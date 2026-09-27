@@ -266,6 +266,8 @@ export const updateUserProfileApi = async (updateData: any): Promise<any> => {
     location: updated.location,
     avatar_url: updated.avatar_url,
     personality: updated.personality,
+    theme: updated.theme,
+    notification_settings: updated.notification_settings,
     is_sub_user: updated.is_sub_user,
     owner_id: updated.owner_id,
     role_id: updated.role_id,

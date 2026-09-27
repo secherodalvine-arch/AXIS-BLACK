@@ -180,6 +180,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const handleThemeSelect = async (newTheme: 'light' | 'dark' | 'system') => {
     setCurrentTheme(newTheme);
     setProfile((prev: any) => ({ ...prev, theme: newTheme }));
+    if (user?.user_id) {
+      try {
+        localStorage.setItem(`axis_theme_${user.user_id}`, newTheme);
+      } catch {}
+    }
     if (onThemeChange) {
       onThemeChange(newTheme);
     }
@@ -213,6 +218,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleCurrencySelect = async (newCurrency: Currency) => {
     setProfile((prev: any) => ({ ...prev, currency: newCurrency }));
+    if (user?.user_id) {
+      try {
+        localStorage.setItem(`axis_currency_${user.user_id}`, newCurrency);
+      } catch {}
+    }
     if (onCurrencyChange) {
       onCurrencyChange(newCurrency);
     }
@@ -574,7 +584,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </div>
 
-        {/* BUSINESS NOTIFICATIONS SETTINGS CARD */}
+        {/* BUSINESS NOTIFICATIONS SETTINGS CARD (Restricted to Business Owner) */}
+        {!isTeamMember && (
         <div className="glass-card" style={{ padding: '28px', gridColumn: 'span 2' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px', marginBottom: '20px' }}>
             <div>
@@ -1010,6 +1021,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           </div>
         </div>
+        )}
 
         {/* USER PROFILE SECTION */}
         <div className="glass-card" style={{ padding: '28px', gridColumn: 'span 2' }}>

@@ -58,9 +58,9 @@ export const RecentLedgerTable: React.FC<RecentLedgerTableProps> = ({
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#64748b' }}>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-dim, #64748b)' }}>
                   <i className="fa-solid fa-receipt" style={{ fontSize: '1.8rem', display: 'block', marginBottom: '0.75rem', opacity: 0.4 }}></i>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>No transactions recorded yet</div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-muted, #94a3b8)', marginBottom: '0.35rem' }}>No transactions recorded yet</div>
                   <div style={{ fontSize: '0.8rem' }}>Use the <strong>Record Transaction</strong> button to log your first entry.</div>
                 </td>
               </tr>
@@ -78,7 +78,7 @@ export const RecentLedgerTable: React.FC<RecentLedgerTableProps> = ({
                   <td>
                     <span title={t.date} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                       <span>{formatRelativeTime(t.date, { showTime: false })}</span>
-                      <span style={{ fontSize: '0.72rem', color: '#9ca3af', fontFamily: 'JetBrains Mono' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)', fontFamily: 'JetBrains Mono' }}>
                         ({t.date})
                       </span>
                     </span>

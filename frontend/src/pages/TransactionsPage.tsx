@@ -155,10 +155,10 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
       {/* Page Header */}
       <div className="view-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', margin: 0, fontFamily: 'Plus Jakarta Sans' }}>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-main, #fff)', margin: 0, fontFamily: 'Plus Jakarta Sans' }}>
             Ledger
           </h2>
-          <p className="subtitle" style={{ color: '#9ca3af', marginTop: '0.25rem' }}>
+          <p className="subtitle" style={{ color: 'var(--text-muted, #9ca3af)', marginTop: '0.25rem' }}>
             Structured financial history, running balance, and account records
           </p>
         </div>
@@ -167,7 +167,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
             <select
               value={branchFilter}
               onChange={e => setBranchFilter(e.target.value)}
-              style={{ background: '#1a1a22', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '8px 14px', color: branchFilter ? '#00d4ff' : '#9ca3af', fontSize: '0.82rem', cursor: 'pointer' }}
+              style={{ background: 'var(--header-btn-bg, #1a1a22)', border: '1px solid var(--header-btn-border, rgba(255,255,255,0.1))', borderRadius: '10px', padding: '8px 14px', color: branchFilter ? '#00d4ff' : 'var(--text-muted, #9ca3af)', fontSize: '0.82rem', cursor: 'pointer' }}
               title="Filter by branch"
             >
               <option value="">All Branches</option>
@@ -202,12 +202,12 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
         }}>
           <i className={`fa-solid ${csvStatus.type === 'success' ? 'fa-circle-check' : 'fa-triangle-exclamation'}`}></i>
           {csvStatus.text}
-          {csvStatus.type === 'success' && <span style={{ color: '#9ca3af', fontSize: '0.78rem' }}>· Refresh the page to see imported entries</span>}
+          {csvStatus.type === 'success' && <span style={{ color: 'var(--text-muted, #9ca3af)', fontSize: '0.78rem' }}>· Refresh the page to see imported entries</span>}
         </div>
       )}
 
       {/* ACCOUNT LEDGERS SELECTOR BAR */}
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.25rem', padding: '6px', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.25rem', padding: '6px', background: 'var(--glass-bg, rgba(255, 255, 255, 0.04))', borderRadius: '12px', border: '1px solid var(--glass-border, rgba(255,255,255,0.08))' }}>
         <button 
           className={`tf-btn ${accountLedgerFilter === 'ALL' ? 'active' : ''}`}
           onClick={() => setAccountLedgerFilter('ALL')}
@@ -265,7 +265,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
         {/* Card 1: Daily Allocated Limit */}
         <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '1rem', border: '1px solid rgba(0, 212, 255, 0.3)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#9ca3af' }}>DAILY BUDGET LIMIT</span>
+            <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: 'var(--text-muted, #9ca3af)' }}>DAILY BUDGET LIMIT</span>
             <button 
               onClick={() => { setIsEditingBudget(!isEditingBudget); setBudgetInput(dailyBudgetLimit.toString()); }}
               style={{ background: 'none', border: 'none', color: '#00d4ff', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'JetBrains Mono' }}
@@ -291,14 +291,14 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
               {formatCurrency(dailyBudgetLimit, currency)}
             </div>
           )}
-          <span style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.5rem', display: 'block' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)', marginTop: '0.5rem', display: 'block' }}>
             User Configured Limit
           </span>
         </div>
 
         {/* Card 2: Used Today */}
         <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '1rem', border: '1px solid rgba(255, 175, 211, 0.3)' }}>
-          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#9ca3af' }}>USED TODAY (EXPENSES)</div>
+          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: 'var(--text-muted, #9ca3af)' }}>USED TODAY (EXPENSES)</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#ffafd3', fontFamily: 'JetBrains Mono', marginTop: '0.25rem' }}>
             {formatCurrency(usedTodayUSD, currency)}
           </div>
@@ -309,7 +309,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
 
         {/* Card 3: Remaining Today */}
         <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '1rem', border: `1px solid ${isOverBudget ? 'rgba(255, 142, 142, 0.5)' : 'rgba(74, 222, 128, 0.3)'}` }}>
-          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#9ca3af' }}>REMAINING TODAY</div>
+          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: 'var(--text-muted, #9ca3af)' }}>REMAINING TODAY</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: isOverBudget ? '#ff8e8e' : '#4ade80', fontFamily: 'JetBrains Mono', marginTop: '0.25rem' }}>
             {formatCurrency(remainingUSD, currency)}
           </div>
@@ -324,12 +324,12 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
 
         {/* Card 4: Daily Meter & Status */}
         <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '1rem' }}>
-          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#9ca3af', display: 'flex', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: 'var(--text-muted, #9ca3af)', display: 'flex', justifyContent: 'space-between' }}>
             <span>DAILY UTILIZATION</span>
             <span style={{ color: isOverBudget ? '#ff8e8e' : '#00d4ff' }}>{percentUsed}%</span>
           </div>
 
-          <div style={{ width: '100%', height: '10px', background: 'rgba(255,255,255,0.08)', borderRadius: '5px', overflow: 'hidden', marginTop: '0.75rem' }}>
+          <div style={{ width: '100%', height: '10px', background: 'var(--glass-border, rgba(255,255,255,0.08))', borderRadius: '5px', overflow: 'hidden', marginTop: '0.75rem' }}>
             <div 
               style={{ 
                 width: `${percentUsed}%`, 
@@ -341,7 +341,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
             />
           </div>
 
-          <span style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.5rem', display: 'block' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)', marginTop: '0.5rem', display: 'block' }}>
             {isOverBudget ? 'Budget limit breached for today' : `${100 - percentUsed}% buffer remaining`}
           </span>
         </div>
@@ -349,14 +349,14 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
 
       {/* QUICK LOG DAILY USAGE BAR */}
       <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '1rem', marginBottom: '1.5rem', background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(206, 189, 255, 0.05))', border: '1px solid rgba(0, 212, 255, 0.25)' }}>
-        <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.95rem', color: '#ffffff', fontFamily: 'Plus Jakarta Sans', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.95rem', color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <i className="fa-solid fa-bolt" style={{ color: '#00d4ff' }}></i>
           Quick Log Today's Usage / Expense
         </h4>
 
         <form onSubmit={handleQuickLogUsage} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', alignItems: 'end' }}>
           <div>
-            <label style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 600 }}>Item / Supplier</label>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600 }}>Item / Supplier</label>
             <input 
               type="text" 
               className="input-text" 
@@ -443,7 +443,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
             </select>
           </div>
 
-          <span style={{ fontFamily: 'JetBrains Mono', fontSize: '0.8rem', color: '#9ca3af', alignSelf: 'center' }}>
+          <span style={{ fontFamily: 'JetBrains Mono', fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', alignSelf: 'center' }}>
             Showing {filtered.length} ledger entries
           </span>
         </div>
@@ -465,9 +465,9 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '3rem 1rem', color: '#64748b' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-dim, #64748b)' }}>
                     <i className="fa-solid fa-file-invoice" style={{ fontSize: '1.8rem', display: 'block', marginBottom: '0.75rem', opacity: 0.3 }}></i>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-muted, #94a3b8)', marginBottom: '0.35rem' }}>
                       {searchTerm || categoryFilter !== 'ALL' || statusFilter !== 'ALL'
                         ? 'No transactions match your current filters'
                         : 'No transactions recorded yet'}
@@ -486,7 +486,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
                     <td style={{ fontSize: '0.85rem' }}>
                       <span title={t.date} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                         <span>{formatRelativeTime(t.date, { showTime: false })}</span>
-                        <span style={{ fontSize: '0.72rem', color: '#9ca3af', fontFamily: 'JetBrains Mono' }}>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)', fontFamily: 'JetBrains Mono' }}>
                           ({t.date})
                         </span>
                       </span>
@@ -497,8 +497,8 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
                           <i className={`fa-solid ${t.amount > 0 ? 'fa-arrow-trend-up' : 'fa-receipt'}`}></i>
                         </div>
                         <div>
-                          <span style={{ fontWeight: 600, color: '#fff' }}>{t.counterparty}</span>
-                          {t.notes && <div style={{ fontSize: '0.72rem', color: '#9ca3af' }}>{t.notes}</div>}
+                          <span style={{ fontWeight: 600, color: 'var(--text-main, #fff)' }}>{t.counterparty}</span>
+                          {t.notes && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)' }}>{t.notes}</div>}
                         </div>
                       </div>
                     </td>
@@ -508,13 +508,13 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
                           {t.accountType}
                         </span>
                       )}
-                      <span style={{ fontSize: '0.8rem', color: '#cebdff' }}>{t.category}</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--primary-lilac-glow, #cebdff)' }}>{t.category}</span>
                     </td>
                     <td className="text-right amount-val positive" style={{ fontFamily: 'JetBrains Mono', fontWeight: 600 }}>
-                      {t.amount > 0 ? `+${formatCurrency(t.amount, currency)}` : <span style={{ color: '#4b5563' }}>—</span>}
+                      {t.amount > 0 ? `+${formatCurrency(t.amount, currency)}` : <span style={{ color: 'var(--text-dim, #4b5563)' }}>—</span>}
                     </td>
                     <td className="text-right amount-val negative" style={{ fontFamily: 'JetBrains Mono', fontWeight: 600 }}>
-                      {t.amount < 0 ? formatCurrency(Math.abs(t.amount), currency) : <span style={{ color: '#4b5563' }}>—</span>}
+                      {t.amount < 0 ? formatCurrency(Math.abs(t.amount), currency) : <span style={{ color: 'var(--text-dim, #4b5563)' }}>—</span>}
                     </td>
                     <td className="text-right" style={{ fontFamily: 'JetBrains Mono', fontWeight: 800, color: t.runningBalance >= 0 ? '#00d4ff' : '#ff8e8e', fontSize: '0.95rem' }}>
                       {formatCurrency(t.runningBalance, currency)}

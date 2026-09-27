@@ -49,7 +49,7 @@ async def update_user_profile(payload: UserProfileUpdate, current_user: dict = D
 
     # If user is an assigned team member, lock down role, company, and business fields
     if current_user.get("is_sub_user"):
-        for forbidden in ["role", "company", "role_id", "branch_id", "is_sub_user", "owner_id", "salary", "income_frequency"]:
+        for forbidden in ["role", "company", "role_id", "branch_id", "is_sub_user", "owner_id", "salary", "income_frequency", "notification_settings"]:
             updates.pop(forbidden, None)
 
     if "city" in updates or "country" in updates:
@@ -159,6 +159,11 @@ async def dispatch_business_summary(
     Dispatch real summary notification across the activated mode(s) selected by the user.
     Checks user's toggled channels (in_app, email, sms) and only dispatches to those activated.
     """
+    if current_user.get("is_sub_user"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Business notification delivery settings are restricted to business owners."
+        )
     override = payload.model_dump(exclude_unset=True) if payload else {}
     from app.services.scheduler import dispatch_user_summary_notification
     return await dispatch_user_summary_notification(current_user, custom_override=override)

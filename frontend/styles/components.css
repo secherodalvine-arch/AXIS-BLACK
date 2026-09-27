@@ -814,19 +814,26 @@
   display: flex;
   gap: 12px;
   padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
 }
 
 .chat-input-area textarea {
   flex: 1;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--glass-bg, rgba(255, 255, 255, 0.04));
   border: 1px solid var(--glass-border);
   border-radius: var(--border-radius-sm);
   padding: 10px 14px;
-  color: #ffffff;
+  color: var(--text-main, #ffffff);
   font-family: var(--font-body);
   font-size: 0.88rem;
   resize: none;
+}
+
+body.light-theme .chat-input-area textarea,
+.light-theme .chat-input-area textarea {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
 }
 
 .chat-input-area textarea:focus {

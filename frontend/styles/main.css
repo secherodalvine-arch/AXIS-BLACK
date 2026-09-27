@@ -1350,6 +1350,42 @@ body.light-theme .icon-btn-sm:hover {
   color: #0f172a !important;
 }
 
+/* Timeframe / Filter Buttons in Light Theme */
+body.light-theme .tf-btn,
+.light-theme .tf-btn {
+  color: #475569 !important;
+}
+
+body.light-theme .tf-btn.active,
+.light-theme .tf-btn.active {
+  color: #1e1b4b !important;
+  background: rgba(99, 102, 241, 0.14) !important;
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.12) !important;
+  font-weight: 700;
+}
+
+body.light-theme .tf-btn:hover:not(.active),
+.light-theme .tf-btn:hover:not(.active) {
+  color: #0f172a !important;
+  background: rgba(15, 23, 42, 0.06) !important;
+}
+
+/* Quick Suggestion Chips in Light Theme */
+body.light-theme .chip-btn,
+.light-theme .chip-btn {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #0369a1 !important;
+}
+
+body.light-theme .chip-btn:hover,
+.light-theme .chip-btn:hover {
+  background: rgba(2, 132, 199, 0.12) !important;
+  border-color: #0284c7 !important;
+  color: #0284c7 !important;
+}
+
 /* Copilot / Chat / Stream items */
 body.light-theme .copilot-sidebar {
   background: #ffffff !important;

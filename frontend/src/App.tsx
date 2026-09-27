@@ -34,7 +34,8 @@ import {
   getInventoryApi,
   verifyEmailApi,
   getNotificationsApi,
-  markNotificationReadApi
+  markNotificationReadApi,
+  updateUserProfileApi
 } from './utils/api';
 
 import './styles/globals.css';
@@ -141,23 +142,42 @@ export const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(getStoredUser());
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
   const [timeframe, setTimeframe] = useState<Timeframe>('30d');
-  const [currency, setCurrency] = useState<Currency>('USD');
+
+  const getAccountTheme = (uid?: string): 'light' | 'dark' | 'system' => {
+    if (uid) {
+      const userTheme = localStorage.getItem(`axis_theme_${uid}`) as ('light' | 'dark' | 'system' | null);
+      if (userTheme === 'light' || userTheme === 'dark' || userTheme === 'system') return userTheme;
+    }
+    const saved = localStorage.getItem('axis_theme') as ('light' | 'dark' | 'system' | null);
+    if (saved === 'light' || saved === 'dark' || saved === 'system') return saved;
+    return (getStoredUser()?.theme as ('light' | 'dark' | 'system')) || 'system';
+  };
+
+  const getAccountCurrency = (uid?: string): Currency => {
+    if (uid) {
+      const userCurrency = localStorage.getItem(`axis_currency_${uid}`) as Currency | null;
+      if (userCurrency === 'USD' || userCurrency === 'KES') return userCurrency;
+    }
+    const storedUser = getStoredUser();
+    if (storedUser?.currency === 'USD' || storedUser?.currency === 'KES') return storedUser.currency;
+    const saved = localStorage.getItem('axis_currency') as Currency | null;
+    if (saved === 'USD' || saved === 'KES') return saved;
+    return 'USD';
+  };
+
+  const [currency, setCurrency] = useState<Currency>(() => getAccountCurrency(getStoredUser()?.user_id));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVoiceAgentOpen, setIsVoiceAgentOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
-    const saved = localStorage.getItem('axis_theme') as ('light' | 'dark' | 'system' | null);
-    if (saved === 'light' || saved === 'dark' || saved === 'system') return saved;
-    return (getStoredUser()?.theme as ('light' | 'dark' | 'system')) || 'system';
-  });
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => getAccountTheme(getStoredUser()?.user_id));
 
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => {
-    const saved = localStorage.getItem('axis_theme');
-    if (saved === 'light') return 'light';
-    if (saved === 'dark') return 'dark';
+    const active = getAccountTheme(getStoredUser()?.user_id);
+    if (active === 'light') return 'light';
+    if (active === 'dark') return 'dark';
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
     return 'light';
   });
@@ -196,6 +216,11 @@ export const App: React.FC = () => {
 
     applyTheme();
     localStorage.setItem('axis_theme', theme);
+    if (user?.user_id) {
+      try {
+        localStorage.setItem(`axis_theme_${user.user_id}`, theme);
+      } catch {}
+    }
 
     if (theme === 'system' && window.matchMedia) {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -203,7 +228,7 @@ export const App: React.FC = () => {
       mediaQuery.addEventListener('change', listener);
       return () => mediaQuery.removeEventListener('change', listener);
     }
-  }, [theme, viewState]);
+  }, [theme, viewState, user?.user_id]);
 
   // Check URL parameters & validate active user session on mount
   useEffect(() => {
@@ -232,11 +257,18 @@ export const App: React.FC = () => {
         .then(profile => {
           if (profile) {
             setUser(profile);
-            if (profile.currency) {
-              setCurrency(profile.currency as Currency);
+            const userCurrency = (profile.currency as Currency) || getAccountCurrency(profile.user_id);
+            setCurrency(userCurrency);
+            if (profile.user_id) {
+              try { localStorage.setItem(`axis_currency_${profile.user_id}`, userCurrency); } catch {}
             }
-            if (profile.theme && (profile.theme === 'dark' || profile.theme === 'light' || profile.theme === 'system')) {
-              setTheme(profile.theme);
+
+            const userTheme = (profile.theme as ('light' | 'dark' | 'system')) || getAccountTheme(profile.user_id);
+            if (userTheme === 'dark' || userTheme === 'light' || userTheme === 'system') {
+              setTheme(userTheme);
+              if (profile.user_id) {
+                try { localStorage.setItem(`axis_theme_${profile.user_id}`, userTheme); } catch {}
+              }
             }
           }
           setViewState('dashboard');
@@ -521,15 +553,70 @@ export const App: React.FC = () => {
     try {
       const profile = await getMeApi();
       setUser(profile);
-      if (profile.currency) setCurrency(profile.currency as Currency);
+      const userCurrency = (profile.currency as Currency) || getAccountCurrency(profile.user_id);
+      setCurrency(userCurrency);
+      if (profile.user_id) {
+        try { localStorage.setItem(`axis_currency_${profile.user_id}`, userCurrency); } catch {}
+      }
+
+      const userTheme = (profile.theme as ('light' | 'dark' | 'system')) || getAccountTheme(profile.user_id);
+      if (userTheme === 'dark' || userTheme === 'light' || userTheme === 'system') {
+        setTheme(userTheme);
+        if (profile.user_id) {
+          try { localStorage.setItem(`axis_theme_${profile.user_id}`, userTheme); } catch {}
+        }
+      }
       showToast(`Welcome back, ${profile.name || name}! Logged in successfully.`);
     } catch {
       // Fallback: use the data returned by the login response
       const storedUser = getStoredUser();
-      setUser(storedUser || { user_id: 'usr_active', name, email, currency });
+      const fallbackUser = storedUser || { user_id: 'usr_active', name, email, currency };
+      setUser(fallbackUser);
+      const userCurrency = getAccountCurrency(fallbackUser.user_id);
+      setCurrency(userCurrency);
+      const userTheme = getAccountTheme(fallbackUser.user_id);
+      setTheme(userTheme);
       showToast(`Welcome back, ${name}! Logged in successfully.`);
     }
     setViewState('dashboard');
+  };
+
+  const handleCurrencyChange = async (c: Currency) => {
+    setCurrency(c);
+    try {
+      localStorage.setItem('axis_currency', c);
+      if (user?.user_id) {
+        localStorage.setItem(`axis_currency_${user.user_id}`, c);
+      }
+    } catch {}
+
+    setUser(prev => prev ? ({ ...prev, currency: c }) : null);
+
+    try {
+      await updateUserProfileApi({ currency: c });
+    } catch (err) {
+      console.log('Currency preference sync error:', err);
+    }
+    showToast(`Base currency switched to ${c === 'KES' ? 'Kenya Shillings (KSh)' : 'US Dollars ($)'}`);
+  };
+
+  const handleThemeChange = async (t: 'light' | 'dark' | 'system') => {
+    setTheme(t);
+    try {
+      localStorage.setItem('axis_theme', t);
+      if (user?.user_id) {
+        localStorage.setItem(`axis_theme_${user.user_id}`, t);
+      }
+    } catch {}
+
+    setUser(prev => prev ? ({ ...prev, theme: t }) : null);
+
+    try {
+      await updateUserProfileApi({ theme: t });
+    } catch (err) {
+      console.log('Theme preference sync error:', err);
+    }
+    showToast(`Theme switched to ${t === 'light' ? 'Light' : t === 'dark' ? 'Dark' : 'System'} mode`);
   };
 
   const handleLogout = () => {
@@ -728,10 +815,7 @@ export const App: React.FC = () => {
             onDeleteNotification={handleDeleteNotification}
             onToggleNotificationRead={handleToggleNotificationRead}
             onMarkAllRead={handleMarkAllNotificationsRead}
-            onCurrencyChange={(c) => {
-              setCurrency(c);
-              showToast(`Base currency switched to ${c === 'KES' ? 'Kenya Shillings (KSh)' : 'US Dollars ($)'}`);
-            }}
+            onCurrencyChange={handleCurrencyChange}
             onTimeframeChange={setTimeframe}
             onOpenNewTxnModal={() => setIsModalOpen(true)}
             onOpenVoiceAgent={() => setIsVoiceAgentOpen(true)}
@@ -831,15 +915,9 @@ export const App: React.FC = () => {
               {currentTab === 'settings' && (
                 <SettingsPage 
                   currency={currency} 
-                  onCurrencyChange={(c) => {
-                    setCurrency(c);
-                    showToast(`Base currency switched to ${c === 'KES' ? 'Kenya Shillings (KSh)' : 'US Dollars ($)'}`);
-                  }}
+                  onCurrencyChange={handleCurrencyChange}
                   theme={theme}
-                  onThemeChange={(t) => {
-                    setTheme(t);
-                    showToast(`Theme switched to ${t === 'light' ? 'Light' : t === 'dark' ? 'Dark' : 'System'} mode`);
-                  }}
+                  onThemeChange={handleThemeChange}
                   user={user}
                   onUserUpdate={(updatedUser) => {
                     setUser(updatedUser);

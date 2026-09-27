@@ -199,10 +199,10 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
       {/* View Header */}
       <div className="view-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', margin: 0, fontFamily: 'Plus Jakarta Sans' }}>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-main, #fff)', margin: 0, fontFamily: 'Plus Jakarta Sans' }}>
             Inventory
           </h2>
-          <p className="subtitle" style={{ color: '#9ca3af', marginTop: '0.25rem' }}>
+          <p className="subtitle" style={{ color: 'var(--text-muted, #9ca3af)', marginTop: '0.25rem' }}>
             Item stock levels, valuation, and automated low-stock reorder alerts
           </p>
         </div>
@@ -212,7 +212,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
             <select
               value={branchFilter}
               onChange={e => setBranchFilter(e.target.value)}
-              style={{ background: '#1a1a22', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '8px 14px', color: branchFilter ? '#00d4ff' : '#9ca3af', fontSize: '0.82rem', cursor: 'pointer' }}
+              style={{ background: 'var(--dropdown-bg, #1a1a22)', border: '1px solid var(--search-border, rgba(255,255,255,0.1))', borderRadius: '10px', padding: '8px 14px', color: branchFilter ? '#00d4ff' : 'var(--text-main, #9ca3af)', fontSize: '0.82rem', cursor: 'pointer' }}
             >
               <option value="">All Branches</option>
               {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -267,8 +267,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
       {/* Top 4 Inventory Advisor Metric Highlights */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
         <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '1rem' }}>
-          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#9ca3af' }}>TOTAL STOCK VALUATION</div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#ffffff', fontFamily: 'JetBrains Mono', marginTop: '0.25rem' }}>
+          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: 'var(--text-muted, #9ca3af)' }}>TOTAL STOCK VALUATION</div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main, #ffffff)', fontFamily: 'JetBrains Mono', marginTop: '0.25rem' }}>
             {formatCurrency(totalValuationUSD, currency)}
           </div>
           <span className="trend-pill positive" style={{ fontSize: '0.72rem', marginTop: '0.5rem', display: 'inline-flex' }}>
@@ -277,28 +277,28 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
         </div>
 
         <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '1rem' }}>
-          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#9ca3af' }}>STOCK TURNOVER RATE</div>
+          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: 'var(--text-muted, #9ca3af)' }}>STOCK TURNOVER RATE</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#00d4ff', fontFamily: 'JetBrains Mono', marginTop: '0.25rem' }}>
             {items.length > 0 ? `${(items.reduce((acc, i) => acc + (parseFloat(i.turnoverRate) || 1.8), 0) / items.length).toFixed(1)}x / mo` : '--'}
           </div>
-          <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem', display: 'block' }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #9ca3af)', marginTop: '0.5rem', display: 'block' }}>
             {items.length > 0 ? 'Stock Movement: Active' : 'No inventory items logged'}
           </span>
         </div>
 
         <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '1rem' }}>
-          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#9ca3af' }}>ACTIVE UNITS IN STOCK</div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#cebdff', fontFamily: 'JetBrains Mono', marginTop: '0.25rem' }}>
+          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: 'var(--text-muted, #9ca3af)' }}>ACTIVE UNITS IN STOCK</div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--primary-lilac-glow, #cebdff)', fontFamily: 'JetBrains Mono', marginTop: '0.25rem' }}>
             {items.reduce((acc, item) => acc + item.stockLevel, 0).toLocaleString()} Units
           </div>
-          <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem', display: 'block' }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #9ca3af)', marginTop: '0.5rem', display: 'block' }}>
             Across {items.length} Tracked Item(s)
           </span>
         </div>
 
         <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '1rem' }}>
-          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#9ca3af' }}>WAREHOUSE & STOCK HEALTH</div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#ffafd3', fontFamily: 'JetBrains Mono', marginTop: '0.25rem' }}>
+          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: 'var(--text-muted, #9ca3af)' }}>WAREHOUSE & STOCK HEALTH</div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--tertiary-pink-glow, #ffafd3)', fontFamily: 'JetBrains Mono', marginTop: '0.25rem' }}>
             {items.length ? `${(Math.round((items.filter(i => i.stockLevel > i.minThreshold).length / items.length) * 1000) / 10).toFixed(1)}%` : '--'}
           </div>
           <span style={{ fontSize: '0.75rem', color: items.some(i => i.stockLevel <= i.minThreshold) ? '#ff8e8e' : '#4ade80', marginTop: '0.5rem', display: 'block' }}>
@@ -310,7 +310,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
       {/* Main Item Table */}
       <div className="glass-card" style={{ padding: '1.5rem', borderRadius: '1.1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff', fontFamily: 'Plus Jakarta Sans', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
             <i className="fa-solid fa-list-check" style={{ color: '#00d4ff' }}></i>
             Stock Inventory & Status
           </h3>
@@ -348,16 +348,16 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '3rem 1rem', color: '#64748b' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-dim, #64748b)' }}>
                     <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '1.6rem', display: 'block', marginBottom: '0.75rem', color: '#00d4ff', opacity: 0.7 }}></i>
-                    <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Loading your inventory from the server...</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted, #94a3b8)' }}>Loading your inventory from the server...</div>
                   </td>
                 </tr>
               ) : filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '3rem 1rem', color: '#64748b' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-dim, #64748b)' }}>
                     <i className="fa-solid fa-boxes-stacked" style={{ fontSize: '1.8rem', display: 'block', marginBottom: '0.75rem', opacity: 0.3 }}></i>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-muted, #94a3b8)', marginBottom: '0.35rem' }}>
                       {filterCategory !== 'ALL' ? `No items in "${filterCategory}" category` : 'No inventory items yet'}
                     </div>
                     <div style={{ fontSize: '0.8rem' }}>Click <strong>Add Inventory Item</strong> to log your first SKU.</div>
@@ -377,14 +377,14 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
                           <span style={{ fontWeight: 600, color: 'var(--text-main, #fff)' }}>{item.name}</span>
                         </div>
                       </td>
-                      <td style={{ color: '#9ca3af' }}>{item.category}</td>
-                      <td style={{ fontFamily: 'JetBrains Mono', fontWeight: 600, color: item.stockLevel < item.minThreshold ? '#ff8e8e' : '#e5e2e1' }}>
+                      <td style={{ color: 'var(--text-muted, #9ca3af)' }}>{item.category}</td>
+                      <td style={{ fontFamily: 'JetBrains Mono', fontWeight: 600, color: item.stockLevel < item.minThreshold ? '#ff8e8e' : 'var(--text-main, #e5e2e1)' }}>
                         {item.stockLevel} units (Min: {item.minThreshold})
                       </td>
                       <td style={{ fontFamily: 'JetBrains Mono' }}>
                         {formatCurrency(item.unitPriceUSD, currency)}
                       </td>
-                      <td style={{ fontFamily: 'JetBrains Mono', fontWeight: 700, color: '#cebdff' }}>
+                      <td style={{ fontFamily: 'JetBrains Mono', fontWeight: 700, color: 'var(--primary-lilac-glow, #cebdff)' }}>
                         {formatCurrency(totalVal, currency)}
                       </td>
                       <td style={{ fontFamily: 'JetBrains Mono', color: '#00d4ff' }}>
