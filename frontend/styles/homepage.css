@@ -23,11 +23,15 @@
   --secondary-cyan-glow: rgba(0, 212, 255, 0.4);
   position: relative;
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100%;
+  height: 100dvh;
   background: #0a0a0a !important;
   color: #f8fafc !important;
   overflow-x: hidden;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   font-family: var(--font-body);
   display: flex;
   flex-direction: column;
@@ -738,7 +742,7 @@
 
 .home-footer-bottom {
   border-top: 1px solid rgba(255,255,255,0.06);
-  padding: 20px 5%;
+  padding: 20px 5% calc(32px + env(safe-area-inset-bottom, 20px));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1445,7 +1449,16 @@
   .home-hero-actions { flex-direction: column; width: 100%; gap: 12px; }
   .home-btn-primary, .home-btn-ghost { width: 100%; max-width: 300px; justify-content: center; }
   .home-footer-inner { grid-template-columns: 1fr; gap: 24px; }
-  .home-footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
+  .home-footer-bottom { 
+    flex-direction: column; 
+    gap: 14px; 
+    text-align: center;
+    padding: 24px 5% calc(110px + env(safe-area-inset-bottom, 28px)) !important;
+  }
+  .home-footer-copy {
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
   .info-team-grid { grid-template-columns: 1fr; }
   .info-values-grid { grid-template-columns: 1fr; }
   .contact-form-row { grid-template-columns: 1fr; }

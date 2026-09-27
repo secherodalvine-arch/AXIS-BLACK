@@ -96,6 +96,8 @@
 html, body {
   width: 100%;
   height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   background-color: var(--bg-obsidian);
   color: var(--text-main);
   font-family: var(--font-body);
@@ -181,6 +183,7 @@ html, body {
   display: flex;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -448,9 +451,11 @@ html, body {
 .main-wrapper {
   flex: 1;
   height: 100%;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
 }
 
 /* Header Top Bar */
@@ -470,6 +475,15 @@ html, body {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+.header-search-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  max-width: 640px;
+  min-width: 0;
 }
 
 .mobile-toggle {
@@ -879,24 +893,27 @@ html, body {
 
 @media (max-width: 768px) {
   .top-bar {
-    padding: calc(8px + var(--safe-area-top)) 14px 10px !important;
-    height: auto !important;
-    flex-wrap: wrap !important;
+    padding: calc(6px + var(--safe-area-top)) 12px 6px !important;
+    height: 60px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: nowrap !important;
     gap: 8px !important;
   }
 
-  .header-left {
-    min-width: auto !important;
-    gap: 10px !important;
+  .header-search-container {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
     flex: 1 !important;
+    min-width: 0 !important;
   }
 
-  .header-center {
+  .mobile-toggle {
     display: flex !important;
-    order: 3 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 4px 0 2px 0 !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
   .global-search-bar {
@@ -904,8 +921,16 @@ html, body {
     max-width: 100% !important;
   }
 
+  .global-search-bar input {
+    padding: 7px 12px 7px 32px !important;
+    font-size: 0.82rem !important;
+    height: 36px !important;
+  }
+
   .content-viewport {
-    padding: 14px 12px calc(48px + var(--safe-area-bottom)) !important;
+    padding: 14px 12px calc(95px + env(safe-area-inset-bottom, 24px)) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
   .header-right {
@@ -917,23 +942,15 @@ html, body {
     display: none !important;
   }
 
+  .voice-icon-btn,
+  .notif-bell-btn {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 9px !important;
+  }
+
   .timeframe-selector {
     display: none !important;
-  }
-
-  .voice-header-btn span,
-  .pwa-header-btn span {
-    display: none !important;
-  }
-
-  .voice-header-btn,
-  .pwa-header-btn {
-    padding: 7px 10px !important;
-    border-radius: 8px !important;
-  }
-
-  .breadcrumb-current {
-    font-size: 1rem !important;
   }
 
   .header-divider {
@@ -942,7 +959,7 @@ html, body {
 
   .notification-dropdown {
     position: fixed !important;
-    top: 68px !important;
+    top: 64px !important;
     left: 12px !important;
     right: 12px !important;
     width: auto !important;
@@ -957,25 +974,41 @@ html, body {
 }
 
 @media (max-width: 480px) {
-  .currency-selector {
-    font-size: 0.65rem;
-  }
-  
-  .action-btn-primary span {
-    display: none !important;
+  .top-bar {
+    padding: calc(6px + var(--safe-area-top)) 8px 6px !important;
+    gap: 6px !important;
   }
 
-  .action-btn-primary {
-    padding: 7px 11px !important;
+  .header-search-container {
+    gap: 6px !important;
+  }
+
+  .global-search-bar input {
+    padding: 6px 10px 6px 28px !important;
+    font-size: 0.78rem !important;
+    height: 34px !important;
+  }
+
+  .voice-icon-btn,
+  .notif-bell-btn {
+    width: 34px !important;
+    height: 34px !important;
     border-radius: 8px !important;
   }
 
-  .top-bar {
-    padding: calc(6px + var(--safe-area-top)) 10px 8px !important;
+  .user-profile-menu {
+    padding: 2px !important;
+  }
+
+  .avatar-img {
+    width: 30px !important;
+    height: 30px !important;
   }
 
   .content-viewport {
-    padding: 10px 8px calc(48px + var(--safe-area-bottom)) !important;
+    padding: 10px 8px calc(115px + env(safe-area-inset-bottom, 28px)) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 }
 

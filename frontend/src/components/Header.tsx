@@ -36,20 +36,8 @@ interface HeaderProps {
   onNavigateSettings?: () => void;
 }
 
-const TAB_TITLES: Record<NavTab, string> = {
-  dashboard: 'Dashboard',
-  inventory: 'Inventory',
-  analytics: 'Analytics',
-  transactions: 'Ledger',
-  agent: 'Axis Agent',
-  business: 'My Business',
-  activities: 'Business Activities',
-  forecast: 'Runway Simulator',
-  settings: 'Settings'
-};
-
 export const Header: React.FC<HeaderProps> = ({
-  currentTab,
+  currentTab: _currentTab,
   timeframe: _timeframe,
   currency: _currency,
   searchQuery = '',
@@ -123,20 +111,13 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="top-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', height: '64px', background: 'var(--header-bg, rgba(10, 10, 14, 0.85))', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--header-border, rgba(255, 255, 255, 0.08))', position: 'relative', zIndex: 100 }}>
-      <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: '180px' }}>
-        <div className="mobile-toggle" onClick={onToggleMobileMenu} title="Toggle Navigation" style={{ color: 'var(--text-main, #ffffff)', cursor: 'pointer' }}>
+    <header className="top-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', height: '64px', background: 'var(--header-bg, rgba(10, 10, 14, 0.85))', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--header-border, rgba(255, 255, 255, 0.08))', position: 'relative', zIndex: 100, gap: '14px' }}>
+      {/* 1. START WITH SEARCH BAR */}
+      <div className="header-search-container" style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, maxWidth: '640px', minWidth: 0 }}>
+        <div className="mobile-toggle" onClick={onToggleMobileMenu} title="Toggle Navigation" style={{ color: 'var(--text-main, #ffffff)', cursor: 'pointer', fontSize: '1.2rem', padding: '6px' }}>
           <i className="fa-solid fa-bars"></i>
         </div>
-        <div className="breadcrumb-container" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span className="breadcrumb-current" style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans' }}>
-            {TAB_TITLES[currentTab]}
-          </span>
-        </div>
-      </div>
-
-      <div className="header-center" style={{ flex: 1, maxWidth: '680px', margin: '0 24px', display: 'flex', justifyContent: 'center' }}>
-        <div className="global-search-bar" style={{ width: '100%', position: 'relative' }}>
+        <div className="global-search-bar" style={{ flex: 1, position: 'relative', width: '100%' }}>
           <i className="fa-solid fa-magnifying-glass search-icon" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim, #9ca3af)', fontSize: '0.85rem' }}></i>
           <input 
             type="text" 
@@ -148,30 +129,30 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'nowrap' }}>
-
+      {/* 2. AXIS VOICE ICON, 3. NOTIFICATION BELL, 4. USER PROFILE */}
+      <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'nowrap', flexShrink: 0 }}>
         {onOpenVoiceAgent && (
           <button 
-            className="action-btn-secondary voice-header-btn" 
+            className="icon-btn voice-icon-btn" 
             onClick={onOpenVoiceAgent}
             style={{
-              background: 'rgba(0, 212, 255, 0.12)',
-              border: '1px solid rgba(0, 212, 255, 0.35)',
-              color: '#00d4ff',
-              padding: '7px 14px',
+              width: '38px',
+              height: '38px',
               borderRadius: '10px',
+              background: 'var(--header-btn-bg, #141418)',
+              border: '1px solid var(--header-btn-border, rgba(0, 212, 255, 0.35))',
+              color: '#00d4ff',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
-              fontWeight: 600,
-              fontSize: '0.82rem',
+              justifyContent: 'center',
               cursor: 'pointer',
-              whiteSpace: 'nowrap'
+              flexShrink: 0,
+              boxShadow: '0 0 10px rgba(0, 212, 255, 0.15)',
+              transition: 'transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease'
             }}
-            title="Open Voice Support Agent"
+            title="Axis Voice Support"
           >
-            <i className="fa-solid fa-microphone-lines" style={{ fontSize: '0.9rem' }}></i>
-            <span>Voice Support</span>
+            <i className="fa-solid fa-microphone-lines" style={{ fontSize: '1rem' }}></i>
           </button>
         )}
 
