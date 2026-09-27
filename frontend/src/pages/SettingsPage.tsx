@@ -8,6 +8,7 @@ import {
   changePasswordApi, 
   UserProfile 
 } from '../utils/api';
+import { usePwaInstall } from '../utils/usePwaInstall';
 
 interface SettingsViewProps {
   currency?: Currency;
@@ -40,6 +41,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   });
 
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark' | 'system'>(user?.theme || theme);
+  const { isInstallable, isInstalled, isIOS, installApp } = usePwaInstall();
 
   // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -418,7 +420,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <p className="subtitle">Manage theme, business summary notifications, user profile, and currency</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', maxWidth: '1100px' }}>
+      <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '24px', maxWidth: '1100px', width: '100%' }}>
         
         {/* TEAM MEMBER ASSIGNMENT CARD */}
         {isTeamMember && (
@@ -581,6 +583,58 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <p style={{ margin: 0, fontSize: '0.8rem', color: '#9ca3af' }}>Matches your device appearance automatically</p>
             </div>
 
+          </div>
+        </div>
+
+        {/* PROGRESSIVE WEB APP (PWA) CARD */}
+        <div className="glass-card" style={{ padding: '28px', gridColumn: 'span 2' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+            <div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, fontFamily: 'Plus Jakarta Sans', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+                <i className="fa-solid fa-mobile-screen-button" style={{ color: '#00d4ff' }}></i>
+                Progressive Web App (PWA)
+              </h3>
+              <p style={{ fontSize: '0.88rem', color: '#9ca3af', marginTop: '6px', marginBottom: 0, lineHeight: '1.5' }}>
+                Axis Black is engineered as an installable Progressive Web App. Install to your phone, tablet, or desktop for high-speed offline caching, standalone window navigation, and instant launch.
+              </p>
+            </div>
+            <span className={`pill-tag ${isInstalled ? 'green' : (isInstallable ? 'cyan' : 'purple')}`} style={{ fontSize: '0.75rem', padding: '6px 14px', textTransform: 'uppercase' }}>
+              {isInstalled ? 'App Installed' : (isInstallable ? 'Ready to Install' : 'PWA Active')}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '14px', padding: '16px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: '220px', flex: 1 }}>
+              <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(0, 212, 255, 0.1)', border: '1px solid rgba(0, 212, 255, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <img src="/compass_icon.png" alt="Axis Black Icon" style={{ width: '28px', height: '28px' }} />
+              </div>
+              <div>
+                <strong style={{ fontSize: '0.92rem', color: 'var(--text-main, #ffffff)', display: 'block' }}>Axis Black Telemetry Platform</strong>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)' }}>
+                  {isInstalled 
+                    ? 'Running in standalone progressive application mode with background service worker.' 
+                    : (isIOS 
+                        ? 'On iOS Safari: Tap the Share button below, then select "Add to Home Screen".' 
+                        : 'One-click install available. Add to your device home screen or applications menu.')}
+                </span>
+              </div>
+            </div>
+
+            {isInstallable && !isInstalled && (
+              <button 
+                onClick={installApp} 
+                className="action-btn-primary" 
+                style={{ padding: '9px 18px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+              >
+                <i className="fa-solid fa-download"></i> Install Axis App
+              </button>
+            )}
+
+            {isInstalled && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#4ade80', fontSize: '0.85rem', fontWeight: 600 }}>
+                <i className="fa-solid fa-circle-check"></i> Installed as Standalone App
+              </div>
+            )}
           </div>
         </div>
 

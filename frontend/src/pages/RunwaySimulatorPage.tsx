@@ -69,7 +69,7 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
         <p className="subtitle">Test financial runway scenarios with Monte Carlo simulation and financial records</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+      <div className="runway-simulator-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '20px' }}>
         <div className="glass-card" style={{ padding: '24px' }}>
           <h3>Scenario Parameters</h3>
           

@@ -417,7 +417,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
               placeholder="Search counterparty, category, ref, memo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: '280px' }}
+              style={{ width: '100%', maxWidth: '280px' }}
             />
             <select 
               className="select-text"

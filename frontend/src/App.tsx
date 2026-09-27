@@ -788,6 +788,13 @@ export const App: React.FC = () => {
       <div className="nebula-glow nebula-bottom-left"></div>
 
       <div className="app-layout">
+        {mobileMenuOpen && (
+          <div 
+            className="sidebar-backdrop active" 
+            onClick={() => setMobileMenuOpen(false)} 
+            aria-label="Close navigation"
+          />
+        )}
         <Sidebar 
           currentTab={currentTab}
           onTabChange={(tab) => {
@@ -797,6 +804,7 @@ export const App: React.FC = () => {
           isOpen={mobileMenuOpen}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          onCloseMobile={() => setMobileMenuOpen(false)}
           user={user}
         />
 

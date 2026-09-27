@@ -8,6 +8,7 @@ interface SidebarProps {
   isOpen: boolean;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  onCloseMobile?: () => void;
   user?: UserProfile | null;
 }
 
@@ -17,6 +18,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpen, 
   isCollapsed = false,
   onToggleCollapse,
+  onCloseMobile,
   user
 }) => {
   const isOwner = !user?.is_sub_user;
@@ -41,11 +43,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         <button 
-          className="collapse-toggle-btn" 
-          onClick={onToggleCollapse}
-          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          className="collapse-toggle-btn mobile-sidebar-close" 
+          onClick={isOpen ? (onCloseMobile || onToggleCollapse) : onToggleCollapse}
+          title={isOpen ? "Close Navigation" : (isCollapsed ? "Expand Sidebar" : "Collapse Sidebar")}
         >
-          <i className={`fa-solid ${isCollapsed ? 'fa-angles-right' : 'fa-angles-left'}`}></i>
+          <i className={`fa-solid ${isOpen ? 'fa-xmark' : (isCollapsed ? 'fa-angles-right' : 'fa-angles-left')}`}></i>
         </button>
       </div>
 
