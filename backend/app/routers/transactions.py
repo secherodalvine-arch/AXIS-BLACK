@@ -22,11 +22,22 @@ class TransactionPayload(BaseModel):
     branch_id: Optional[str] = None
 
 
+def _check_txn_permission(current_user: dict):
+    if current_user.get("is_sub_user"):
+        perms = current_user.get("permissions") or []
+        if "transactions" not in perms:
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied. Your assigned role does not have permission to view or manage the ledger."
+            )
+
+
 @router.get("/me", response_model=List[Dict[str, Any]])
 async def get_user_transactions(
     branch_id: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
+    _check_txn_permission(current_user)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
     
@@ -47,6 +58,7 @@ async def create_transaction(
     payload: TransactionPayload,
     current_user: dict = Depends(get_current_user)
 ):
+    _check_txn_permission(current_user)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
     data = payload.model_dump()
@@ -83,6 +95,7 @@ async def delete_transaction(
     txn_id: str,
     current_user: dict = Depends(get_current_user)
 ):
+    _check_txn_permission(current_user)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
 
@@ -114,6 +127,7 @@ async def import_transactions_csv(
     Import transactions from a CSV file.
     Expected columns: counterparty, type, category, accountType, date, status, amount, notes
     """
+    _check_txn_permission(current_user)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
     

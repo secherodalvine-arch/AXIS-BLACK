@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel
 import datetime
@@ -22,6 +22,14 @@ async def get_celestial_analytics(
     with multi-branch comparison, operational scalability scores, and inventory health.
     """
     is_sub_user = bool(current_user.get("is_sub_user"))
+    if is_sub_user:
+        perms = current_user.get("permissions") or []
+        if "analytics" not in perms:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Your assigned role does not have permission to view analytics."
+            )
+
     user_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
 
     # Team member restriction: can only see information for their assigned branch
@@ -165,7 +173,15 @@ async def run_runway_simulation(
     """
     Executes Monte Carlo runway scenario simulations based on real database cash and parameters.
     """
-    user_id = current_user.get("user_id", "default_user")
+    if current_user.get("is_sub_user"):
+        perms = current_user.get("permissions") or []
+        if "forecast" not in perms and "analytics" not in perms:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Your assigned role does not have permission for the runway simulator."
+            )
+
+    user_id = current_user.get("owner_id") if current_user.get("is_sub_user") else current_user.get("user_id", "default_user")
     txns = await AxisDataStore.get_transactions(user_id)
     real_cash = sum(t.get("amount", 0) for t in txns)
     cash = max(0.0, real_cash) + payload.new_funding

@@ -281,13 +281,13 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
                 className="input-text" 
                 value={budgetInput} 
                 onChange={(e) => setBudgetInput(e.target.value)}
-                style={{ background: '#141418', color: '#fff', padding: '6px 10px', fontSize: '0.9rem', borderRadius: '6px', border: '1px solid #00d4ff' }}
+                style={{ background: 'var(--search-bg, #141418)', color: 'var(--text-main, #fff)', padding: '6px 10px', fontSize: '0.9rem', borderRadius: '6px', border: '1px solid #00d4ff' }}
                 autoFocus
               />
               <button type="submit" className="action-btn-primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>Save</button>
             </form>
           ) : (
-            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#ffffff', fontFamily: 'JetBrains Mono', marginTop: '0.25rem' }}>
+            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main, #ffffff)', fontFamily: 'JetBrains Mono', marginTop: '0.25rem' }}>
               {formatCurrency(dailyBudgetLimit, currency)}
             </div>
           )}
@@ -364,29 +364,29 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
               value={quickCounterparty}
               onChange={(e) => setQuickCounterparty(e.target.value)}
               required
-              style={{ background: '#141418', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', padding: '8px 12px', fontSize: '0.85rem' }}
+              style={{ background: 'var(--search-bg, #141418)', color: 'var(--text-main, #fff)', border: '1px solid var(--search-border, rgba(255,255,255,0.15))', padding: '8px 12px', fontSize: '0.85rem' }}
             />
           </div>
 
           <div>
-            <label style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 600 }}>Category</label>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600 }}>Category</label>
             <select 
               className="select-text"
               value={quickCategory}
               onChange={(e) => setQuickCategory(e.target.value)}
-              style={{ background: '#141418', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', padding: '8px 12px', fontSize: '0.85rem' }}
+              style={{ background: 'var(--search-bg, #141418)', color: 'var(--text-main, #fff)', border: '1px solid var(--search-border, rgba(255,255,255,0.15))', padding: '8px 12px', fontSize: '0.85rem' }}
             >
-              <option value="Operations & Logistics" style={{ background: '#141418', color: '#ffffff' }}>Operations & Logistics</option>
-              <option value="Cloud & Infrastructure" style={{ background: '#141418', color: '#ffffff' }}>Cloud & Infrastructure</option>
-              <option value="Software & Subscriptions" style={{ background: '#141418', color: '#ffffff' }}>Software & Subscriptions</option>
-              <option value="Marketing & Growth" style={{ background: '#141418', color: '#ffffff' }}>Marketing & Growth</option>
-              <option value="Office & Facilities" style={{ background: '#141418', color: '#ffffff' }}>Office & Facilities</option>
-              <option value="Professional Services" style={{ background: '#141418', color: '#ffffff' }}>Professional Services</option>
+              <option value="Operations & Logistics" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Operations & Logistics</option>
+              <option value="Cloud & Infrastructure" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Cloud & Infrastructure</option>
+              <option value="Software & Subscriptions" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Software & Subscriptions</option>
+              <option value="Marketing & Growth" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Marketing & Growth</option>
+              <option value="Office & Facilities" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Office & Facilities</option>
+              <option value="Professional Services" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Professional Services</option>
             </select>
           </div>
 
           <div>
-            <label style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 600 }}>Amount ({currency})</label>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600 }}>Amount ({currency})</label>
             <input 
               type="number" 
               step="0.01"
@@ -395,7 +395,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
               value={quickAmount}
               onChange={(e) => setQuickAmount(e.target.value)}
               required
-              style={{ background: '#141418', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', padding: '8px 12px', fontSize: '0.85rem' }}
+              style={{ background: 'var(--search-bg, #141418)', color: 'var(--text-main, #fff)', border: '1px solid var(--search-border, rgba(255,255,255,0.15))', padding: '8px 12px', fontSize: '0.85rem' }}
             />
           </div>
 
@@ -423,10 +423,10 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
               className="select-text"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              style={{ background: '#141418', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)' }}
+              style={{ background: 'var(--search-bg, #141418)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))' }}
             >
               {availableCategories.map(cat => (
-                <option key={cat} value={cat} style={{ background: '#141418', color: '#ffffff' }}>
+                <option key={cat} value={cat} style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>
                   {cat === 'ALL' ? 'All Categories' : cat}
                 </option>
               ))}
@@ -435,11 +435,11 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
               className="select-text"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              style={{ background: '#141418', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)' }}
+              style={{ background: 'var(--search-bg, #141418)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))' }}
             >
-              <option value="ALL" style={{ background: '#141418', color: '#ffffff' }}>All Statuses</option>
-              <option value="Cleared" style={{ background: '#141418', color: '#ffffff' }}>Cleared</option>
-              <option value="Pending" style={{ background: '#141418', color: '#ffffff' }}>Pending</option>
+              <option value="ALL" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>All Statuses</option>
+              <option value="Cleared" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Cleared</option>
+              <option value="Pending" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Pending</option>
             </select>
           </div>
 

@@ -151,7 +151,7 @@ export const EmailVerificationPage: React.FC<EmailVerificationPageProps> = ({
           </div>
         </div>
 
-        <div className="auth-footer" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '20px', marginTop: '4px' }}>
+        <div className="auth-footer" style={{ borderTop: '1px solid var(--glass-border, rgba(255,255,255,0.08))', paddingTop: '20px', marginTop: '4px' }}>
           Already verified?{' '}
           <button type="button" className="auth-link" onClick={onNavigateLogin}>
             Sign In

@@ -33,7 +33,8 @@ const PERMISSION_OPTIONS = [
   { id: 'analytics', label: 'Analytics', icon: 'fa-square-poll-vertical' },
   { id: 'transactions', label: 'Ledger', icon: 'fa-receipt' },
   { id: 'agent', label: 'Axis Agent', icon: 'fa-brain' },
-  { id: 'business', label: 'My Business', icon: 'fa-building' },
+  { id: 'activities', label: 'Activities', icon: 'fa-clock-rotate-left' },
+  { id: 'forecast', label: 'Runway Simulator', icon: 'fa-cubes-stacked' },
   { id: 'settings', label: 'Settings', icon: 'fa-sliders' },
 ];
 

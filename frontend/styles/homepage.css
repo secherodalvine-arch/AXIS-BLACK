@@ -3,14 +3,32 @@
    ========================================================================== */
 
 .home-page {
+  --bg-obsidian: #0a0a0a;
+  --bg-surface-lowest: #050507;
+  --bg-surface-low: #0a0a0d;
+  --bg-surface: #121216;
+  --bg-surface-high: #1a1a20;
+  --bg-surface-highest: #24242c;
+  --text-main: #f8fafc;
+  --text-muted: #cbd5e1;
+  --text-dim: #94a3b8;
+  --glass-bg: rgba(18, 18, 22, 0.75);
+  --glass-bg-hover: rgba(26, 26, 32, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-light: rgba(255, 255, 255, 0.06);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --primary-lilac: #cebdff;
+  --primary-lilac-glow: rgba(206, 189, 255, 0.4);
+  --secondary-cyan: #00d4ff;
+  --secondary-cyan-glow: rgba(0, 212, 255, 0.4);
   position: relative;
   width: 100%;
   height: 100vh;
-  background: #0a0a0a;
+  background: #0a0a0a !important;
+  color: #f8fafc !important;
   overflow-x: hidden;
   overflow-y: auto;
   font-family: var(--font-body);
-  color: var(--text-main);
   display: flex;
   flex-direction: column;
   scroll-behavior: smooth;
@@ -2066,6 +2084,338 @@
 
 .auth-match-ok { color: #34d399; }
 .auth-match-err { color: #ef4444; }
+
+
+/* ==========================================================================
+   HOMEPAGE STRICT THEME ISOLATION
+   Ensures the showcase landing page ALWAYS retains its signature obsidian
+   Axis Black dark aesthetic regardless of system/body light theme toggles.
+   ========================================================================== */
+
+.home-page,
+body.light-theme .home-page,
+.light-theme .home-page,
+[data-theme="light"] .home-page {
+  --bg-obsidian: #0a0a0a !important;
+  --bg-surface-lowest: #050507 !important;
+  --bg-surface-low: #0a0a0d !important;
+  --bg-surface: #121216 !important;
+  --bg-surface-high: #1a1a20 !important;
+  --bg-surface-highest: #24242c !important;
+  --text-main: #f8fafc !important;
+  --text-muted: #cbd5e1 !important;
+  --text-dim: #94a3b8 !important;
+  --glass-bg: rgba(18, 18, 22, 0.75) !important;
+  --glass-border: rgba(255, 255, 255, 0.08) !important;
+  --secondary-cyan: #00d4ff !important;
+  --primary-lilac: #cebdff !important;
+  background-color: #0a0a0a !important;
+  color: #f8fafc !important;
+}
+
+body.light-theme .home-page h1,
+body.light-theme .home-page h2,
+body.light-theme .home-page h3,
+body.light-theme .home-page h4,
+body.light-theme .home-page h5,
+body.light-theme .home-page .home-hero-title,
+body.light-theme .home-page .home-section-title,
+body.light-theme .home-page .home-feature-title,
+body.light-theme .home-page .home-stat-val,
+body.light-theme .home-page .home-nav-wordmark,
+body.light-theme .home-page .home-preview-title,
+body.light-theme .home-page .home-preview-chart-label,
+body.light-theme .home-page strong {
+  color: #ffffff !important;
+}
+
+body.light-theme .home-page p,
+body.light-theme .home-page .home-hero-sub,
+body.light-theme .home-page .home-section-sub,
+body.light-theme .home-page .home-feature-desc,
+body.light-theme .home-page .home-stat-label,
+body.light-theme .home-page .home-preview-card-label,
+body.light-theme .home-page .home-nav-link {
+  color: #cbd5e1 !important;
+}
+
+body.light-theme .home-page .home-nav {
+  background: rgba(10, 10, 10, 0.88) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.light-theme .home-page .home-nav-link:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+body.light-theme .home-page .home-nav-cta {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.25), rgba(167, 139, 250, 0.25)) !important;
+  border-color: rgba(0, 212, 255, 0.5) !important;
+}
+
+body.light-theme .home-page .home-btn-primary {
+  color: #000000 !important;
+  background: linear-gradient(135deg, #00d4ff, #a78bfa) !important;
+}
+
+body.light-theme .home-page .home-btn-ghost {
+  color: #ffffff !important;
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+body.light-theme .home-page .home-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+
+body.light-theme .home-page .home-feature-card,
+body.light-theme .home-page .home-stat-card,
+body.light-theme .home-page .home-preview-card,
+body.light-theme .home-page .home-cta-card,
+body.light-theme .home-page .glass-card {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #f8fafc !important;
+}
+
+body.light-theme .home-page .home-preview-bar {
+  background: #1a1a1e !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+}
+
+body.light-theme .home-page .home-preview-body {
+  background: #0e0e10 !important;
+}
+
+body.light-theme .home-page input,
+body.light-theme .home-page textarea,
+body.light-theme .home-page select {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+body.light-theme .home-page input::placeholder,
+body.light-theme .home-page textarea::placeholder {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+body.light-theme .home-page input:focus,
+body.light-theme .home-page textarea:focus {
+  border-color: #00d4ff !important;
+  box-shadow: 0 0 16px rgba(0, 212, 255, 0.25) !important;
+}
+
+
+/* ==========================================================================
+   AUTHENTICATION PAGES: HIGH CONTRAST IN BOTH LIGHT & DARK THEMES
+   ========================================================================== */
+
+/* Dark Theme Robust Defaults (ensures dark theme is rich and crisp) */
+.auth-page {
+  --text-main: #f8fafc;
+  --text-muted: #cbd5e1;
+  --text-dim: #94a3b8;
+}
+
+.auth-page .auth-card {
+  color: #f8fafc;
+}
+
+.auth-page .auth-title {
+  color: #ffffff;
+}
+
+.auth-page .auth-subtitle {
+  color: #94a3b8;
+}
+
+.auth-page .auth-field label {
+  color: #e2e8f0;
+}
+
+.auth-page .auth-input-wrapper input {
+  color: #ffffff;
+}
+
+/* Light Theme Authentication Styling */
+body.light-theme .auth-page,
+.light-theme .auth-page,
+[data-theme="light"] .auth-page {
+  background: #f4f6fb !important;
+  color: #0f172a !important;
+}
+
+body.light-theme .auth-page .auth-glow-cyan {
+  background: rgba(2, 132, 199, 0.07) !important;
+}
+
+body.light-theme .auth-page .auth-glow-lilac {
+  background: rgba(99, 102, 241, 0.07) !important;
+}
+
+body.light-theme .auth-page .auth-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-top: 1px solid #cbd5e1 !important;
+  box-shadow: 0 24px 64px -12px rgba(15, 23, 42, 0.12), 0 4px 16px rgba(15, 23, 42, 0.04) !important;
+  color: #0f172a !important;
+}
+
+body.light-theme .auth-page .auth-back-btn {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
+}
+
+body.light-theme .auth-page .auth-back-btn:hover {
+  background: #f8fafc !important;
+  border-color: #0284c7 !important;
+  color: #0284c7 !important;
+}
+
+body.light-theme .auth-page .auth-wordmark {
+  color: #0f172a !important;
+}
+
+body.light-theme .auth-page .auth-wordmark span {
+  color: #0284c7 !important;
+}
+
+body.light-theme .auth-page .auth-title {
+  color: #0f172a !important;
+}
+
+body.light-theme .auth-page .auth-subtitle {
+  color: #475569 !important;
+}
+
+body.light-theme .auth-page .auth-field label {
+  color: #1e293b !important;
+  font-weight: 600 !important;
+}
+
+body.light-theme .auth-page .auth-input-wrapper input,
+body.light-theme .auth-page .auth-select {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+body.light-theme .auth-page .auth-input-wrapper input:focus,
+body.light-theme .auth-page .auth-select:focus {
+  background: #ffffff !important;
+  border-color: #0284c7 !important;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
+}
+
+body.light-theme .auth-page .auth-input-wrapper input::placeholder {
+  color: #94a3b8 !important;
+}
+
+body.light-theme .auth-page .auth-input-icon {
+  color: #64748b !important;
+}
+
+body.light-theme .auth-page .auth-toggle-pwd {
+  color: #64748b !important;
+}
+
+body.light-theme .auth-page .auth-toggle-pwd:hover {
+  color: #0f172a !important;
+}
+
+body.light-theme .auth-page .auth-link,
+body.light-theme .auth-page .auth-link-sm {
+  color: #0284c7 !important;
+}
+
+body.light-theme .auth-page .auth-link:hover,
+body.light-theme .auth-page .auth-link-sm:hover {
+  color: #0369a1 !important;
+}
+
+body.light-theme .auth-page .auth-footer {
+  color: #64748b !important;
+}
+
+body.light-theme .auth-page .auth-btn-secondary {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+body.light-theme .auth-page .auth-btn-secondary:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+body.light-theme .auth-page .auth-btn-primary {
+  background: linear-gradient(135deg, #0284c7, #6366f1) !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.25) !important;
+}
+
+body.light-theme .auth-page .auth-error-banner {
+  background: #fef2f2 !important;
+  border: 1px solid #fecaca !important;
+  color: #b91c1c !important;
+}
+
+body.light-theme .auth-page .auth-success-banner {
+  background: #ecfdf5 !important;
+  border: 1px solid #a7f3d0 !important;
+  color: #047857 !important;
+}
+
+body.light-theme .auth-page .auth-verify-banner {
+  background: #fffbeb !important;
+  border: 1px solid #fde68a !important;
+  color: #92400e !important;
+}
+
+body.light-theme .auth-page .auth-verify-banner p {
+  color: #78350f !important;
+}
+
+body.light-theme .auth-page .auth-verify-banner-header {
+  color: #b45309 !important;
+}
+
+body.light-theme .auth-page .verify-steps {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+body.light-theme .auth-page .verify-step p {
+  color: #334155 !important;
+}
+
+body.light-theme .auth-page .verify-step-num {
+  background: rgba(2, 132, 199, 0.12) !important;
+  color: #0284c7 !important;
+}
+
+body.light-theme .auth-page .verify-email-display {
+  background: rgba(2, 132, 199, 0.08) !important;
+  border: 1px solid rgba(2, 132, 199, 0.25) !important;
+  color: #0284c7 !important;
+}
+
+body.light-theme .auth-page .verify-hint {
+  color: #64748b !important;
+}
+
+body.light-theme .auth-page .verify-cooldown-bar,
+body.light-theme .auth-page .auth-resend-bar {
+  background: #e2e8f0 !important;
+}
 
 
 

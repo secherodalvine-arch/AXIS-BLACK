@@ -320,10 +320,10 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
               className="select-text"
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
-              style={{ width: '220px', padding: '6px 12px', background: '#141418', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)' }}
+              style={{ width: '220px', padding: '6px 12px', background: 'var(--search-bg, #141418)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))' }}
             >
               {availableCategories.map(cat => (
-                <option key={cat} value={cat} style={{ background: '#141418', color: '#ffffff' }}>
+                <option key={cat} value={cat} style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>
                   {cat === 'ALL' ? 'All Categories' : cat}
                 </option>
               ))}
@@ -374,7 +374,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
                           <div className="entity-avatar" style={{ background: 'rgba(0, 212, 255, 0.15)', color: '#00d4ff' }}>
                             <i className="fa-solid fa-box"></i>
                           </div>
-                          <span style={{ fontWeight: 600, color: '#fff' }}>{item.name}</span>
+                          <span style={{ fontWeight: 600, color: 'var(--text-main, #fff)' }}>{item.name}</span>
                         </div>
                       </td>
                       <td style={{ color: '#9ca3af' }}>{item.category}</td>
@@ -407,12 +407,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
       {/* ADD NEW INVENTORY ITEM MODAL */}
       {isModalOpen && (
         <div className="modal-overlay active">
-          <div className="modal-card glass-card" style={{ background: '#141418', border: '1px solid rgba(0, 212, 255, 0.35)', boxShadow: '0 24px 80px rgba(0,0,0,0.9), 0 0 40px rgba(0, 212, 255, 0.2)', maxHeight: '88vh', overflowY: 'auto' }}>
-            <div className="modal-header" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '12px', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, color: '#ffffff', fontFamily: 'Plus Jakarta Sans', fontSize: '1.25rem', fontWeight: 800 }}>
+          <div className="modal-card glass-card" style={{ background: 'var(--dropdown-bg, #141418)', border: '1px solid var(--dropdown-border, rgba(0, 212, 255, 0.35))', boxShadow: 'var(--dropdown-shadow, 0 24px 80px rgba(0,0,0,0.9))', maxHeight: '88vh', overflowY: 'auto' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid var(--header-border, rgba(255, 255, 255, 0.1))', paddingBottom: '12px', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans', fontSize: '1.25rem', fontWeight: 800 }}>
                 Add New Inventory Item
               </h3>
-              <button className="modal-close" onClick={() => setIsModalOpen(false)} style={{ color: '#9ca3af', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>&times;</button>
+              <button className="modal-close" onClick={() => setIsModalOpen(false)} style={{ color: 'var(--text-muted, #9ca3af)', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>&times;</button>
             </div>
             
             <form onSubmit={handleCreateSKU}>
@@ -442,10 +442,10 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
                     value={itemBranchId}
                     onChange={(e) => setItemBranchId(e.target.value)}
                     required
-                    style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(0, 212, 255, 0.35)', borderRadius: '10px', padding: '12px' }}
+                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid rgba(0, 212, 255, 0.35)', borderRadius: '10px', padding: '12px' }}
                   >
                     {branches.map(b => (
-                      <option key={b.id} value={b.id} style={{ background: '#141418', color: '#ffffff' }}>
+                      <option key={b.id} value={b.id} style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>
                         {b.name} {b.location ? `(${b.location})` : ''} {b.is_main ? '· [HQ / Main Branch]' : ''}
                       </option>
                     ))}
@@ -459,7 +459,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
               )}
 
               <div className="form-group">
-                <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Item Name / Description
                 </label>
                 <input 
@@ -469,32 +469,32 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px' }}
+                  style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
                 />
               </div>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     Category
                   </label>
                   <select 
                     className="select-text"
                     value={isCustomCategory ? '__CUSTOM__' : category}
                     onChange={handleCategorySelectChange}
-                    style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px' }}
+                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
                   >
-                    <option value="Hardware & Devices" style={{ background: '#141418', color: '#ffffff' }}>Hardware & Devices</option>
-                    <option value="Finished Goods & Products" style={{ background: '#141418', color: '#ffffff' }}>Finished Goods & Products</option>
-                    <option value="Raw Materials & Parts" style={{ background: '#141418', color: '#ffffff' }}>Raw Materials & Parts</option>
-                    <option value="Office Equipment & Facilities" style={{ background: '#141418', color: '#ffffff' }}>Office Equipment & Facilities</option>
-                    <option value="Packaging & Logistics" style={{ background: '#141418', color: '#ffffff' }}>Packaging & Logistics</option>
-                    <option value="__CUSTOM__" style={{ background: '#141418', color: '#00d4ff', fontWeight: 'bold' }}>+ Custom Category...</option>
+                    <option value="Hardware & Devices" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Hardware & Devices</option>
+                    <option value="Finished Goods & Products" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Finished Goods & Products</option>
+                    <option value="Raw Materials & Parts" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Raw Materials & Parts</option>
+                    <option value="Office Equipment & Facilities" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Office Equipment & Facilities</option>
+                    <option value="Packaging & Logistics" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Packaging & Logistics</option>
+                    <option value="__CUSTOM__" style={{ background: 'var(--dropdown-bg, #141418)', color: '#00d4ff', fontWeight: 'bold' }}>+ Custom Category...</option>
                   </select>
                 </div>
 
                 <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     Initial Stock Units
                   </label>
                   <input 
@@ -504,7 +504,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
                     value={stockQuantity}
                     onChange={(e) => setStockQuantity(e.target.value)}
                     required
-                    style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px' }}
+                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
                   />
                 </div>
               </div>
@@ -521,14 +521,14 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
                     value={customCategory}
                     onChange={(e) => setCustomCategory(e.target.value)}
                     required={isCustomCategory}
-                    style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid #00d4ff', borderRadius: '10px', padding: '10px' }}
+                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid #00d4ff', borderRadius: '10px', padding: '10px' }}
                   />
                 </div>
               )}
 
               <div className="form-row">
                 <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     Reorder Alert Threshold
                   </label>
                   <input 
@@ -538,12 +538,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
                     value={reorderPoint}
                     onChange={(e) => setReorderPoint(e.target.value)}
                     required
-                    style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px' }}
+                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     Unit Cost ($)
                   </label>
                   <input 
@@ -554,14 +554,14 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
                     value={unitCost}
                     onChange={(e) => setUnitCost(e.target.value)}
                     required
-                    style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px' }}
+                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
                   />
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     Selling Price ($)
                   </label>
                   <input 
@@ -572,12 +572,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
                     value={sellingPrice}
                     onChange={(e) => setSellingPrice(e.target.value)}
                     required
-                    style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px' }}
+                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     Supplier / Vendor
                   </label>
                   <input 
@@ -587,7 +587,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
                     value={supplier}
                     onChange={(e) => setSupplier(e.target.value)}
                     required
-                    style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px' }}
+                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
                   />
                 </div>
               </div>

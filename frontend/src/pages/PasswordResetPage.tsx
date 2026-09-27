@@ -347,7 +347,7 @@ export const PasswordResetPage: React.FC<PasswordResetPageProps> = ({
           </>
         )}
 
-        <div className="auth-footer" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '18px', marginTop: '14px' }}>
+        <div className="auth-footer" style={{ borderTop: '1px solid var(--glass-border, rgba(255,255,255,0.08))', paddingTop: '18px', marginTop: '14px' }}>
           Remember your password?{' '}
           <button type="button" className="auth-link" onClick={onNavigateLogin}>
             Sign In

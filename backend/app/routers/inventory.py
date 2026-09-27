@@ -33,12 +33,23 @@ class InventoryItemUpdate(BaseModel):
     branch_id: Optional[str] = None
 
 
+def _check_inventory_permission(current_user: dict):
+    if current_user.get("is_sub_user"):
+        perms = current_user.get("permissions") or []
+        if "inventory" not in perms:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Your assigned role does not have permission to view or manage inventory."
+            )
+
+
 @router.get("/items", response_model=List[Dict[str, Any]])
 async def get_inventory(
     branch_id: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
     """Get inventory items. If team member is assigned a branch, restrict to that branch only."""
+    _check_inventory_permission(current_user)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
 
@@ -59,6 +70,7 @@ async def create_inventory_item(
     current_user: dict = Depends(get_current_user)
 ):
     """Add a new SKU inventory item."""
+    _check_inventory_permission(current_user)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
     data = payload.model_dump()
@@ -96,6 +108,7 @@ async def update_inventory_item(
     current_user: dict = Depends(get_current_user)
 ):
     """Update an existing SKU item."""
+    _check_inventory_permission(current_user)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
     updates = {k: v for k, v in payload.model_dump().items() if v is not None}
@@ -130,6 +143,7 @@ async def delete_inventory_item(
     current_user: dict = Depends(get_current_user)
 ):
     """Delete an inventory item."""
+    _check_inventory_permission(current_user)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
 
@@ -161,6 +175,7 @@ async def import_inventory_csv(
     Bulk import inventory from CSV.
     Expected columns: sku, name, category, stock_quantity, reorder_point, unit_cost, selling_price, supplier
     """
+    _check_inventory_permission(current_user)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
 

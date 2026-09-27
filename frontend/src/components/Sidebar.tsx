@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavTab } from '../types';
+import { UserProfile } from '../utils/api';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -7,6 +8,7 @@ interface SidebarProps {
   isOpen: boolean;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  user?: UserProfile | null;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -14,8 +16,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onTabChange, 
   isOpen, 
   isCollapsed = false,
-  onToggleCollapse 
+  onToggleCollapse,
+  user
 }) => {
+  const isOwner = !user?.is_sub_user;
+  const perms = user?.permissions || [];
+  const canAccess = (perm: string) => isOwner || perms.includes(perm);
+
   return (
     <aside className={`sidebar ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-header">
@@ -26,7 +33,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {!isCollapsed && (
             <div className="brand-title">
               <span className="brand-name">AXIS<span className="brand-accent">BLACK</span></span>
-              <span className="brand-tagline">FINANCIAL INTELLIGENCE</span>
+              <span className="brand-tagline">
+                {user?.is_sub_user ? (user.role || 'TEAM WORKSPACE') : 'FINANCIAL INTELLIGENCE'}
+              </span>
             </div>
           )}
         </div>
@@ -41,78 +50,96 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       <nav className="sidebar-nav">
-        <button 
-          className={`nav-item ${currentTab === 'dashboard' ? 'active' : ''}`}
-          onClick={() => onTabChange('dashboard')}
-          title={isCollapsed ? "Dashboard" : undefined}
-        >
-          <div className="nav-icon-wrapper"><i className="fa-solid fa-chart-pie"></i></div>
-          {!isCollapsed && <span className="nav-label">Dashboard</span>}
-        </button>
+        {canAccess('dashboard') && (
+          <button 
+            className={`nav-item ${currentTab === 'dashboard' ? 'active' : ''}`}
+            onClick={() => onTabChange('dashboard')}
+            title={isCollapsed ? "Dashboard" : undefined}
+          >
+            <div className="nav-icon-wrapper"><i className="fa-solid fa-chart-pie"></i></div>
+            {!isCollapsed && <span className="nav-label">Dashboard</span>}
+          </button>
+        )}
 
-        <button 
-          className={`nav-item ${currentTab === 'inventory' ? 'active' : ''}`}
-          onClick={() => onTabChange('inventory')}
-          title={isCollapsed ? "Inventory" : undefined}
-        >
-          <div className="nav-icon-wrapper"><i className="fa-solid fa-boxes-stacked"></i></div>
-          {!isCollapsed && <span className="nav-label">Inventory</span>}
-        </button>
+        {canAccess('inventory') && (
+          <button 
+            className={`nav-item ${currentTab === 'inventory' ? 'active' : ''}`}
+            onClick={() => onTabChange('inventory')}
+            title={isCollapsed ? "Inventory" : undefined}
+          >
+            <div className="nav-icon-wrapper"><i className="fa-solid fa-boxes-stacked"></i></div>
+            {!isCollapsed && <span className="nav-label">Inventory</span>}
+          </button>
+        )}
 
-        <button 
-          className={`nav-item ${currentTab === 'analytics' ? 'active' : ''}`}
-          onClick={() => onTabChange('analytics')}
-          title={isCollapsed ? "Analytics" : undefined}
-        >
-          <div className="nav-icon-wrapper"><i className="fa-solid fa-square-poll-vertical"></i></div>
-          {!isCollapsed && <span className="nav-label">Analytics</span>}
-        </button>
+        {canAccess('analytics') && (
+          <button 
+            className={`nav-item ${currentTab === 'analytics' ? 'active' : ''}`}
+            onClick={() => onTabChange('analytics')}
+            title={isCollapsed ? "Analytics" : undefined}
+          >
+            <div className="nav-icon-wrapper"><i className="fa-solid fa-square-poll-vertical"></i></div>
+            {!isCollapsed && <span className="nav-label">Analytics</span>}
+          </button>
+        )}
 
-        <button 
-          className={`nav-item ${currentTab === 'transactions' ? 'active' : ''}`}
-          onClick={() => onTabChange('transactions')}
-          title={isCollapsed ? "Ledger" : undefined}
-        >
-          <div className="nav-icon-wrapper"><i className="fa-solid fa-receipt"></i></div>
-          {!isCollapsed && <span className="nav-label">Ledger</span>}
-        </button>
+        {canAccess('transactions') && (
+          <button 
+            className={`nav-item ${currentTab === 'transactions' ? 'active' : ''}`}
+            onClick={() => onTabChange('transactions')}
+            title={isCollapsed ? "Ledger" : undefined}
+          >
+            <div className="nav-icon-wrapper"><i className="fa-solid fa-receipt"></i></div>
+            {!isCollapsed && <span className="nav-label">Ledger</span>}
+          </button>
+        )}
 
-        <button 
-          className={`nav-item ${currentTab === 'agent' ? 'active' : ''}`}
-          onClick={() => onTabChange('agent')}
-          title={isCollapsed ? "Axis Agent" : undefined}
-        >
-          <div className="nav-icon-wrapper"><i className="fa-solid fa-brain"></i></div>
-          {!isCollapsed && <span className="nav-label">Axis Agent</span>}
-        </button>
+        {canAccess('agent') && (
+          <button 
+            className={`nav-item ${currentTab === 'agent' ? 'active' : ''}`}
+            onClick={() => onTabChange('agent')}
+            title={isCollapsed ? "Axis Agent" : undefined}
+          >
+            <div className="nav-icon-wrapper"><i className="fa-solid fa-brain"></i></div>
+            {!isCollapsed && <span className="nav-label">Axis Agent</span>}
+          </button>
+        )}
 
-        <button 
-          className={`nav-item ${currentTab === 'business' ? 'active' : ''}`}
-          onClick={() => onTabChange('business')}
-          title={isCollapsed ? "My Business" : undefined}
-        >
-          <div className="nav-icon-wrapper"><i className="fa-solid fa-building"></i></div>
-          {!isCollapsed && <span className="nav-label">My Business</span>}
-        </button>
+        {isOwner && (
+          <button 
+            className={`nav-item ${currentTab === 'business' ? 'active' : ''}`}
+            onClick={() => onTabChange('business')}
+            title={isCollapsed ? "My Business" : undefined}
+          >
+            <div className="nav-icon-wrapper"><i className="fa-solid fa-building"></i></div>
+            {!isCollapsed && <span className="nav-label">My Business</span>}
+          </button>
+        )}
 
-        <button 
-          className={`nav-item ${currentTab === 'activities' ? 'active' : ''}`}
-          onClick={() => onTabChange('activities')}
-          title={isCollapsed ? "Activities" : undefined}
-        >
-          <div className="nav-icon-wrapper"><i className="fa-solid fa-clock-rotate-left"></i></div>
-          {!isCollapsed && <span className="nav-label">Activities</span>}
-        </button>
+        {canAccess('activities') && (
+          <button 
+            className={`nav-item ${currentTab === 'activities' ? 'active' : ''}`}
+            onClick={() => onTabChange('activities')}
+            title={isCollapsed ? "Activities" : undefined}
+          >
+            <div className="nav-icon-wrapper"><i className="fa-solid fa-clock-rotate-left"></i></div>
+            {!isCollapsed && <span className="nav-label">Activities</span>}
+          </button>
+        )}
 
-        <div className="nav-section-title">STRATEGY &amp; PLANNING</div>
-        <button 
-          className={`nav-item ${currentTab === 'forecast' ? 'active' : ''}`}
-          onClick={() => onTabChange('forecast')}
-          title={isCollapsed ? "Runway Simulator" : undefined}
-        >
-          <div className="nav-icon-wrapper"><i className="fa-solid fa-cubes-stacked"></i></div>
-          {!isCollapsed && <span className="nav-label">Runway Simulator</span>}
-        </button>
+        {canAccess('forecast') && (
+          <>
+            <div className="nav-section-title">STRATEGY &amp; PLANNING</div>
+            <button 
+              className={`nav-item ${currentTab === 'forecast' ? 'active' : ''}`}
+              onClick={() => onTabChange('forecast')}
+              title={isCollapsed ? "Runway Simulator" : undefined}
+            >
+              <div className="nav-icon-wrapper"><i className="fa-solid fa-cubes-stacked"></i></div>
+              {!isCollapsed && <span className="nav-label">Runway Simulator</span>}
+            </button>
+          </>
+        )}
 
         <div className="nav-section-title">SYSTEM</div>
         <button 
@@ -130,3 +157,4 @@ export const Sidebar: React.FC<SidebarProps> = ({
     </aside>
   );
 };
+

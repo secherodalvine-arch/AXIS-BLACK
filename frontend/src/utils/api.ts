@@ -17,6 +17,8 @@ export interface UserProfile {
   owner_id?: string;
   role_id?: string;
   branch_id?: string;
+  branch_name?: string;
+  permissions?: string[];
   must_change_password?: boolean;
   theme?: 'light' | 'dark' | 'system';
   notification_settings?: any;
@@ -240,6 +242,8 @@ export const getUserProfileApi = async (): Promise<any> => {
     owner_id: profile.owner_id,
     role_id: profile.role_id,
     branch_id: profile.branch_id,
+    branch_name: profile.branch_name,
+    permissions: profile.permissions,
     must_change_password: profile.must_change_password,
   });
   return profile;
@@ -266,9 +270,21 @@ export const updateUserProfileApi = async (updateData: any): Promise<any> => {
     owner_id: updated.owner_id,
     role_id: updated.role_id,
     branch_id: updated.branch_id,
+    branch_name: updated.branch_name,
+    permissions: updated.permissions,
     must_change_password: updated.must_change_password,
   });
   return updated;
+};
+
+export const changePasswordApi = async (
+  current_password: string,
+  new_password: string
+): Promise<{ status: string; message: string }> => {
+  return await request<{ status: string; message: string }>('/users/me/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ current_password, new_password })
+  });
 };
 
 // ── Axis Black Data & Telemetry APIs ──
@@ -496,6 +512,8 @@ export const dispatchSummaryNotificationApi = async (settingsPayload?: any) => {
     body: settingsPayload ? JSON.stringify(settingsPayload) : undefined
   });
 };
+
+
 
 
 

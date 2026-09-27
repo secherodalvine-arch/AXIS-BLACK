@@ -10,22 +10,10 @@ router = APIRouter(prefix="/api/users", tags=["User Profile"])
 
 @router.get("/me", response_model=Dict[str, Any])
 async def get_user_profile(current_user: dict = Depends(get_current_user)):
-    user_id = current_user.get("user_id", "")
-    email = current_user.get("email", "")
-
-    doc = None
-    if db_manager.is_connected and (user_id or email):
-        doc = await db_manager.db.users.find_one({"$or": [{"user_id": user_id}, {"email": email}]})
-    elif user_id in db_manager.memory_store["users"]:
-        doc = db_manager.memory_store["users"][user_id]
-    elif email:
-        doc = next((u for u in db_manager.memory_store["users"].values() if u.get("email") == email), None)
-
-    if doc:
-        doc_copy = dict(doc)
-        doc_copy.pop("_id", None)
-        doc_copy.pop("hashed_password", None)
-        return doc_copy
+    user_copy = dict(current_user)
+    user_copy.pop("_id", None)
+    user_copy.pop("hashed_password", None)
+    return user_copy
 
     return {
         "user_id": current_user.get("user_id", "usr_active"),
@@ -58,6 +46,11 @@ async def update_user_profile(payload: UserProfileUpdate, current_user: dict = D
     user_id = current_user.get("user_id", "")
     email = current_user.get("email", "")
     updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+
+    # If user is an assigned team member, lock down role, company, and business fields
+    if current_user.get("is_sub_user"):
+        for forbidden in ["role", "company", "role_id", "branch_id", "is_sub_user", "owner_id", "salary", "income_frequency"]:
+            updates.pop(forbidden, None)
 
     if "city" in updates or "country" in updates:
         current_loc = current_user.get("location")
@@ -95,6 +88,57 @@ async def update_user_profile(payload: UserProfileUpdate, current_user: dict = D
 @router.post("/me/location", response_model=Dict[str, Any])
 async def update_user_location(payload: LocationModel, current_user: dict = Depends(get_current_user)):
     return {"status": "updated", "location": payload.model_dump()}
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/me/change-password", response_model=Dict[str, Any])
+async def change_user_password(
+    payload: ChangePasswordRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    from app.auth.security import verify_password, hash_password
+    user_id = current_user.get("user_id")
+    email = current_user.get("email")
+
+    user_doc = None
+    if db_manager.is_connected:
+        user_doc = await db_manager.db.users.find_one({"$or": [{"user_id": user_id}, {"email": email}]})
+    else:
+        user_doc = db_manager.memory_store["users"].get(user_id) or next(
+            (u for u in db_manager.memory_store["users"].values() if u.get("email") == email), None
+        )
+
+    if not user_doc or not verify_password(payload.current_password, user_doc.get("hashed_password", "")):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password does not match. Please verify and try again."
+        )
+
+    if len(payload.new_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be at least 6 characters long."
+        )
+
+    new_hash = hash_password(payload.new_password)
+    now_str = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    if db_manager.is_connected:
+        await db_manager.db.users.update_one(
+            {"$or": [{"user_id": user_id}, {"email": email}]},
+            {"$set": {"hashed_password": new_hash, "must_change_password": False, "updated_at": now_str}}
+        )
+    else:
+        user_doc["hashed_password"] = new_hash
+        user_doc["must_change_password"] = False
+        user_doc["updated_at"] = now_str
+        db_manager.save_memory_store()
+
+    return {"status": "success", "message": "Password changed successfully."}
 
 
 class DispatchSummaryPayload(BaseModel):

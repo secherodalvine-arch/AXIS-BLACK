@@ -320,8 +320,8 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({ currency =
               value={branchFilter}
               onChange={e => setBranchFilter(e.target.value)}
               style={{
-                background: '#141418',
-                color: '#fff',
+                background: 'var(--dropdown-bg, #141418)',
+                color: 'var(--text-main, #fff)',
                 border: 'none',
                 fontSize: '0.85rem',
                 fontWeight: 600,

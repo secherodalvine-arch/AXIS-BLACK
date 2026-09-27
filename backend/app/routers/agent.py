@@ -34,7 +34,15 @@ async def query_axis_agent(
     Query Axis Agent powered by Gemini GenAI SDK.
     Processes business telemetry data and user strategic inquiries.
     """
-    user_id = current_user.get("user_id", "usr_guest")
+    if current_user.get("is_sub_user"):
+        perms = current_user.get("permissions") or []
+        if "agent" not in perms:
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied. Your assigned role does not have permission to consult Axis Agent."
+            )
+
+    user_id = current_user.get("owner_id") if current_user.get("is_sub_user") else current_user.get("user_id", "usr_guest")
     metrics = await AxisDataStore.get_dashboard_metrics(user_id)
     txns = await AxisDataStore.get_transactions(user_id)
     inventory = await AxisDataStore.get_inventory(user_id)

@@ -152,7 +152,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             ></i>
             <div>
               {(error.toLowerCase().includes('suspended') || error.toLowerCase().includes('deleted')) && (
-                <strong style={{ display: 'block', color: '#fff', fontSize: '0.9rem', marginBottom: '3px' }}>
+                <strong style={{ display: 'block', color: 'inherit', fontSize: '0.9rem', marginBottom: '3px' }}>
                   {error.toLowerCase().includes('suspended') ? 'Account Suspended' : 'Account Removed'}
                 </strong>
               )}

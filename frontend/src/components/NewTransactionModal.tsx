@@ -83,16 +83,16 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
 
   return (
     <div className="modal-overlay active">
-      <div className="modal-card glass-card" style={{ background: '#141418', border: '1px solid rgba(0, 212, 255, 0.35)', boxShadow: '0 24px 80px rgba(0,0,0,0.9), 0 0 40px rgba(0, 212, 255, 0.2)', maxHeight: '88vh', overflowY: 'auto' }}>
-        <div className="modal-header" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '12px', marginBottom: '20px' }}>
-          <h3 style={{ margin: 0, color: '#ffffff', fontFamily: 'Plus Jakarta Sans', fontSize: '1.25rem', fontWeight: 800 }}>
+      <div className="modal-card glass-card" style={{ background: 'var(--dropdown-bg, #141418)', border: '1px solid var(--dropdown-border, rgba(0, 212, 255, 0.35))', boxShadow: 'var(--dropdown-shadow, 0 24px 80px rgba(0,0,0,0.9))', maxHeight: '88vh', overflowY: 'auto' }}>
+        <div className="modal-header" style={{ borderBottom: '1px solid var(--header-border, rgba(255, 255, 255, 0.1))', paddingBottom: '12px', marginBottom: '20px' }}>
+          <h3 style={{ margin: 0, color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans', fontSize: '1.25rem', fontWeight: 800 }}>
             Record Ledger Entry
           </h3>
-          <button className="modal-close" onClick={onClose} style={{ color: '#9ca3af', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>&times;</button>
+          <button className="modal-close" onClick={onClose} style={{ color: 'var(--text-muted, #9ca3af)', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>&times;</button>
         </div>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Counterparty / Description
             </label>
             <input 
@@ -102,68 +102,68 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
               value={counterparty}
               onChange={(e) => setCounterparty(e.target.value)}
               required
-              style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px' }}
+              style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
             />
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Account Ledger Type
               </label>
               <select 
                 className="select-text"
                 value={accountType}
                 onChange={(e) => setAccountType(e.target.value as any)}
-                style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px' }}
+                style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
               >
-                <option value="Cash" style={{ background: '#141418', color: '#ffffff' }}>Cash Account</option>
-                <option value="Bank" style={{ background: '#141418', color: '#ffffff' }}>Bank Account</option>
-                <option value="Accounts Receivable" style={{ background: '#141418', color: '#ffffff' }}>Accounts Receivable (Customer)</option>
-                <option value="Accounts Payable" style={{ background: '#141418', color: '#ffffff' }}>Accounts Payable (Supplier)</option>
-                <option value="Revenue" style={{ background: '#141418', color: '#ffffff' }}>Revenue Account</option>
-                <option value="Expense" style={{ background: '#141418', color: '#ffffff' }}>Expense Account</option>
+                <option value="Cash" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Cash Account</option>
+                <option value="Bank" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Bank Account</option>
+                <option value="Accounts Receivable" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Accounts Receivable (Customer)</option>
+                <option value="Accounts Payable" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Accounts Payable (Supplier)</option>
+                <option value="Revenue" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Revenue Account</option>
+                <option value="Expense" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Expense Account</option>
               </select>
             </div>
 
             <div className="form-group">
-              <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Transaction Type
               </label>
               <select 
                 className="select-text"
                 value={type}
                 onChange={(e) => setType(e.target.value as 'Expense' | 'Revenue')}
-                style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px' }}
+                style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
               >
-                <option value="Expense" style={{ background: '#141418', color: '#ffffff' }}>Expense (Money Out)</option>
-                <option value="Revenue" style={{ background: '#141418', color: '#ffffff' }}>Revenue (Money In)</option>
+                <option value="Expense" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Expense (Money Out)</option>
+                <option value="Revenue" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Revenue (Money In)</option>
               </select>
             </div>
           </div>
 
           <div className="form-group">
-            <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Category
             </label>
             <select 
               className="select-text"
               value={isCustom ? '__CUSTOM__' : category}
               onChange={handleCategorySelectChange}
-              style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px' }}
+              style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
             >
-              <option value="Revenue & Sales" style={{ background: '#141418', color: '#ffffff' }}>Revenue & Sales</option>
-              <option value="Software & Subscriptions" style={{ background: '#141418', color: '#ffffff' }}>Software & Subscriptions</option>
-              <option value="Cloud & Infrastructure" style={{ background: '#141418', color: '#ffffff' }}>Cloud & Infrastructure</option>
-              <option value="Payroll & Compensation" style={{ background: '#141418', color: '#ffffff' }}>Payroll & Compensation</option>
-              <option value="Operations & Logistics" style={{ background: '#141418', color: '#ffffff' }}>Operations & Logistics</option>
-              <option value="Marketing & Growth" style={{ background: '#141418', color: '#ffffff' }}>Marketing & Growth</option>
-              <option value="Office & Facilities" style={{ background: '#141418', color: '#ffffff' }}>Office & Facilities</option>
-              <option value="Professional Services" style={{ background: '#141418', color: '#ffffff' }}>Professional Services</option>
-              <option value="Equipment & Assets" style={{ background: '#141418', color: '#ffffff' }}>Equipment & Assets</option>
-              <option value="Utilities" style={{ background: '#141418', color: '#ffffff' }}>Utilities</option>
-              <option value="Treasury & Capital" style={{ background: '#141418', color: '#ffffff' }}>Treasury & Capital</option>
-              <option value="__CUSTOM__" style={{ background: '#141418', color: '#00d4ff', fontWeight: 'bold' }}>+ Custom Category...</option>
+              <option value="Revenue & Sales" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Revenue & Sales</option>
+              <option value="Software & Subscriptions" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Software & Subscriptions</option>
+              <option value="Cloud & Infrastructure" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Cloud & Infrastructure</option>
+              <option value="Payroll & Compensation" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Payroll & Compensation</option>
+              <option value="Operations & Logistics" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Operations & Logistics</option>
+              <option value="Marketing & Growth" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Marketing & Growth</option>
+              <option value="Office & Facilities" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Office & Facilities</option>
+              <option value="Professional Services" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Professional Services</option>
+              <option value="Equipment & Assets" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Equipment & Assets</option>
+              <option value="Utilities" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Utilities</option>
+              <option value="Treasury & Capital" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Treasury & Capital</option>
+              <option value="__CUSTOM__" style={{ background: 'var(--dropdown-bg, #141418)', color: '#00d4ff', fontWeight: 'bold' }}>+ Custom Category...</option>
             </select>
           </div>
 
@@ -179,14 +179,14 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                 value={customCategory}
                 onChange={(e) => setCustomCategory(e.target.value)}
                 required={isCustom}
-                style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid #00d4ff', borderRadius: '10px', padding: '10px' }}
+                style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid #00d4ff', borderRadius: '10px', padding: '10px' }}
               />
             </div>
           )}
 
           <div className="form-row">
             <div className="form-group">
-              <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Amount ({getCurrencySymbol(currency)})
               </label>
               <input 
@@ -197,11 +197,11 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 required
-                style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px' }}
+                style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
               />
             </div>
             <div className="form-group">
-              <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Date
               </label>
               <input 
@@ -210,13 +210,13 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required
-                style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px' }}
+                style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
               />
             </div>
           </div>
 
           <div className="form-group">
-            <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Notes / Audit Memo
             </label>
             <textarea 
@@ -225,7 +225,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
               placeholder="Optional notes..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              style={{ background: '#1a1a22', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px' }}
+              style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
             />
           </div>
 
@@ -248,17 +248,17 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
           ) : (
             branches.length > 0 && (
               <div className="form-group">
-                <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Branch
                 </label>
                 <select
                   value={branchId}
                   onChange={e => setBranchId(e.target.value)}
-                  style={{ background: '#1a1a22', color: branchId ? '#00d4ff' : '#9ca3af', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '12px', width: '100%' }}
+                  style={{ background: 'var(--search-bg, #1a1a22)', color: branchId ? '#00d4ff' : 'var(--text-muted, #9ca3af)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px', width: '100%' }}
                 >
                   <option value="">All Branches / HQ</option>
                   {branches.map((b: any) => (
-                    <option key={b.id} value={b.id} style={{ color: '#fff' }}>{b.name}</option>
+                    <option key={b.id} value={b.id} style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #fff)' }}>{b.name}</option>
                   ))}
                 </select>
               </div>

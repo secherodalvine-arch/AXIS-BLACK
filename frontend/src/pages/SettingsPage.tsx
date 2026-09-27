@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Currency } from '../types';
-import { getUserProfileApi, updateUserProfileApi, uploadAssetApi, dispatchSummaryNotificationApi, UserProfile } from '../utils/api';
+import { 
+  getUserProfileApi, 
+  updateUserProfileApi, 
+  uploadAssetApi, 
+  dispatchSummaryNotificationApi, 
+  changePasswordApi, 
+  UserProfile 
+} from '../utils/api';
 
 interface SettingsViewProps {
   currency?: Currency;
@@ -19,15 +26,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   user,
   onUserUpdate 
 }) => {
+  const isTeamMember = Boolean(user?.is_sub_user);
+
   const [profile, setProfile] = useState<any>({
     name: user?.name || '',
     email: user?.email || '',
     role: user?.role || '',
     company: user?.company || '',
-    salary: user?.salary || 0,
-    income_frequency: user?.income_frequency || 'monthly',
-    city: user?.location?.city || '',
-    country: user?.location?.country || '',
     currency: user?.currency || currency,
     avatar_url: user?.avatar_url || '',
     personality: user?.personality || 'Precision-Driven',
@@ -35,6 +40,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   });
 
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark' | 'system'>(user?.theme || theme);
+
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [showPasswords, setShowPasswords] = useState(false);
 
   // Business summary notification preferences
   const [notifSettings, setNotifSettings] = useState(() => {
@@ -82,10 +96,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             email: res.email || user?.email || '',
             role: res.role || user?.role || '',
             company: res.company || user?.company || '',
-            salary: res.salary ?? user?.salary ?? 0,
-            income_frequency: res.income_frequency || user?.income_frequency || 'monthly',
-            city: res.location?.city || user?.location?.city || '',
-            country: res.location?.country || user?.location?.country || '',
             currency: res.currency || user?.currency || currency,
             avatar_url: res.avatar_url || user?.avatar_url || '',
             personality: res.personality || user?.personality || 'Precision-Driven',
@@ -146,15 +156,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             role: updatedUserDoc.role,
             company: updatedUserDoc.company,
             currency: updatedUserDoc.currency as Currency,
-            salary: updatedUserDoc.salary,
-            income_frequency: updatedUserDoc.income_frequency,
-            location: updatedUserDoc.location,
             avatar_url: updatedUserDoc.avatar_url,
             theme: updatedUserDoc.theme,
-            notification_settings: updatedUserDoc.notification_settings
+            notification_settings: updatedUserDoc.notification_settings,
+            is_sub_user: updatedUserDoc.is_sub_user,
+            owner_id: updatedUserDoc.owner_id,
+            role_id: updatedUserDoc.role_id,
+            branch_id: updatedUserDoc.branch_id,
+            branch_name: updatedUserDoc.branch_name,
+            permissions: updatedUserDoc.permissions,
           });
         }
-        setSaveSuccess('Profile photo uploaded and saved to database successfully!');
+        setSaveSuccess('Profile photo uploaded and saved successfully!');
         setTimeout(() => setSaveSuccess(null), 4000);
       }
     } catch (err: any) {
@@ -180,12 +193,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           role: updated.role,
           company: updated.company,
           currency: updated.currency as Currency,
-          salary: updated.salary,
-          income_frequency: updated.income_frequency,
-          location: updated.location,
           avatar_url: updated.avatar_url,
           theme: updated.theme,
-          notification_settings: updated.notification_settings
+          notification_settings: updated.notification_settings,
+          is_sub_user: updated.is_sub_user,
+          owner_id: updated.owner_id,
+          role_id: updated.role_id,
+          branch_id: updated.branch_id,
+          branch_name: updated.branch_name,
+          permissions: updated.permissions,
         });
       }
       setSaveSuccess(`Theme set to ${newTheme === 'light' ? 'Light' : newTheme === 'dark' ? 'Dark' : 'System'} mode.`);
@@ -210,12 +226,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           role: updated.role,
           company: updated.company,
           currency: updated.currency as Currency,
-          salary: updated.salary,
-          income_frequency: updated.income_frequency,
-          location: updated.location,
           avatar_url: updated.avatar_url,
           theme: updated.theme,
-          notification_settings: updated.notification_settings
+          notification_settings: updated.notification_settings,
+          is_sub_user: updated.is_sub_user,
+          owner_id: updated.owner_id,
+          role_id: updated.role_id,
+          branch_id: updated.branch_id,
+          branch_name: updated.branch_name,
+          permissions: updated.permissions,
         });
       }
     } catch (err) {
@@ -230,20 +249,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setSaveError(null);
 
     try {
-      const updated = await updateUserProfileApi({
+      const payload: any = {
         name: profile.name,
         email: profile.email,
-        role: profile.role,
-        company: profile.company,
-        salary: Number(profile.salary),
-        income_frequency: profile.income_frequency,
         currency: profile.currency,
-        city: profile.city,
-        country: profile.country,
         avatar_url: profile.avatar_url,
         personality: profile.personality,
         theme: currentTheme,
-      });
+      };
+
+      if (!isTeamMember) {
+        payload.role = profile.role;
+        payload.company = profile.company;
+      }
+
+      const updated = await updateUserProfileApi(payload);
 
       setSaveSuccess('User profile updated successfully!');
       if (onUserUpdate && updated) {
@@ -254,12 +274,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           role: updated.role,
           company: updated.company,
           currency: updated.currency as Currency,
-          salary: updated.salary,
-          income_frequency: updated.income_frequency,
-          location: updated.location,
           avatar_url: updated.avatar_url,
           theme: updated.theme,
-          notification_settings: updated.notification_settings
+          notification_settings: updated.notification_settings,
+          is_sub_user: updated.is_sub_user,
+          owner_id: updated.owner_id,
+          role_id: updated.role_id,
+          branch_id: updated.branch_id,
+          branch_name: updated.branch_name,
+          permissions: updated.permissions,
         });
       }
       setTimeout(() => setSaveSuccess(null), 4000);
@@ -267,6 +290,39 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setSaveError(err.message || 'Failed to update user profile. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordSuccess(null);
+    setPasswordError(null);
+
+    if (!currentPassword) {
+      setPasswordError('Please enter your current password.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters long.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New password and confirmation do not match.');
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      const res = await changePasswordApi(currentPassword, newPassword);
+      setPasswordSuccess(res.message || 'Password changed successfully!');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => setPasswordSuccess(null), 5000);
+    } catch (err: any) {
+      setPasswordError(err.message || 'Failed to change password. Please verify your current password.');
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -354,6 +410,82 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', maxWidth: '1100px' }}>
         
+        {/* TEAM MEMBER ASSIGNMENT CARD */}
+        {isTeamMember && (
+          <div className="glass-card" style={{ padding: '24px 28px', gridColumn: 'span 2', background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.08) 0%, rgba(167, 139, 250, 0.08) 100%)', border: '1px solid rgba(0, 212, 255, 0.3)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <span className="pill-tag cyan" style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
+                    <i className="fa-solid fa-users-gear" style={{ marginRight: '6px' }}></i> ASSIGNED TEAM ACCOUNT
+                  </span>
+                  <span className="pill-tag purple" style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
+                    <i className="fa-solid fa-link" style={{ marginRight: '6px' }}></i> Chained to {user?.company || profile.company || 'Business Owner'}
+                  </span>
+                </div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '8px 0 4px', fontFamily: 'Plus Jakarta Sans' }}>
+                  Assigned Role & Business Permissions
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: '#9ca3af', margin: 0 }}>
+                  Your account is assigned by your organization owner. Your role, branch, and active feature access permissions automatically sync below.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '18px' }}>
+              <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                <span style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assigned Role</span>
+                <strong style={{ fontSize: '1.05rem', color: '#00d4ff', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                  <i className="fa-solid fa-id-badge"></i> {user?.role || profile.role || 'Staff Member'}
+                </strong>
+              </div>
+
+              <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                <span style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Business / Organization</span>
+                <strong style={{ fontSize: '1.05rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                  <i className="fa-solid fa-building"></i> {user?.company || profile.company || 'Assigned Business'}
+                </strong>
+              </div>
+
+              <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                <span style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Operating Branch</span>
+                <strong style={{ fontSize: '1.05rem', color: '#a78bfa', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                  <i className="fa-solid fa-code-branch"></i> {user?.branch_name || 'All Branches'}
+                </strong>
+              </div>
+            </div>
+
+            <div>
+              <span style={{ fontSize: '0.78rem', color: '#9ca3af', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Active Feature Access Privileges:
+              </span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {(user?.permissions && user.permissions.length > 0) ? (
+                  user.permissions.map((perm) => {
+                    const meta: Record<string, { label: string; icon: string }> = {
+                      dashboard: { label: 'Dashboard', icon: 'fa-chart-line' },
+                      transactions: { label: 'Transactions', icon: 'fa-receipt' },
+                      inventory: { label: 'Inventory', icon: 'fa-boxes-stacked' },
+                      analytics: { label: 'Analytics', icon: 'fa-chart-pie' },
+                      forecast: { label: 'Runway Simulator', icon: 'fa-cubes-stacked' },
+                      agent: { label: 'Axis AI Agent', icon: 'fa-brain' },
+                      activities: { label: 'Activities Log', icon: 'fa-clock-rotate-left' },
+                    };
+                    const m = meta[perm] || { label: perm, icon: 'fa-check' };
+                    return (
+                      <span key={perm} className="pill-tag green" style={{ fontSize: '0.78rem', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <i className={`fa-solid ${m.icon}`}></i> {m.label}
+                      </span>
+                    );
+                  })
+                ) : (
+                  <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>No privileges granted yet. Contact your business owner.</span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* THEME CARD: LIGHT, DARK, SYSTEM */}
         <div className="glass-card" style={{ padding: '28px', gridColumn: 'span 2' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
@@ -1034,105 +1166,40 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
             <div>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Executive Role / Title
+                Role / Title {isTeamMember && <span style={{ color: '#00d4ff', textTransform: 'none', fontSize: '0.75rem', marginLeft: '6px' }}><i className="fa-solid fa-lock"></i> (Auto-synced)</span>}
               </label>
               <input
                 type="text"
                 value={profile.role}
+                disabled={isTeamMember}
                 onChange={(e) => setProfile({ ...profile, role: e.target.value })}
                 style={{
                   width: '100%',
                   padding: '12px 14px',
                   borderRadius: '10px',
                   fontSize: '0.95rem',
+                  opacity: isTeamMember ? 0.75 : 1,
+                  cursor: isTeamMember ? 'not-allowed' : 'text'
                 }}
               />
             </div>
 
             <div>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Company / Organization
+                Company / Organization {isTeamMember && <span style={{ color: '#00d4ff', textTransform: 'none', fontSize: '0.75rem', marginLeft: '6px' }}><i className="fa-solid fa-lock"></i> (Auto-synced)</span>}
               </label>
               <input
                 type="text"
                 value={profile.company}
+                disabled={isTeamMember}
                 onChange={(e) => setProfile({ ...profile, company: e.target.value })}
                 style={{
                   width: '100%',
                   padding: '12px 14px',
                   borderRadius: '10px',
                   fontSize: '0.95rem',
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Monthly Target Revenue ({profile.currency || currency})
-              </label>
-              <input
-                type="number"
-                value={profile.salary}
-                onChange={(e) => setProfile({ ...profile, salary: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: '10px',
-                  fontSize: '0.95rem',
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Revenue Cycle Frequency
-              </label>
-              <select
-                value={profile.income_frequency}
-                onChange={(e) => setProfile({ ...profile, income_frequency: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: '10px',
-                  fontSize: '0.95rem',
-                }}
-              >
-                <option value="monthly">Monthly</option>
-                <option value="weekly">Weekly</option>
-                <option value="daily">Daily</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Operating City
-              </label>
-              <input
-                type="text"
-                value={profile.city}
-                onChange={(e) => setProfile({ ...profile, city: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: '10px',
-                  fontSize: '0.95rem',
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Operating Country
-              </label>
-              <input
-                type="text"
-                value={profile.country}
-                onChange={(e) => setProfile({ ...profile, country: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: '10px',
-                  fontSize: '0.95rem',
+                  opacity: isTeamMember ? 0.75 : 1,
+                  cursor: isTeamMember ? 'not-allowed' : 'text'
                 }}
               />
             </div>
@@ -1148,6 +1215,118 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <><i className="fa-solid fa-circle-notch fa-spin"></i> Saving Profile...</>
                 ) : (
                   <><i className="fa-solid fa-check"></i> Save Profile Details</>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* SECURITY & PASSWORD CHANGE CARD */}
+        <div className="glass-card" style={{ padding: '28px', gridColumn: 'span 2' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+            <div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, fontFamily: 'Plus Jakarta Sans', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+                <i className="fa-solid fa-shield-halved" style={{ color: '#00d4ff' }}></i>
+                Security & Password Management
+              </h3>
+              <p style={{ fontSize: '0.88rem', color: '#9ca3af', marginTop: '6px', marginBottom: 0, lineHeight: '1.5' }}>
+                Update your login password securely. Passwords must be at least 6 characters long.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowPasswords(!showPasswords)}
+              className="action-btn-secondary"
+              style={{ padding: '6px 14px', fontSize: '0.78rem', borderRadius: '8px' }}
+            >
+              <i className={`fa-solid ${showPasswords ? 'fa-eye-slash' : 'fa-eye'}`} style={{ marginRight: '6px' }}></i>
+              {showPasswords ? 'Hide Passwords' : 'Show Passwords'}
+            </button>
+          </div>
+
+          {passwordSuccess && (
+            <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'rgba(74, 222, 128, 0.12)', border: '1px solid rgba(74, 222, 128, 0.3)', color: '#4ade80', marginBottom: '20px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <i className="fa-solid fa-circle-check"></i>
+              <span>{passwordSuccess}</span>
+            </div>
+          )}
+
+          {passwordError && (
+            <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'rgba(255, 87, 87, 0.12)', border: '1px solid rgba(255, 87, 87, 0.3)', color: '#ff6b6b', marginBottom: '20px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <i className="fa-solid fa-triangle-exclamation"></i>
+              <span>{passwordError}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleChangePassword} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '18px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Current Password
+              </label>
+              <input
+                type={showPasswords ? 'text' : 'password'}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter current password"
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.95rem',
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                New Password
+              </label>
+              <input
+                type={showPasswords ? 'text' : 'password'}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Minimum 6 characters"
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.95rem',
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Confirm New Password
+              </label>
+              <input
+                type={showPasswords ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter new password"
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.95rem',
+                }}
+              />
+            </div>
+
+            <div style={{ gridColumn: 'span 2', marginTop: '8px' }}>
+              <button
+                type="submit"
+                className="action-btn-primary"
+                disabled={savingPassword}
+                style={{ padding: '12px 24px', fontSize: '0.92rem' }}
+              >
+                {savingPassword ? (
+                  <><i className="fa-solid fa-circle-notch fa-spin"></i> Updating Password...</>
+                ) : (
+                  <><i className="fa-solid fa-key"></i> Update Password</>
                 )}
               </button>
             </div>

@@ -243,9 +243,19 @@ async def _do_verify_email(token: str) -> tuple[bool, str, str]:
 
     try:
         user_name = user.get("name", "") if user else ""
-        send_welcome_email(email, user_name)
-    except Exception:
-        pass
+        from app.auth.dependencies import resolve_user_team_context
+        resolved_u = await resolve_user_team_context(dict(user)) if user else {}
+        send_welcome_email(
+            to_email=email,
+            user_name=user_name,
+            role_name=resolved_u.get("role") or user.get("role"),
+            company_name=resolved_u.get("company") or user.get("company"),
+            branch_name=resolved_u.get("branch_name"),
+            permissions=resolved_u.get("permissions"),
+            is_sub_user=resolved_u.get("is_sub_user", False)
+        )
+    except Exception as e:
+        logger.warning(f"Failed to send welcome email to {email}: {e}")
 
     return True, "Email verified successfully! You can now sign in to your Axis Black account.", email
 

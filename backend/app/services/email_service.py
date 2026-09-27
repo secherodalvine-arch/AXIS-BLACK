@@ -2,6 +2,7 @@
 services/email_service.py — Axis Black email delivery service.
 Dispatches emails via Vercel Serverless Email API.
 """
+import os
 import json
 import logging
 import urllib.request
@@ -389,11 +390,73 @@ def send_otp_email(to_email: str, otp_code: str, purpose: str = "verification") 
     return send_email_notification(to_email, subject, html, text)
 
 
-def send_welcome_email(to_email: str, user_name: str) -> bool:
+def _get_role_highlights(role_name: str, permissions: Optional[List[str]] = None) -> List[str]:
+    highlights = []
+    r_lower = (role_name or "").lower()
+    perms = set(permissions or [])
+    
+    if "inventory" in perms or any(k in r_lower for k in ["inventory", "stock", "warehouse", "store"]):
+        highlights.append("📦 <strong>Inventory Stock Management:</strong> Real-time product counts, reorder alerts, cataloging, and stock updates.")
+    if "transactions" in perms or any(k in r_lower for k in ["cashier", "account", "finance", "billing", "teller"]):
+        highlights.append("💳 <strong>Ledger &amp; Transactions:</strong> Record income/expenses, reconcile receipts, and balance operational cashflow.")
+    if "analytics" in perms or "forecast" in perms or any(k in r_lower for k in ["analyst", "manager", "cfo", "director"]):
+        highlights.append("📈 <strong>Business Intelligence &amp; Runway:</strong> Access financial margin metrics, burn rate models, and strategic runway forecasts.")
+    if "agent" in perms or any(k in r_lower for k in ["advisor", "lead", "officer", "executive"]):
+        highlights.append("🤖 <strong>Axis AI Advisor:</strong> Query business telemetry, financial KPIs, and get real-time operational insights.")
+    if "dashboard" in perms:
+        highlights.append("📊 <strong>Executive Dashboard:</strong> Real-time overview of business revenue, profit margins, and key performance indicators.")
+    if "activities" in perms:
+        highlights.append("⏱️ <strong>Activity Audit Logs:</strong> Transparent history of business ledger events and operational logs.")
+        
+    if not highlights:
+        highlights = [
+            "📊 Financial metrics &amp; operational dashboard",
+            "📦 Inventory management &amp; ledger records",
+            "🤖 Axis AI Assistant for quick business insights"
+        ]
+    return highlights
+
+
+def send_welcome_email(
+    to_email: str,
+    user_name: str,
+    role_name: Optional[str] = None,
+    company_name: Optional[str] = None,
+    branch_name: Optional[str] = None,
+    permissions: Optional[List[str]] = None,
+    is_sub_user: bool = False
+) -> bool:
     """
     Sends a welcome email after the user verifies their account.
+    Crafted dynamically based on whether they are a Business Owner or an Assigned Team Member.
     """
-    subject = "Welcome to Axis Black!"
+    to_email = to_email.strip().lower()
+    display_role = role_name or ("Team Member" if is_sub_user else "Executive / Business Owner")
+    display_company = company_name or "Axis Black Workspace"
+    login_url = f"{settings.FRONTEND_URL}/login"
+
+    if is_sub_user:
+        subject = f"Welcome to {display_company} — Role: {display_role}"
+        header_title = f"Welcome to the Team, {user_name}!"
+        header_sub = f"You are registered as {display_role} at {display_company}"
+        intro_text = (
+            f"Your Axis Black account has been verified. You have joined <strong>{display_company}</strong> "
+            f"as <strong>{display_role}</strong>"
+            f"{f' ({branch_name})' if branch_name else ''}."
+        )
+    else:
+        subject = f"Welcome to Axis Black — {display_company}"
+        header_title = "Account Verified — Welcome!"
+        header_sub = f"Your executive workspace for {display_company} is active"
+        intro_text = (
+            f"Your Axis Black account has been verified. As <strong>{display_role}</strong> of "
+            f"<strong>{display_company}</strong>, your central financial dashboard is ready."
+        )
+
+    highlights = _get_role_highlights(display_role, permissions)
+    highlights_html = "\n".join(f'<li style="margin-bottom:8px;">{item}</li>' for item in highlights)
+    highlights_text = "\n".join(f"- {re_sub}" for re_sub in [h.replace('<strong>', '').replace('</strong>', '').replace('&amp;', '&') for h in highlights])
+
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -409,25 +472,29 @@ def send_welcome_email(to_email: str, user_name: str) -> bool:
         <div class="brand">
           <span class="brand-name">AXIS<span>BLACK</span></span>
         </div>
-        <h1 class="header-title">Account Verified — Welcome!</h1>
-        <p class="header-sub">Your Axis Black workspace is ready</p>
+        <h1 class="header-title">{header_title}</h1>
+        <p class="header-sub">{header_sub}</p>
       </div>
       <div class="body">
         <p>Hi <strong>{user_name}</strong>,</p>
-        <p>Your Axis Black account has been successfully verified. You can now log in and access your dashboard.</p>
-        <p>Here's what's waiting for you:</p>
-        <ul style="color:#cbd5e1;font-size:14px;line-height:2;">
-          <li>📊 Financial metrics &amp; analytics</li>
-          <li>📦 Inventory management &amp; reorder alerts</li>
-          <li>🤖 Axis Agent — your financial advisor</li>
-          <li>🚀 Runway Simulator &amp; scenario planning</li>
+        <p>{intro_text}</p>
+        <div style="background:rgba(0, 212, 255, 0.05);border:1px solid rgba(0, 212, 255, 0.2);border-radius:12px;padding:16px 20px;margin:20px 0;">
+          <p style="margin:0 0 6px 0;font-size:12px;color:#00d4ff;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Assigned Role &amp; Responsibilities</p>
+          <p style="margin:0;font-size:15px;color:#ffffff;font-weight:700;">{display_role} &bull; {display_company}</p>
+          {f'<p style="margin:4px 0 0 0;font-size:13px;color:#94a3b8;">Branch: {branch_name}</p>' if branch_name else ''}
+        </div>
+        <p><strong>Your Core Workspaces:</strong></p>
+        <ul style="color:#cbd5e1;font-size:14px;line-height:1.7;padding-left:20px;">
+          {highlights_html}
         </ul>
+        <div class="btn-wrap">
+          <a href="{login_url}" class="btn">🚀 Enter Workspace</a>
+        </div>
         <hr class="divider">
-        <p style="font-size:12px;color:#64748b;">If you have any questions, reach us at <a href="mailto:nairobi@axisblack.io" style="color:#00d4ff;">nairobi@axisblack.io</a></p>
+        <p style="font-size:12px;color:#64748b;">If you need assistance, contact your business administrator or reach our desk at <a href="mailto:nairobi@axisblack.io" style="color:#00d4ff;">nairobi@axisblack.io</a>.</p>
       </div>
       <div class="footer">
-        <strong>Axis Black</strong> — Financial Workspace<br>
-        Nairobi, Kenya · Ruiru, Kiambu County
+        <strong>Axis Black</strong> &bull; Business Financial Operations
       </div>
     </div>
   </div>
@@ -435,10 +502,272 @@ def send_welcome_email(to_email: str, user_name: str) -> bool:
 </html>"""
 
     text = (
-        f"Welcome to Axis Black, {user_name}!\n\n"
-        f"Your account ({to_email}) has been verified and is ready to use.\n\n"
-        f"Log in at your Axis Black dashboard to get started."
+        f"{header_title}\n\n"
+        f"Hi {user_name},\n"
+        f"{intro_text.replace('<strong>', '').replace('</strong>', '')}\n\n"
+        f"Assigned Role: {display_role}\n"
+        f"Company: {display_company}\n"
+        f"{f'Branch: {branch_name}' if branch_name else ''}\n\n"
+        f"Core Workspaces:\n{highlights_text}\n\n"
+        f"Login at: {login_url}\n"
     )
+    return send_email_notification(to_email, subject, html, text)
+
+
+def send_team_invitation_email(
+    to_email: str,
+    user_name: str,
+    role_name: str,
+    company_name: str,
+    branch_name: str,
+    permissions: Optional[List[str]] = None,
+    temp_password: Optional[str] = None
+) -> bool:
+    """
+    Sends an invitation and onboarding email to an appointed team member.
+    Role-tailored with temporary credentials and workspace overview.
+    """
+    to_email = to_email.strip().lower()
+    subject = f"You have been appointed as {role_name} at {company_name} — Axis Black"
+    login_url = f"{settings.FRONTEND_URL}/login"
+    highlights = _get_role_highlights(role_name, permissions)
+    highlights_html = "\n".join(f'<li style="margin-bottom:8px;">{item}</li>' for item in highlights)
+    highlights_text = "\n".join(f"- {re_sub}" for re_sub in [h.replace('<strong>', '').replace('</strong>', '').replace('&amp;', '&') for h in highlights])
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{subject}</title>
+  <style>{_EMAIL_BASE_STYLE}</style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="header">
+        <div class="brand">
+          <span class="brand-name">AXIS<span>BLACK</span></span>
+        </div>
+        <h1 class="header-title">Welcome to the Team!</h1>
+        <p class="header-sub">Role Assignment: {role_name} at {company_name}</p>
+      </div>
+      <div class="body">
+        <p>Hi <strong>{user_name}</strong>,</p>
+        <p>You have been officially invited and appointed by your business owner to join <strong>{company_name}</strong> on the <strong>Axis Black</strong> platform.</p>
+        
+        <div style="background:rgba(0, 212, 255, 0.05);border:1px solid rgba(0, 212, 255, 0.2);border-radius:12px;padding:18px 20px;margin:20px 0;">
+          <table style="width:100%;border-collapse:collapse;color:#e2e8f0;font-size:14px;">
+            <tr>
+              <td style="padding:6px 0;color:#94a3b8;width:120px;">Role:</td>
+              <td style="padding:6px 0;font-weight:700;color:#00d4ff;">{role_name}</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;color:#94a3b8;">Organization:</td>
+              <td style="padding:6px 0;font-weight:700;color:#ffffff;">{company_name}</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;color:#94a3b8;">Branch:</td>
+              <td style="padding:6px 0;font-weight:700;color:#cebdff;">{branch_name}</td>
+            </tr>
+          </table>
+        </div>
+
+        <p><strong>Your Assigned Role Responsibilities:</strong></p>
+        <ul style="color:#cbd5e1;font-size:14px;line-height:1.7;padding-left:20px;">
+          {highlights_html}
+        </ul>
+
+        {f'''
+        <div style="background:rgba(124, 95, 230, 0.08);border:1px solid rgba(124, 95, 230, 0.3);border-radius:12px;padding:18px 20px;margin:24px 0;">
+          <p style="margin:0 0 8px 0;font-size:12px;color:#a78bfa;font-weight:700;text-transform:uppercase;letter-spacing:1px;">🔐 Your Login Credentials</p>
+          <p style="margin:4px 0;font-size:14px;color:#e2e8f0;"><strong>Email:</strong> {to_email}</p>
+          <p style="margin:4px 0;font-size:14px;color:#e2e8f0;"><strong>Initial Password:</strong> <code style="background:rgba(0,0,0,0.4);padding:2px 8px;border-radius:4px;color:#00d4ff;font-family:monospace;font-size:15px;">{temp_password}</code></p>
+          <p style="margin:8px 0 0 0;font-size:12px;color:#94a3b8;">For security, please navigate to Settings and update your password upon signing in.</p>
+        </div>
+        ''' if temp_password else ''}
+
+        <div class="btn-wrap">
+          <a href="{login_url}" class="btn">🔑 Sign In to Workspace</a>
+        </div>
+
+        <p class="link-fallback">
+          Direct login link: <a href="{login_url}">{login_url}</a>
+        </p>
+
+        <hr class="divider">
+        <p style="font-size:12px;color:#64748b;">This notification was issued by the business owner of {company_name} on Axis Black.</p>
+      </div>
+      <div class="footer">
+        <strong>Axis Black</strong> &bull; Team Operations
+      </div>
+    </div>
+  </div>
+</body>
+</html>"""
+
+    text = (
+        f"Welcome to the Team, {user_name}!\n\n"
+        f"You have been appointed as {role_name} at {company_name} ({branch_name}) on Axis Black.\n\n"
+        f"Role Responsibilities:\n{highlights_text}\n\n"
+        f"Login Email: {to_email}\n"
+        f"{f'Initial Password: {temp_password}' if temp_password else ''}\n"
+        f"Login URL: {login_url}\n\n"
+        f"Please change your password in Settings upon your first login."
+    )
+    return send_email_notification(to_email, subject, html, text)
+
+
+def send_team_role_update_email(
+    to_email: str,
+    user_name: str,
+    new_role_name: str,
+    company_name: str,
+    branch_name: str,
+    permissions: Optional[List[str]] = None
+) -> bool:
+    """
+    Sends an update email when a team member's role or branch assignment changes.
+    """
+    to_email = to_email.strip().lower()
+    subject = f"Role Update: You are now appointed as {new_role_name} at {company_name}"
+    login_url = f"{settings.FRONTEND_URL}/login"
+    highlights = _get_role_highlights(new_role_name, permissions)
+    highlights_html = "\n".join(f'<li style="margin-bottom:8px;">{item}</li>' for item in highlights)
+    highlights_text = "\n".join(f"- {re_sub}" for re_sub in [h.replace('<strong>', '').replace('</strong>', '').replace('&amp;', '&') for h in highlights])
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{subject}</title>
+  <style>{_EMAIL_BASE_STYLE}</style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="header">
+        <div class="brand">
+          <span class="brand-name">AXIS<span>BLACK</span></span>
+        </div>
+        <h1 class="header-title">Role Assignment Updated</h1>
+        <p class="header-sub">{company_name}</p>
+      </div>
+      <div class="body">
+        <p>Hi <strong>{user_name}</strong>,</p>
+        <p>Your business owner has updated your role and workspace permissions at <strong>{company_name}</strong>.</p>
+        
+        <div style="background:rgba(0, 212, 255, 0.05);border:1px solid rgba(0, 212, 255, 0.2);border-radius:12px;padding:18px 20px;margin:20px 0;">
+          <table style="width:100%;border-collapse:collapse;color:#e2e8f0;font-size:14px;">
+            <tr>
+              <td style="padding:6px 0;color:#94a3b8;width:130px;">New Role:</td>
+              <td style="padding:6px 0;font-weight:700;color:#00d4ff;">{new_role_name}</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;color:#94a3b8;">Operating Branch:</td>
+              <td style="padding:6px 0;font-weight:700;color:#cebdff;">{branch_name}</td>
+            </tr>
+          </table>
+        </div>
+
+        <p><strong>Your Updated Workspace Responsibilities:</strong></p>
+        <ul style="color:#cbd5e1;font-size:14px;line-height:1.7;padding-left:20px;">
+          {highlights_html}
+        </ul>
+
+        <div class="btn-wrap">
+          <a href="{login_url}" class="btn">🚀 Access Workspace</a>
+        </div>
+        <hr class="divider">
+        <p style="font-size:12px;color:#64748b;">These changes take effect immediately across all your active sessions.</p>
+      </div>
+      <div class="footer">
+        <strong>Axis Black</strong> &bull; Team Operations
+      </div>
+    </div>
+  </div>
+</body>
+</html>"""
+
+    text = (
+        f"Role Assignment Updated\n\n"
+        f"Hi {user_name},\n"
+        f"Your role at {company_name} has been updated to {new_role_name} ({branch_name}).\n\n"
+        f"Updated Responsibilities:\n{highlights_text}\n\n"
+        f"Sign in at: {login_url}\n"
+    )
+    return send_email_notification(to_email, subject, html, text)
+
+
+def send_team_status_email(
+    to_email: str,
+    user_name: str,
+    company_name: str,
+    is_suspended: bool
+) -> bool:
+    """
+    Sends an email when an owner pauses (suspends) or restores a team member's access.
+    """
+    to_email = to_email.strip().lower()
+    if is_suspended:
+        subject = f"Account Notice: Access to {company_name} has been paused"
+        title = "Account Access Paused"
+        status_color = "#ff6b6b"
+        message_body = (
+            f"Your access to <strong>{company_name}</strong> has been temporarily suspended by the business owner. "
+            f"During this period, you will not be able to sign in or perform actions in the workspace. "
+            f"Please reach out to your business owner or administrator for any questions."
+        )
+    else:
+        subject = f"Access Restored: Your account at {company_name} is active"
+        title = "Account Access Restored"
+        status_color = "#4ade80"
+        message_body = (
+            f"Your access to <strong>{company_name}</strong> has been reactivated by the business owner. "
+            f"You can now log in and continue your operational activities."
+        )
+
+    login_url = f"{settings.FRONTEND_URL}/login"
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{subject}</title>
+  <style>{_EMAIL_BASE_STYLE}</style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="header">
+        <div class="brand">
+          <span class="brand-name">AXIS<span>BLACK</span></span>
+        </div>
+        <h1 class="header-title" style="color:{status_color};">{title}</h1>
+        <p class="header-sub">{company_name}</p>
+      </div>
+      <div class="body">
+        <p>Hi <strong>{user_name}</strong>,</p>
+        <p>{message_body}</p>
+        {f'''
+        <div class="btn-wrap">
+          <a href="{login_url}" class="btn">Sign In to Account</a>
+        </div>
+        ''' if not is_suspended else ''}
+        <hr class="divider">
+        <p style="font-size:12px;color:#64748b;">Notice dispatched automatically from the Axis Black platform.</p>
+      </div>
+      <div class="footer">
+        <strong>Axis Black</strong> &bull; Team Operations
+      </div>
+    </div>
+  </div>
+</body>
+</html>"""
+
+    text = f"{title}\n\nHi {user_name},\n\n{message_body.replace('<strong>', '').replace('</strong>', '')}\n"
     return send_email_notification(to_email, subject, html, text)
 
 

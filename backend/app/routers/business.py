@@ -86,6 +86,14 @@ def get_user_context(current_user: dict):
     return owner_id, branch_id, is_sub_user, actor_id, actor_name, actor_role
 
 
+def require_business_owner(current_user: dict):
+    if current_user.get("is_sub_user"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. Only the business owner has permission to perform this administrative action."
+        )
+
+
 async def get_business_doc(owner_id: str) -> Dict[str, Any]:
     """Fetch or auto-create business profile document."""
     if db_manager.is_connected:
@@ -152,6 +160,7 @@ async def update_business_profile(
     payload: BusinessProfileUpdate,
     current_user: dict = Depends(get_current_user)
 ):
+    require_business_owner(current_user)
     owner_id, _, _, actor_id, actor_name, actor_role = get_user_context(current_user)
     doc = await get_business_doc(owner_id)
     if not doc:
@@ -231,6 +240,7 @@ async def create_branch(
     payload: BranchCreate,
     current_user: dict = Depends(get_current_user)
 ):
+    require_business_owner(current_user)
     owner_id, _, _, actor_id, actor_name, actor_role = get_user_context(current_user)
     doc = await get_business_doc(owner_id)
     if not doc:
@@ -287,6 +297,7 @@ async def update_branch(
     payload: BranchUpdate,
     current_user: dict = Depends(get_current_user)
 ):
+    require_business_owner(current_user)
     owner_id, _, _, actor_id, actor_name, actor_role = get_user_context(current_user)
     doc = await get_business_doc(owner_id)
     branches = doc.get("branches", [])
@@ -328,6 +339,7 @@ async def update_branch(
 
 @router.delete("/branches/{branch_id}")
 async def delete_branch(branch_id: str, current_user: dict = Depends(get_current_user)):
+    require_business_owner(current_user)
     owner_id, _, _, actor_id, actor_name, actor_role = get_user_context(current_user)
     doc = await get_business_doc(owner_id)
     target = next((b for b in doc.get("branches", []) if b["id"] == branch_id), None)
@@ -360,8 +372,8 @@ async def list_roles(current_user: dict = Depends(get_current_user)):
         initial_role = {
             "id": f"role-{uuid.uuid4().hex[:8]}",
             "role_name": "Store Manager",
-            "permissions": ["dashboard", "inventory", "analytics", "transactions", "agent"],
-            "description": "Operational access to branch inventory, ledger, and analytics.",
+            "permissions": ["dashboard", "inventory", "analytics", "transactions", "agent", "activities"],
+            "description": "Operational access to branch inventory, ledger, analytics, and activities.",
             "branch_id": None,
             "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
@@ -376,6 +388,7 @@ async def create_role(
     payload: RoleCreate,
     current_user: dict = Depends(get_current_user)
 ):
+    require_business_owner(current_user)
     owner_id, _, _, actor_id, actor_name, actor_role = get_user_context(current_user)
     doc = await get_business_doc(owner_id)
     if not doc:
@@ -410,6 +423,7 @@ async def update_role(
     payload: RoleUpdate,
     current_user: dict = Depends(get_current_user)
 ):
+    require_business_owner(current_user)
     owner_id, _, _, actor_id, actor_name, actor_role = get_user_context(current_user)
     doc = await get_business_doc(owner_id)
     roles = doc.get("roles", [])
@@ -436,6 +450,7 @@ async def update_role(
 
 @router.delete("/roles/{role_id}")
 async def delete_role(role_id: str, current_user: dict = Depends(get_current_user)):
+    require_business_owner(current_user)
     owner_id, _, _, actor_id, actor_name, actor_role = get_user_context(current_user)
     doc = await get_business_doc(owner_id)
     target = next((r for r in doc.get("roles", []) if r["id"] == role_id), None)
@@ -482,9 +497,13 @@ async def delete_role(role_id: str, current_user: dict = Depends(get_current_use
 
 @router.get("/team", response_model=List[Dict[str, Any]])
 async def list_team(current_user: dict = Depends(get_current_user)):
-    owner_id, _, _, *_ = get_user_context(current_user)
+    owner_id, _, is_sub_user, *_ = get_user_context(current_user)
     doc = await get_business_doc(owner_id)
-    return doc.get("sub_users", [])
+    sub_users = doc.get("sub_users", [])
+    if is_sub_user:
+        # Team members can only see their own profile
+        return [u for u in sub_users if u.get("id") == current_user.get("user_id") or u.get("email") == current_user.get("email")]
+    return sub_users
 
 
 @router.post("/team", response_model=Dict[str, Any], status_code=201)
@@ -492,6 +511,7 @@ async def create_sub_user(
     payload: SubUserCreate,
     current_user: dict = Depends(get_current_user)
 ):
+    require_business_owner(current_user)
     owner_id, _, _, actor_id, actor_name, actor_role = get_user_context(current_user)
     doc = await get_business_doc(owner_id)
     if not doc:
@@ -585,6 +605,22 @@ async def create_sub_user(
         meta={"role_name": role_title, "branch_name": branch_title, "branch_id": payload.branch_id}
     )
 
+    # 4. Role-tailored onboarding email to the appointed team member
+    company_name = doc.get("profile", {}).get("company_name") or current_user.get("company") or "Axis Black Workspace"
+    try:
+        from app.services.email_service import send_team_invitation_email
+        send_team_invitation_email(
+            to_email=payload.email,
+            user_name=payload.name,
+            role_name=role_title,
+            company_name=company_name,
+            branch_name=branch_title,
+            permissions=role_obj.get("permissions", []) if role_obj else [],
+            temp_password=temp_password
+        )
+    except Exception as e:
+        logger.warning(f"Failed to send onboarding email to {payload.email}: {e}")
+
     return {k: v for k, v in sub_user.items() if k != "hashed_password"}
 
 
@@ -594,9 +630,12 @@ async def update_sub_user(
     payload: SubUserUpdate,
     current_user: dict = Depends(get_current_user)
 ):
+    require_business_owner(current_user)
     owner_id, _, _, actor_id, actor_name, actor_role = get_user_context(current_user)
     doc = await get_business_doc(owner_id)
     sub_users = doc.get("sub_users", [])
+    company_name = doc.get("profile", {}).get("company_name") or current_user.get("company") or "Axis Black Workspace"
+
     for i, u in enumerate(sub_users):
         if u["id"] == user_id:
             old_role_id = sub_users[i].get("role_id")
@@ -656,6 +695,17 @@ async def update_sub_user(
                     message="Your team account has been suspended by the business owner. Please contact your administrator.",
                     notif_type="system"
                 )
+                try:
+                    from app.services.email_service import send_team_status_email
+                    send_team_status_email(
+                        to_email=sub_users[i]["email"],
+                        user_name=sub_users[i]["name"],
+                        company_name=company_name,
+                        is_suspended=True
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to send suspension email: {e}")
+
             elif update.get("is_active") is True and not old_is_active:
                 await AxisDataStore.log_activity(
                     owner_id=owner_id,
@@ -680,6 +730,16 @@ async def update_sub_user(
                     message="Your team account has been re-activated by the business owner. You may now resume your tasks.",
                     notif_type="system"
                 )
+                try:
+                    from app.services.email_service import send_team_status_email
+                    send_team_status_email(
+                        to_email=sub_users[i]["email"],
+                        user_name=sub_users[i]["name"],
+                        company_name=company_name,
+                        is_suspended=False
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to send reactivation email: {e}")
             else:
                 # General update audit log
                 await AxisDataStore.log_activity(
@@ -707,8 +767,21 @@ async def update_sub_user(
                     recipient_id=owner_id,
                     title="Team Assignment Updated",
                     message=f"Updated role for {sub_users[i]['name']}: {role_title} ({branch_title}).",
-                    notif_type="role_assigned"
+                    notif_type="role_assigned",
+                    meta={"role_name": role_title, "branch_name": branch_title}
                 )
+                try:
+                    from app.services.email_service import send_team_role_update_email
+                    send_team_role_update_email(
+                        to_email=sub_users[i]["email"],
+                        user_name=sub_users[i]["name"],
+                        new_role_name=role_title,
+                        company_name=company_name,
+                        branch_name=branch_title,
+                        permissions=role_obj.get("permissions", []) if role_obj else []
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to send role update email: {e}")
 
             return {k: v for k, v in sub_users[i].items() if k != "hashed_password"}
     raise HTTPException(status_code=404, detail="Team member not found")
@@ -716,6 +789,7 @@ async def update_sub_user(
 
 @router.delete("/team/{user_id}")
 async def delete_sub_user(user_id: str, current_user: dict = Depends(get_current_user)):
+    require_business_owner(current_user)
     owner_id, _, _, actor_id, actor_name, actor_role = get_user_context(current_user)
     doc = await get_business_doc(owner_id)
     target = next((u for u in doc.get("sub_users", []) if u["id"] == user_id), None)
@@ -783,6 +857,13 @@ async def get_business_activities(
     Owner gets complete business oversight. Sub-users see only their assigned branch logs.
     """
     owner_id, user_branch, is_sub_user, *_ = get_user_context(current_user)
+    if is_sub_user:
+        perms = current_user.get("permissions") or []
+        if "activities" not in perms:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Your assigned role has not been granted the 'activities' privilege."
+            )
     target_branch = user_branch if is_sub_user else branch_id
     return await AxisDataStore.get_activities(owner_id, target_branch, limit=limit)
 

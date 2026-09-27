@@ -164,6 +164,15 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     const applyTheme = () => {
+      // The Homepage is completely isolated from theme toggling and always preserves the signature dark aesthetic
+      if (viewState === 'home') {
+        document.body.classList.remove('light-theme');
+        document.body.classList.add('dark-theme');
+        document.documentElement.setAttribute('data-theme', 'dark');
+        setResolvedTheme('dark');
+        return;
+      }
+
       let active: 'light' | 'dark' = 'dark';
       if (theme === 'system') {
         const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -194,7 +203,7 @@ export const App: React.FC = () => {
       mediaQuery.addEventListener('change', listener);
       return () => mediaQuery.removeEventListener('change', listener);
     }
-  }, [theme]);
+  }, [theme, viewState]);
 
   // Check URL parameters & validate active user session on mount
   useEffect(() => {
@@ -701,6 +710,7 @@ export const App: React.FC = () => {
           isOpen={mobileMenuOpen}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          user={user}
         />
 
         <main className="main-wrapper">
@@ -735,7 +745,39 @@ export const App: React.FC = () => {
 
           <div className="content-viewport">
             <ErrorBoundary>
-              {currentTab === 'dashboard' && (
+              {(() => {
+                const isOwner = !user?.is_sub_user;
+                const perms = user?.permissions || [];
+                const canAccessTab = (t: NavTab) => {
+                  if (t === 'settings') return true;
+                  if (isOwner) return true;
+                  if (t === 'business') return false; // Strictly owner only
+                  return perms.includes(t);
+                };
+
+                if (!canAccessTab(currentTab)) {
+                  return (
+                    <div className="tab-view active" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+                      <div className="glass-card" style={{ maxWidth: '480px', textAlign: 'center', padding: '40px 30px' }}>
+                        <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(255, 142, 142, 0.12)', color: '#ff8e8e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', margin: '0 auto 16px' }}>
+                          <i className="fa-solid fa-lock"></i>
+                        </div>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '8px' }}>Access Restricted</h3>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: '20px' }}>
+                          Your assigned role (<strong>{user?.role || 'Team Member'}</strong>) has not been granted permission to access this section of the business workspace.
+                        </p>
+                        <button className="action-btn-primary" onClick={() => setCurrentTab('settings')} style={{ margin: '0 auto' }}>
+                          <i className="fa-solid fa-sliders"></i> Go to Settings
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return null;
+              })()}
+
+              {currentTab === 'dashboard' && (!user?.is_sub_user || user?.permissions?.includes('dashboard')) && (
                 <DashboardPage 
                   metrics={metrics}
                   transactions={transactions}
@@ -749,9 +791,13 @@ export const App: React.FC = () => {
                 />
               )}
 
-              {currentTab === 'inventory' && <InventoryPage currency={currency} searchQuery={searchQuery} />}
-              {currentTab === 'analytics' && <AnalyticsPage currency={currency} transactions={transactions} searchQuery={searchQuery} />}
-              {currentTab === 'transactions' && (
+              {currentTab === 'inventory' && (!user?.is_sub_user || user?.permissions?.includes('inventory')) && (
+                <InventoryPage currency={currency} searchQuery={searchQuery} />
+              )}
+              {currentTab === 'analytics' && (!user?.is_sub_user || user?.permissions?.includes('analytics')) && (
+                <AnalyticsPage currency={currency} transactions={transactions} searchQuery={searchQuery} />
+              )}
+              {currentTab === 'transactions' && (!user?.is_sub_user || user?.permissions?.includes('transactions')) && (
                 <TransactionsPage 
                   transactions={transactions}
                   currency={currency}
@@ -760,7 +806,7 @@ export const App: React.FC = () => {
                   onAddTransaction={handleAddTransaction}
                 />
               )}
-              {currentTab === 'agent' && (
+              {currentTab === 'agent' && (!user?.is_sub_user || user?.permissions?.includes('agent')) && (
                 <AgentPage 
                   messages={chatMessages}
                   currency={currency}
@@ -773,13 +819,15 @@ export const App: React.FC = () => {
                   user={user}
                 />
               )}
-              {currentTab === 'business' && (
+              {currentTab === 'business' && !user?.is_sub_user && (
                 <MyBusinessPage currency={currency} user={user} />
               )}
-              {currentTab === 'activities' && (
+              {currentTab === 'activities' && (!user?.is_sub_user || user?.permissions?.includes('activities')) && (
                 <ActivitiesPage userRole={user?.role} isOwner={!user?.is_sub_user} />
               )}
-              {currentTab === 'forecast' && <ForecastPage currency={currency} />}
+              {currentTab === 'forecast' && (!user?.is_sub_user || user?.permissions?.includes('forecast')) && (
+                <ForecastPage currency={currency} />
+              )}
               {currentTab === 'settings' && (
                 <SettingsPage 
                   currency={currency} 
