@@ -403,7 +403,7 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({
 
       {/* High-Level Financial & Scalability KPI Row */}
       {backendAnalytics && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
+        <div className="analytics-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: '12px' }}>
           {[
             { label: 'Total Revenue', value: formatCurrency(backendAnalytics.total_revenue || 0, currency), icon: 'fa-arrow-trend-up', color: '#4ade80' },
             { label: 'Operating Expenses', value: formatCurrency(backendAnalytics.total_expenses || 0, currency), icon: 'fa-arrow-trend-down', color: '#cebdff' },
@@ -412,12 +412,12 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({
             { label: 'Projected Runway', value: `${backendAnalytics.projected_runway_months || 0} mos`, icon: 'fa-hourglass-half', color: '#3cd7ff' },
             { label: 'Stock Valuation', value: formatCurrency(backendAnalytics.inventory_summary?.total_valuation || 0, currency), icon: 'fa-boxes-stacked', color: '#fbbf24' },
           ].map(({ label, value, icon, color }) => (
-            <div key={label} className="glass-card" style={{ padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border, rgba(255,255,255,0.07))' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <i className={`fa-solid ${icon}`} style={{ color, fontSize: '0.9rem' }}></i>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase' }}>{label}</span>
+            <div key={label} className="glass-card" style={{ padding: '14px', borderRadius: '12px', border: '1px solid var(--glass-border, rgba(255,255,255,0.07))' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                <i className={`fa-solid ${icon}`} style={{ color, fontSize: '0.85rem' }}></i>
+                <span className="kpi-label" style={{ fontSize: '0.7rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
               </div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, color, fontFamily: 'Plus Jakarta Sans' }}>{value}</div>
+              <div className="kpi-value" style={{ fontSize: '1.15rem', fontWeight: 800, color, fontFamily: 'Plus Jakarta Sans', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
             </div>
           ))}
         </div>
@@ -566,32 +566,32 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({
             <canvas ref={chartRef} />
           </div>
 
-          {/* Annual Summary Stats Banner */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.75rem', marginTop: '1.25rem' }}>
-            <div style={{ background: 'rgba(0, 212, 255, 0.08)', padding: '0.75rem 1rem', borderRadius: '0.6rem', border: '1px solid rgba(0, 212, 255, 0.2)' }}>
-              <div style={{ fontSize: '0.68rem', color: '#00d4ff', fontWeight: 600, textTransform: 'uppercase' }}>Annual Revenue</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main, #ffffff)', fontFamily: 'JetBrains Mono', marginTop: '0.2rem' }}>
+          {/* Annual Summary Stats Banner - Same line horizontally */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '0.6rem', marginTop: '1.25rem' }}>
+            <div style={{ background: 'rgba(0, 212, 255, 0.08)', padding: '0.65rem 0.8rem', borderRadius: '0.6rem', border: '1px solid rgba(0, 212, 255, 0.2)' }}>
+              <div style={{ fontSize: '0.65rem', color: '#00d4ff', fontWeight: 600, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Annual Revenue</div>
+              <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main, #ffffff)', fontFamily: 'JetBrains Mono', marginTop: '0.2rem', whiteSpace: 'nowrap' }}>
                 {formatCurrency(totalAnnualRev, currency)}
               </div>
             </div>
 
-            <div style={{ background: 'rgba(206, 189, 255, 0.08)', padding: '0.75rem 1rem', borderRadius: '0.6rem', border: '1px solid rgba(206, 189, 255, 0.2)' }}>
-              <div style={{ fontSize: '0.68rem', color: '#cebdff', fontWeight: 600, textTransform: 'uppercase' }}>Annual Expenses</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main, #ffffff)', fontFamily: 'JetBrains Mono', marginTop: '0.2rem' }}>
+            <div style={{ background: 'rgba(206, 189, 255, 0.08)', padding: '0.65rem 0.8rem', borderRadius: '0.6rem', border: '1px solid rgba(206, 189, 255, 0.2)' }}>
+              <div style={{ fontSize: '0.65rem', color: '#cebdff', fontWeight: 600, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Annual Expenses</div>
+              <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main, #ffffff)', fontFamily: 'JetBrains Mono', marginTop: '0.2rem', whiteSpace: 'nowrap' }}>
                 {formatCurrency(totalAnnualExp, currency)}
               </div>
             </div>
 
-            <div style={{ background: totalAnnualNet >= 0 ? 'rgba(74, 222, 128, 0.08)' : 'rgba(248, 113, 113, 0.08)', padding: '0.75rem 1rem', borderRadius: '0.6rem', border: `1px solid ${totalAnnualNet >= 0 ? 'rgba(74, 222, 128, 0.25)' : 'rgba(248, 113, 113, 0.25)'}` }}>
-              <div style={{ fontSize: '0.68rem', color: totalAnnualNet >= 0 ? '#4ade80' : '#f87171', fontWeight: 600, textTransform: 'uppercase' }}>Annual Net Margin</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: totalAnnualNet >= 0 ? '#4ade80' : '#f87171', fontFamily: 'JetBrains Mono', marginTop: '0.2rem' }}>
+            <div style={{ background: totalAnnualNet >= 0 ? 'rgba(74, 222, 128, 0.08)' : 'rgba(248, 113, 113, 0.08)', padding: '0.65rem 0.8rem', borderRadius: '0.6rem', border: `1px solid ${totalAnnualNet >= 0 ? 'rgba(74, 222, 128, 0.25)' : 'rgba(248, 113, 113, 0.25)'}` }}>
+              <div style={{ fontSize: '0.65rem', color: totalAnnualNet >= 0 ? '#4ade80' : '#f87171', fontWeight: 600, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Annual Net Margin</div>
+              <div style={{ fontSize: '1rem', fontWeight: 800, color: totalAnnualNet >= 0 ? '#4ade80' : '#f87171', fontFamily: 'JetBrains Mono', marginTop: '0.2rem', whiteSpace: 'nowrap' }}>
                 {totalAnnualNet >= 0 ? `+${formatCurrency(totalAnnualNet, currency)}` : formatCurrency(totalAnnualNet, currency)}
               </div>
             </div>
 
-            <div style={{ background: 'rgba(167, 139, 250, 0.08)', padding: '0.75rem 1rem', borderRadius: '0.6rem', border: '1px solid rgba(167, 139, 250, 0.2)' }}>
-              <div style={{ fontSize: '0.68rem', color: '#a78bfa', fontWeight: 600, textTransform: 'uppercase' }}>Direct Ops &amp; COGS</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main, #ffffff)', fontFamily: 'JetBrains Mono', marginTop: '0.2rem' }}>
+            <div style={{ background: 'rgba(167, 139, 250, 0.08)', padding: '0.65rem 0.8rem', borderRadius: '0.6rem', border: '1px solid rgba(167, 139, 250, 0.2)' }}>
+              <div style={{ fontSize: '0.65rem', color: '#a78bfa', fontWeight: 600, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Direct Ops &amp; COGS</div>
+              <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main, #ffffff)', fontFamily: 'JetBrains Mono', marginTop: '0.2rem', whiteSpace: 'nowrap' }}>
                 {formatCurrency(totalCat1, currency)}
               </div>
             </div>
@@ -619,26 +619,25 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({
               </span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '12px' }}>
-              <div style={{ background: 'var(--modal-msg-bg, rgba(0,0,0,0.25))', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--glass-border, transparent)' }}>
-                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted, #9ca3af)', textTransform: 'uppercase' }}>Revenue</span>
-                <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#00d4ff', fontFamily: 'JetBrains Mono' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px', marginTop: '12px' }}>
+              <div style={{ background: 'var(--modal-msg-bg, rgba(0,0,0,0.25))', padding: '8px 8px', borderRadius: '8px', border: '1px solid var(--glass-border, transparent)' }}>
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted, #9ca3af)', textTransform: 'uppercase', display: 'block', whiteSpace: 'nowrap' }}>Revenue</span>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#00d4ff', fontFamily: 'JetBrains Mono', marginTop: '2px', whiteSpace: 'nowrap' }}>
                   {formatCurrency(selectedMonth.revenue, currency)}
                 </div>
               </div>
-              <div style={{ background: 'var(--modal-msg-bg, rgba(0,0,0,0.25))', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--glass-border, transparent)' }}>
-                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted, #9ca3af)', textTransform: 'uppercase' }}>Expenses</span>
-                <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--primary-lilac-glow, #cebdff)', fontFamily: 'JetBrains Mono' }}>
+              <div style={{ background: 'var(--modal-msg-bg, rgba(0,0,0,0.25))', padding: '8px 8px', borderRadius: '8px', border: '1px solid var(--glass-border, transparent)' }}>
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted, #9ca3af)', textTransform: 'uppercase', display: 'block', whiteSpace: 'nowrap' }}>Expenses</span>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--primary-lilac-glow, #cebdff)', fontFamily: 'JetBrains Mono', marginTop: '2px', whiteSpace: 'nowrap' }}>
                   {formatCurrency(selectedMonth.expenses, currency)}
                 </div>
               </div>
-            </div>
-
-            <div style={{ marginTop: '10px', background: 'var(--modal-msg-bg, rgba(0,0,0,0.25))', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--glass-border, transparent)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)' }}>Net Profit / Margin:</span>
-              <span style={{ fontSize: '1rem', fontWeight: 800, color: selectedMonth.net >= 0 ? '#4ade80' : '#f87171', fontFamily: 'JetBrains Mono' }}>
-                {selectedMonth.net >= 0 ? `+${formatCurrency(selectedMonth.net, currency)}` : formatCurrency(selectedMonth.net, currency)}
-              </span>
+              <div style={{ background: 'var(--modal-msg-bg, rgba(0,0,0,0.25))', padding: '8px 8px', borderRadius: '8px', border: '1px solid var(--glass-border, transparent)' }}>
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted, #9ca3af)', textTransform: 'uppercase', display: 'block', whiteSpace: 'nowrap' }}>Net Profit / Margin:</span>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: selectedMonth.net >= 0 ? '#4ade80' : '#f87171', fontFamily: 'JetBrains Mono', marginTop: '2px', whiteSpace: 'nowrap' }}>
+                  {selectedMonth.net >= 0 ? `+${formatCurrency(selectedMonth.net, currency)}` : formatCurrency(selectedMonth.net, currency)}
+                </div>
+              </div>
             </div>
 
             {/* Pillar Breakdown for Selected Month */}

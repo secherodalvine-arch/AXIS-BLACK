@@ -928,7 +928,7 @@ html, body {
   }
 
   .content-viewport {
-    padding: 14px 12px calc(95px + env(safe-area-inset-bottom, 24px)) !important;
+    padding: 14px 12px calc(24px + env(safe-area-inset-bottom, 12px)) !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
   }
@@ -1006,7 +1006,7 @@ html, body {
   }
 
   .content-viewport {
-    padding: 10px 8px calc(115px + env(safe-area-inset-bottom, 28px)) !important;
+    padding: 10px 8px calc(20px + env(safe-area-inset-bottom, 10px)) !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
   }

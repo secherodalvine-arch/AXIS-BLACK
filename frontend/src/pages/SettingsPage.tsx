@@ -82,7 +82,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [dispatchingNotif, setDispatchingNotif] = useState(false);
   const [notifSuccess, setNotifSuccess] = useState<string | null>(null);
   const [notifError, setNotifError] = useState<string | null>(null);
-  const [lastDispatchResult, setLastDispatchResult] = useState<any>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -396,11 +395,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setDispatchingNotif(true);
     setNotifSuccess(null);
     setNotifError(null);
-    setLastDispatchResult(null);
 
     try {
-      const res = await dispatchSummaryNotificationApi(notifSettings);
-      setLastDispatchResult(res);
+      await dispatchSummaryNotificationApi(notifSettings);
       const readableModes = activeModes.map(m => m === 'in_app' ? 'In-App' : m === 'sms' ? 'SMS' : 'Email').join(' & ');
       setNotifSuccess(`Business summary report delivered to activated mode(s): ${readableModes}! Check your active channels.`);
       setTimeout(() => setNotifSuccess(null), 6000);
@@ -513,28 +510,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px', marginTop: '16px' }}>
             
             {/* Light Option */}
             <div
               onClick={() => handleThemeSelect('light')}
               style={{
                 cursor: 'pointer',
-                padding: '18px',
-                borderRadius: '14px',
+                padding: '14px',
+                borderRadius: '12px',
                 background: currentTheme === 'light' ? 'rgba(0, 212, 255, 0.12)' : 'rgba(255, 255, 255, 0.02)',
                 border: currentTheme === 'light' ? '2px solid #00d4ff' : '1px solid rgba(255, 255, 255, 0.1)',
                 transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <i className="fa-solid fa-sun" style={{ color: '#fbbf24', fontSize: '1.2rem' }}></i>
-                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Light</h4>
-                </div>
-                {currentTheme === 'light' && <i className="fa-solid fa-circle-check" style={{ color: '#00d4ff' }}></i>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <i className="fa-solid fa-sun" style={{ color: '#fbbf24', fontSize: '1.1rem' }}></i>
+                <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700 }}>Light</h4>
               </div>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: '#9ca3af' }}>Crisp white background with dark text</p>
+              {currentTheme === 'light' && <i className="fa-solid fa-circle-check" style={{ color: '#00d4ff' }}></i>}
             </div>
 
             {/* Dark Option */}
@@ -542,21 +539,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               onClick={() => handleThemeSelect('dark')}
               style={{
                 cursor: 'pointer',
-                padding: '18px',
-                borderRadius: '14px',
+                padding: '14px',
+                borderRadius: '12px',
                 background: currentTheme === 'dark' ? 'rgba(0, 212, 255, 0.12)' : 'rgba(255, 255, 255, 0.02)',
                 border: currentTheme === 'dark' ? '2px solid #00d4ff' : '1px solid rgba(255, 255, 255, 0.1)',
                 transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <i className="fa-solid fa-moon" style={{ color: '#a78bfa', fontSize: '1.2rem' }}></i>
-                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Dark</h4>
-                </div>
-                {currentTheme === 'dark' && <i className="fa-solid fa-circle-check" style={{ color: '#00d4ff' }}></i>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <i className="fa-solid fa-moon" style={{ color: '#a78bfa', fontSize: '1.1rem' }}></i>
+                <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700 }}>Dark</h4>
               </div>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: '#9ca3af' }}>Dark background with soft accents</p>
+              {currentTheme === 'dark' && <i className="fa-solid fa-circle-check" style={{ color: '#00d4ff' }}></i>}
             </div>
 
             {/* System Option */}
@@ -564,21 +561,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               onClick={() => handleThemeSelect('system')}
               style={{
                 cursor: 'pointer',
-                padding: '18px',
-                borderRadius: '14px',
+                padding: '14px',
+                borderRadius: '12px',
                 background: currentTheme === 'system' ? 'rgba(0, 212, 255, 0.12)' : 'rgba(255, 255, 255, 0.02)',
                 border: currentTheme === 'system' ? '2px solid #00d4ff' : '1px solid rgba(255, 255, 255, 0.1)',
                 transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <i className="fa-solid fa-desktop" style={{ color: '#00d4ff', fontSize: '1.2rem' }}></i>
-                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>System</h4>
-                </div>
-                {currentTheme === 'system' && <i className="fa-solid fa-circle-check" style={{ color: '#00d4ff' }}></i>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <i className="fa-solid fa-desktop" style={{ color: '#00d4ff', fontSize: '1.1rem' }}></i>
+                <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700 }}>System</h4>
               </div>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: '#9ca3af' }}>Matches your device appearance automatically</p>
+              {currentTheme === 'system' && <i className="fa-solid fa-circle-check" style={{ color: '#00d4ff' }}></i>}
             </div>
 
           </div>
@@ -625,90 +622,34 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           )}
 
-          {/* Business Summary Live Breakdown Card */}
-          {lastDispatchResult && lastDispatchResult.summary && (
-            <div style={{ padding: '18px', borderRadius: '14px', background: 'rgba(0, 212, 255, 0.05)', border: '1px solid rgba(0, 212, 255, 0.25)', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#00d4ff' }}>
-                  <i className="fa-solid fa-bolt" style={{ marginRight: '6px' }}></i> Latest Business Summary Delivered
-                </span>
-                <span className="pill-tag cyan" style={{ fontSize: '0.72rem', padding: '3px 8px' }}>
-                  Dispatch Schedule: 6:00 PM
-                </span>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '12px' }}>
-                <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block' }}>Revenue (Income)</span>
-                  <strong style={{ fontSize: '1.1rem', color: '#4ade80' }}>${lastDispatchResult.summary.total_revenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
-                </div>
-
-                <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block' }}>Expenses (Costs)</span>
-                  <strong style={{ fontSize: '1.1rem', color: '#ff8e8e' }}>${lastDispatchResult.summary.total_expenses.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
-                </div>
-
-                <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block' }}>
-                    {lastDispatchResult.summary.is_profit ? 'Net Profit & Margin' : 'Net Loss & Margin'}
-                  </span>
-                  <strong style={{ fontSize: '1.1rem', color: lastDispatchResult.summary.is_profit ? '#4ade80' : '#ff8e8e' }}>
-                    ${Math.abs(lastDispatchResult.summary.net_margin).toLocaleString('en-US', { minimumFractionDigits: 2 })} ({lastDispatchResult.summary.is_profit ? '+' : '-'}{Math.abs(lastDispatchResult.summary.margin_percentage).toFixed(1)}%)
-                  </strong>
-                </div>
-
-                <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block' }}>Products in Stock / Low</span>
-                  <strong style={{ fontSize: '1.1rem' }}>
-                    {lastDispatchResult.summary.total_inventory_items} items ({lastDispatchResult.summary.low_stock_items} low)
-                  </strong>
-                </div>
-              </div>
-
-              {/* Delivery Channel Status */}
-              <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', fontSize: '0.8rem', paddingTop: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                <span>In-App: <strong style={{ color: lastDispatchResult.channels?.in_app?.success ? '#4ade80' : '#ff8e8e' }}>{lastDispatchResult.channels?.in_app?.success ? 'Delivered' : 'Inactive'}</strong></span>
-                {notifSettings.channels.email && (
-                  <span>Email: <strong style={{ color: lastDispatchResult.channels?.email?.success ? '#4ade80' : '#ff8e8e' }}>{lastDispatchResult.channels?.email?.success ? `Sent to ${lastDispatchResult.channels.email.recipient}` : 'Not sent'}</strong></span>
-                )}
-                {notifSettings.channels.sms && (
-                  <span>SMS (TalkSasa): <strong style={{ color: lastDispatchResult.channels?.sms?.success ? '#4ade80' : '#ff8e8e' }}>{lastDispatchResult.channels?.sms?.success ? `Sent to ${lastDispatchResult.channels.sms.recipient || 'recipient'}` : (lastDispatchResult.channels?.sms?.error || 'Failed')}</strong></span>
-                )}
-              </div>
-            </div>
-          )}
-
           <div style={{ opacity: notifSettings.enabled ? 1 : 0.45, pointerEvents: notifSettings.enabled ? 'auto' : 'none', transition: 'opacity 0.2s ease' }}>
             
             {/* Section 1: Frequency & Fixed Dispatch Time */}
             <div style={{ padding: '18px', borderRadius: '14px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'nowrap', gap: '10px', marginBottom: '14px' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   1. How Often to Send
                 </span>
-                <span className="pill-tag cyan" style={{ fontSize: '0.75rem', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <span className="pill-tag cyan" style={{ fontSize: '0.75rem', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
                   <i className="fa-solid fa-clock"></i> Delivery Time: 6:00 PM (18:00)
                 </span>
               </div>
 
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              {/* daily, weekly, monthly on ONE line horizontally */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px' }}>
                 {(['daily', 'weekly', 'monthly'] as const).map((freq) => (
                   <button
                     key={freq}
                     type="button"
                     onClick={() => setNotifSettings({ ...notifSettings, frequency: freq })}
                     className={notifSettings.frequency === freq ? 'action-btn-primary' : 'action-btn-secondary'}
-                    style={{ flex: 1, minWidth: '120px', padding: '12px', justifyContent: 'center', textTransform: 'capitalize', fontSize: '0.9rem' }}
+                    style={{ padding: '10px 8px', justifyContent: 'center', textTransform: 'capitalize', fontSize: '0.82rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                   >
-                    <i className={`fa-solid ${freq === 'daily' ? 'fa-calendar-day' : freq === 'weekly' ? 'fa-calendar-week' : 'fa-calendar'}`}></i>
+                    <i className={`fa-solid ${freq === 'daily' ? 'fa-calendar-day' : freq === 'weekly' ? 'fa-calendar-week' : 'fa-calendar'}`} style={{ marginRight: '6px' }}></i>
                     {freq} (at 6:00 PM)
                   </button>
                 ))}
               </div>
-              <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '10px 0 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <i className="fa-solid fa-circle-info" style={{ color: '#00d4ff' }}></i>
-                Summaries are compiled from live business numbers and sent automatically at 6:00 PM.
-              </p>
             </div>
 
             {/* Section 2: Summary Content Included */}
@@ -774,11 +715,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
             </div>
 
-            {/* Section 3: Delivery Mode (In-App, Email, SMS) */}
+            {/* Section 3: Delivery Modes (Clean & Horizontal) */}
             <div style={{ padding: '18px', borderRadius: '14px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'nowrap', gap: '10px' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  3. Delivery Modes (Toggle Each Mode On or Off)
+                  3. Delivery Modes
                 </span>
                 {(() => {
                   const activeNames: string[] = [];
@@ -786,44 +727,31 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   if (notifSettings.channels.email) activeNames.push('Email');
                   if (notifSettings.channels.sms) activeNames.push('SMS');
                   return (
-                    <span className={`pill-tag ${activeNames.length > 0 ? 'cyan' : 'warning'}`} style={{ fontSize: '0.74rem', padding: '4px 12px' }}>
-                      {activeNames.length > 0 ? `Active: ${activeNames.join(' + ')}` : '⚠️ No delivery mode selected'}
+                    <span className={`pill-tag ${activeNames.length > 0 ? 'cyan' : 'warning'}`} style={{ fontSize: '0.72rem', padding: '3px 10px', whiteSpace: 'nowrap' }}>
+                      {activeNames.length > 0 ? `Active: ${activeNames.join(' + ')}` : 'None active'}
                     </span>
                   );
                 })()}
               </div>
-              <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '0 0 16px', lineHeight: '1.4' }}>
-                Toggle any combination of delivery channels (e.g. <strong>SMS and In-App</strong>, or <strong>Email and SMS</strong>). The system automatically checks which modes are enabled and dispatches only to those.
-              </p>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 
                 {/* Mode 1: In-App Notification */}
                 <div style={{
-                  padding: '14px 18px',
-                  borderRadius: '12px',
+                  padding: '12px 16px',
+                  borderRadius: '10px',
                   background: notifSettings.channels.in_app ? 'rgba(0, 212, 255, 0.05)' : 'rgba(255, 255, 255, 0.015)',
                   border: notifSettings.channels.in_app ? '1px solid rgba(0, 212, 255, 0.35)' : '1px solid rgba(255, 255, 255, 0.06)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  flexWrap: 'wrap',
                   gap: '12px',
-                  transition: 'all 0.2s ease'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(0, 212, 255, 0.12)', color: '#00d4ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.05rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(0, 212, 255, 0.12)', color: '#00d4ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem' }}>
                       <i className="fa-solid fa-bell"></i>
                     </div>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '0.92rem', fontWeight: 700 }}>In-App Notification</span>
-                        <span className={`pill-tag ${notifSettings.channels.in_app ? 'cyan' : 'gray'}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
-                          {notifSettings.channels.in_app ? 'ON' : 'OFF'}
-                        </span>
-                      </div>
-                      <span style={{ fontSize: '0.76rem', color: '#9ca3af' }}>Delivered directly to the top bar notification bell</span>
-                    </div>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>In-App Notification</span>
                   </div>
 
                   <button
@@ -833,7 +761,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       channels: { ...notifSettings.channels, in_app: !notifSettings.channels.in_app }
                     })}
                     className={notifSettings.channels.in_app ? 'action-btn-primary' : 'action-btn-secondary'}
-                    style={{ padding: '8px 16px', fontSize: '0.82rem', borderRadius: '8px', cursor: 'pointer' }}
+                    style={{ padding: '6px 14px', fontSize: '0.8rem', borderRadius: '8px', cursor: 'pointer' }}
                   >
                     <i className={`fa-solid ${notifSettings.channels.in_app ? 'fa-toggle-on' : 'fa-toggle-off'}`}></i>
                     {notifSettings.channels.in_app ? 'Active' : 'Disabled'}
@@ -842,26 +770,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                 {/* Mode 2: Email Notification */}
                 <div style={{
-                  padding: '16px 18px',
-                  borderRadius: '12px',
+                  padding: '12px 16px',
+                  borderRadius: '10px',
                   background: notifSettings.channels.email ? 'rgba(167, 139, 250, 0.05)' : 'rgba(255, 255, 255, 0.015)',
                   border: notifSettings.channels.email ? '1px solid rgba(167, 139, 250, 0.35)' : '1px solid rgba(255, 255, 255, 0.06)',
-                  transition: 'all 0.2s ease'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: notifSettings.channels.email ? '14px' : '0' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(167, 139, 250, 0.12)', color: '#a78bfa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.05rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(167, 139, 250, 0.12)', color: '#a78bfa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem' }}>
                         <i className="fa-solid fa-envelope"></i>
                       </div>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '0.92rem', fontWeight: 700 }}>Email Notification</span>
-                          <span className={`pill-tag ${notifSettings.channels.email ? 'lilac' : 'gray'}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
-                            {notifSettings.channels.email ? 'ON' : 'OFF'}
-                          </span>
-                        </div>
-                        <span style={{ fontSize: '0.76rem', color: '#9ca3af' }}>Sends a complete executive business report by email</span>
-                      </div>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Email Notification</span>
                     </div>
 
                     <button
@@ -871,7 +790,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         channels: { ...notifSettings.channels, email: !notifSettings.channels.email }
                       })}
                       className={notifSettings.channels.email ? 'action-btn-primary' : 'action-btn-secondary'}
-                      style={{ padding: '8px 16px', fontSize: '0.82rem', borderRadius: '8px', cursor: 'pointer' }}
+                      style={{ padding: '6px 14px', fontSize: '0.8rem', borderRadius: '8px', cursor: 'pointer' }}
                     >
                       <i className={`fa-solid ${notifSettings.channels.email ? 'fa-toggle-on' : 'fa-toggle-off'}`}></i>
                       {notifSettings.channels.email ? 'Active' : 'Disabled'}
@@ -879,9 +798,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </div>
 
                   {notifSettings.channels.email && (
-                    <div style={{ marginLeft: '50px', marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                      <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem' }}>
+                    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.82rem' }}>
                           <input
                             type="radio"
                             name="email_mode"
@@ -890,9 +809,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                             onChange={() => setNotifSettings({ ...notifSettings, email_mode: 'profile' })}
                             style={{ accentColor: '#a78bfa' }}
                           />
-                          <span>Use profile email as default: <strong>{profile.email || user?.email || 'Registered email'}</strong></span>
+                          <span>Profile email (<strong>{profile.email || user?.email || 'Default'}</strong>)</span>
                         </label>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.82rem' }}>
                           <input
                             type="radio"
                             name="email_mode"
@@ -901,25 +820,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                             onChange={() => setNotifSettings({ ...notifSettings, email_mode: 'custom' })}
                             style={{ accentColor: '#a78bfa' }}
                           />
-                          <span>Provide another email address</span>
+                          <span>Custom email</span>
                         </label>
                       </div>
 
                       {notifSettings.email_mode === 'custom' && (
-                        <div style={{ maxWidth: '420px', marginTop: '4px' }}>
-                          <input
-                            type="email"
-                            placeholder="e.g. reports@company.com"
-                            value={notifSettings.custom_email}
-                            onChange={(e) => setNotifSettings({ ...notifSettings, custom_email: e.target.value })}
-                            style={{
-                              width: '100%',
-                              padding: '10px 14px',
-                              borderRadius: '8px',
-                              fontSize: '0.88rem'
-                            }}
-                          />
-                        </div>
+                        <input
+                          type="email"
+                          placeholder="e.g. reports@company.com"
+                          value={notifSettings.custom_email}
+                          onChange={(e) => setNotifSettings({ ...notifSettings, custom_email: e.target.value })}
+                          style={{
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            fontSize: '0.85rem'
+                          }}
+                        />
                       )}
                     </div>
                   )}
@@ -927,26 +845,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                 {/* Mode 3: SMS Notification */}
                 <div style={{
-                  padding: '16px 18px',
-                  borderRadius: '12px',
+                  padding: '12px 16px',
+                  borderRadius: '10px',
                   background: notifSettings.channels.sms ? 'rgba(74, 222, 128, 0.05)' : 'rgba(255, 255, 255, 0.015)',
                   border: notifSettings.channels.sms ? '1px solid rgba(74, 222, 128, 0.35)' : '1px solid rgba(255, 255, 255, 0.06)',
-                  transition: 'all 0.2s ease'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: notifSettings.channels.sms ? '14px' : '0' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(74, 222, 128, 0.12)', color: '#4ade80', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.05rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(74, 222, 128, 0.12)', color: '#4ade80', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem' }}>
                         <i className="fa-solid fa-comment-sms"></i>
                       </div>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '0.92rem', fontWeight: 700 }}>SMS Notification</span>
-                          <span className={`pill-tag ${notifSettings.channels.sms ? 'green' : 'gray'}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
-                            {notifSettings.channels.sms ? 'ON' : 'OFF'}
-                          </span>
-                        </div>
-                        <span style={{ fontSize: '0.76rem', color: '#9ca3af' }}>Text message with revenue, profit or loss margin, and stock</span>
-                      </div>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>SMS Notification</span>
                     </div>
 
                     <button
@@ -956,7 +865,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         channels: { ...notifSettings.channels, sms: !notifSettings.channels.sms }
                       })}
                       className={notifSettings.channels.sms ? 'action-btn-primary' : 'action-btn-secondary'}
-                      style={{ padding: '8px 16px', fontSize: '0.82rem', borderRadius: '8px', cursor: 'pointer' }}
+                      style={{ padding: '6px 14px', fontSize: '0.8rem', borderRadius: '8px', cursor: 'pointer' }}
                     >
                       <i className={`fa-solid ${notifSettings.channels.sms ? 'fa-toggle-on' : 'fa-toggle-off'}`}></i>
                       {notifSettings.channels.sms ? 'Active' : 'Disabled'}
@@ -964,9 +873,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </div>
 
                   {notifSettings.channels.sms && (
-                    <div style={{ marginLeft: '50px', marginTop: '10px', maxWidth: '420px', paddingTop: '12px', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                      <label style={{ display: 'block', fontSize: '0.78rem', color: '#9ca3af', marginBottom: '6px' }}>
-                        Mobile Phone Number (e.g. +254 700 123 456 or 0700 123 456)
+                    <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', color: '#9ca3af', marginBottom: '4px' }}>
+                        Mobile Phone Number
                       </label>
                       <input
                         type="tel"
@@ -975,9 +884,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         onChange={(e) => setNotifSettings({ ...notifSettings, phone_number: e.target.value })}
                         style={{
                           width: '100%',
-                          padding: '10px 14px',
+                          boxSizing: 'border-box',
+                          padding: '8px 12px',
                           borderRadius: '8px',
-                          fontSize: '0.88rem'
+                          fontSize: '0.85rem'
                         }}
                       />
                     </div>
@@ -987,17 +897,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
             </div>
 
-            {/* Notification Actions: Save & Send Real Test */}
-            <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center', marginTop: '12px' }}>
+            {/* Notification Actions: Save & Send Real Test on ONE line horizontally */}
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'nowrap', alignItems: 'center', marginTop: '12px' }}>
               <button
                 type="button"
                 className="action-btn-primary"
                 onClick={handleSaveNotifications}
                 disabled={savingNotif}
-                style={{ padding: '12px 24px', fontSize: '0.92rem' }}
+                style={{ flex: 1, padding: '10px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', justifyContent: 'center' }}
               >
                 {savingNotif ? (
-                  <><i className="fa-solid fa-circle-notch fa-spin"></i> Saving Settings...</>
+                  <><i className="fa-solid fa-circle-notch fa-spin"></i> Saving...</>
                 ) : (
                   <><i className="fa-solid fa-check"></i> Save Notification Settings</>
                 )}
@@ -1008,11 +918,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 className="action-btn-secondary"
                 onClick={handleDispatchSummary}
                 disabled={dispatchingNotif}
-                style={{ padding: '12px 20px', fontSize: '0.92rem' }}
+                style={{ flex: 1, padding: '10px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', justifyContent: 'center' }}
                 title="Dispatches your business summary report across all active delivery channels immediately"
               >
                 {dispatchingNotif ? (
-                  <><i className="fa-solid fa-spinner fa-spin"></i> Dispatching Summary...</>
+                  <><i className="fa-solid fa-spinner fa-spin"></i> Dispatching...</>
                 ) : (
                   <><i className="fa-solid fa-paper-plane"></i> Send Business Summary Now</>
                 )}
@@ -1139,8 +1049,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           )}
 
-          <form onSubmit={handleSaveProfile} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '18px' }}>
-            <div>
+          <form onSubmit={handleSaveProfile} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Full Name
               </label>
@@ -1151,6 +1061,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 required
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '12px 14px',
                   borderRadius: '10px',
                   fontSize: '0.95rem',
@@ -1158,7 +1069,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               />
             </div>
 
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Work Email Address
               </label>
@@ -1169,6 +1080,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 required
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '12px 14px',
                   borderRadius: '10px',
                   fontSize: '0.95rem',
@@ -1176,7 +1088,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               />
             </div>
 
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Role / Title {isTeamMember && <span style={{ color: '#00d4ff', textTransform: 'none', fontSize: '0.75rem', marginLeft: '6px' }}><i className="fa-solid fa-lock"></i> (Auto-synced)</span>}
               </label>
@@ -1187,6 +1099,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onChange={(e) => setProfile({ ...profile, role: e.target.value })}
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '12px 14px',
                   borderRadius: '10px',
                   fontSize: '0.95rem',
@@ -1196,7 +1109,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               />
             </div>
 
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Company / Organization {isTeamMember && <span style={{ color: '#00d4ff', textTransform: 'none', fontSize: '0.75rem', marginLeft: '6px' }}><i className="fa-solid fa-lock"></i> (Auto-synced)</span>}
               </label>
@@ -1207,6 +1120,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onChange={(e) => setProfile({ ...profile, company: e.target.value })}
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '12px 14px',
                   borderRadius: '10px',
                   fontSize: '0.95rem',
@@ -1216,12 +1130,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               />
             </div>
 
-            <div style={{ gridColumn: 'span 2', marginTop: '10px' }}>
+            <div style={{ gridColumn: '1 / -1', marginTop: '10px' }}>
               <button
                 type="submit"
                 className="action-btn-primary"
                 disabled={saving}
-                style={{ padding: '14px 28px', fontSize: '0.95rem', width: 'auto' }}
+                style={{ padding: '12px 24px', fontSize: '0.92rem', width: 'auto' }}
               >
                 {saving ? (
                   <><i className="fa-solid fa-circle-notch fa-spin"></i> Saving Profile...</>
@@ -1270,8 +1184,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           )}
 
-          <form onSubmit={handleChangePassword} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '18px' }}>
-            <div>
+          <form onSubmit={handleChangePassword} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Current Password
               </label>
@@ -1283,6 +1197,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 required
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '12px 14px',
                   borderRadius: '10px',
                   fontSize: '0.95rem',
@@ -1290,7 +1205,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               />
             </div>
 
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 New Password
               </label>
@@ -1302,6 +1217,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 required
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '12px 14px',
                   borderRadius: '10px',
                   fontSize: '0.95rem',
@@ -1309,7 +1225,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               />
             </div>
 
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Confirm New Password
               </label>
@@ -1321,6 +1237,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 required
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '12px 14px',
                   borderRadius: '10px',
                   fontSize: '0.95rem',
@@ -1328,7 +1245,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               />
             </div>
 
-            <div style={{ gridColumn: 'span 2', marginTop: '8px' }}>
+            <div style={{ gridColumn: '1 / -1', marginTop: '8px' }}>
               <button
                 type="submit"
                 className="action-btn-primary"

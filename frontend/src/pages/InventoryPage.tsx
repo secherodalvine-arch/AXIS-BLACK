@@ -96,9 +96,11 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
     setCsvImporting(true);
     setCsvStatus(null);
     try {
-      const result = await importInventoryCsvApi(file, branchFilter || undefined);
+      const activeBranch = isSubUserWithBranch ? currentUser?.branch_id : (branchFilter || (branches.length === 1 ? branches[0].id : undefined));
+      const result = await importInventoryCsvApi(file, activeBranch);
       setCsvStatus({ text: result.message || `Imported ${result.imported} items`, type: 'success' });
       fetchInventory();
+      window.dispatchEvent(new CustomEvent('axis-data-updated'));
     } catch (err: any) {
       setCsvStatus({ text: err.message || 'Import failed', type: 'error' });
     } finally {
@@ -107,6 +109,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
       setTimeout(() => setCsvStatus(null), 6000);
     }
   };
+
+  useEffect(() => {
+    const handleSync = () => fetchInventory();
+    window.addEventListener('axis-data-updated', handleSync);
+    return () => window.removeEventListener('axis-data-updated', handleSync);
+  }, []);
 
 
   const handleCreateSKU = async (e: React.FormEvent) => {
@@ -207,12 +215,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto', maxWidth: '100%', paddingBottom: '4px' }}>
           {branches.length > 0 && !isSubUserWithBranch && (
             <select
               value={branchFilter}
               onChange={e => setBranchFilter(e.target.value)}
-              style={{ background: 'var(--dropdown-bg, #1a1a22)', border: '1px solid var(--search-border, rgba(255,255,255,0.1))', borderRadius: '10px', padding: '8px 14px', color: branchFilter ? '#00d4ff' : 'var(--text-main, #9ca3af)', fontSize: '0.82rem', cursor: 'pointer' }}
+              style={{ background: 'var(--dropdown-bg, #1a1a22)', border: '1px solid var(--search-border, rgba(255,255,255,0.1))', borderRadius: '10px', padding: '8px 14px', color: branchFilter ? '#00d4ff' : 'var(--text-main, #9ca3af)', fontSize: '0.82rem', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
             >
               <option value="">All Branches</option>
               {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -228,7 +236,9 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
               borderRadius: '8px',
               padding: '6px 12px',
               fontSize: '0.8rem',
-              color: '#00d4ff'
+              color: '#00d4ff',
+              flexShrink: 0,
+              whiteSpace: 'nowrap'
             }}>
               <i className="fa-solid fa-code-branch"></i>
               <span>{branches.find(b => b.id === currentUser?.branch_id)?.name || 'Assigned Branch'}</span>
@@ -239,12 +249,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
             className="action-btn-secondary"
             onClick={() => csvInputRef.current?.click()}
             disabled={csvImporting}
-            style={{ gap: '8px', fontSize: '0.82rem', display: 'flex', alignItems: 'center' }}
+            style={{ gap: '8px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', flexShrink: 0, whiteSpace: 'nowrap' }}
           >
             {csvImporting ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-file-import"></i>}
             {csvImporting ? 'Importing...' : 'Import CSV'}
           </button>
-          <button className="action-btn-primary" onClick={() => setIsModalOpen(true)}>
+          <button className="action-btn-primary" onClick={() => setIsModalOpen(true)} style={{ flexShrink: 0, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
             <i className="fa-solid fa-boxes-stacked"></i>
             <span>Add Inventory Item</span>
           </button>
@@ -265,7 +275,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
       )}
 
       {/* Top 4 Inventory Advisor Metric Highlights */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
+      <div className="inventory-metrics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '1.25rem' }}>
         <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '1rem' }}>
           <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: 'var(--text-muted, #9ca3af)' }}>TOTAL STOCK VALUATION</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main, #ffffff)', fontFamily: 'JetBrains Mono', marginTop: '0.25rem' }}>
@@ -406,16 +416,17 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
 
       {/* ADD NEW INVENTORY ITEM MODAL */}
       {isModalOpen && (
-        <div className="modal-overlay active">
-          <div className="modal-card glass-card" style={{ background: 'var(--dropdown-bg, #141418)', border: '1px solid var(--dropdown-border, rgba(0, 212, 255, 0.35))', boxShadow: 'var(--dropdown-shadow, 0 24px 80px rgba(0,0,0,0.9))', maxHeight: '88vh', overflowY: 'auto' }}>
-            <div className="modal-header" style={{ borderBottom: '1px solid var(--header-border, rgba(255, 255, 255, 0.1))', paddingBottom: '12px', marginBottom: '20px' }}>
+        <div className="modal-overlay active" style={{ zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="modal-card glass-card" style={{ width: '560px', maxWidth: '95vw', maxHeight: '85vh', display: 'flex', flexDirection: 'column', background: 'var(--dropdown-bg, #141418)', border: '1px solid var(--dropdown-border, rgba(0, 212, 255, 0.35))', boxShadow: 'var(--dropdown-shadow, 0 24px 80px rgba(0,0,0,0.9))', padding: '24px', borderRadius: '20px' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid var(--header-border, rgba(255, 255, 255, 0.1))', paddingBottom: '12px', marginBottom: '16px', flexShrink: 0 }}>
               <h3 style={{ margin: 0, color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans', fontSize: '1.25rem', fontWeight: 800 }}>
                 Add New Inventory Item
               </h3>
               <button className="modal-close" onClick={() => setIsModalOpen(false)} style={{ color: 'var(--text-muted, #9ca3af)', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>&times;</button>
             </div>
             
-            <form onSubmit={handleCreateSKU}>
+            <form onSubmit={handleCreateSKU} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              <div style={{ overflowY: 'auto', flex: 1, paddingRight: '6px', minHeight: 0 }}>
               {isSubUserWithBranch ? (
                 <div style={{
                   padding: '12px 14px',
@@ -592,7 +603,9 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
                 </div>
               </div>
 
-              <div className="modal-actions" style={{ marginTop: '24px' }}>
+              </div>
+
+              <div className="modal-actions" style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--header-border, rgba(255, 255, 255, 0.08))', flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                 <button type="button" className="action-btn-secondary" onClick={() => setIsModalOpen(false)}>
                   Cancel
                 </button>

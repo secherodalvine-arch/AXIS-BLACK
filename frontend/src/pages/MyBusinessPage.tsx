@@ -110,7 +110,19 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
     }
   }, []);
 
-  useEffect(() => { loadAll(); }, [loadAll]);
+  useEffect(() => { 
+    loadAll(); 
+    const handleDataUpdated = () => {
+      loadAll();
+      if (selectedBranch) {
+        getBranchDetailsApi(selectedBranch)
+          .then(data => setSelectedBranchDetails(data))
+          .catch(() => {});
+      }
+    };
+    window.addEventListener('axis-data-updated', handleDataUpdated);
+    return () => window.removeEventListener('axis-data-updated', handleDataUpdated);
+  }, [loadAll, selectedBranch]);
 
   // Load detailed branch data when a branch is selected
   useEffect(() => {
@@ -402,8 +414,34 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
         </div>
       )}
 
-      {/* Tab Navigation */}
-      <div className="biz-tabs-nav" style={{ display: 'flex', gap: '4px', marginBottom: '28px', flexWrap: 'wrap' }}>
+      {/* 4 Quick Stat Cards: on one line horizontally, below business name and above tabs */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+        gap: '10px',
+        marginBottom: '20px',
+        width: '100%'
+      }}>
+        {[
+          { label: 'Active Branches', value: branches.length, icon: 'fa-code-branch', color: 'var(--secondary-cyan, #00d4ff)' },
+          { label: 'Team Members', value: team.length, icon: 'fa-users', color: '#a78bfa' },
+          { label: 'Configured Roles', value: displayRoles.length, icon: 'fa-user-shield', color: '#4ade80' },
+          { label: 'Employees', value: profile?.number_of_employees || 0, icon: 'fa-person', color: '#f59e0b' },
+        ].map(({ label, value, icon, color }) => (
+          <div key={label} className="glass-card" style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, borderRadius: '12px' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: `${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, flexShrink: 0, fontSize: '0.9rem' }}>
+              <i className={`fa-solid ${icon}`}></i>
+            </div>
+            <div style={{ minWidth: 0, overflow: 'hidden' }}>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans', lineHeight: 1.1 }}>{value}</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '2px' }}>{label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tab Navigation: on one line horizontally */}
+      <div className="biz-tabs-nav" style={{ display: 'flex', gap: '6px', marginBottom: '24px', flexWrap: 'nowrap', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '4px' }}>
         {[
           { id: 'overview', label: 'Business Profile', icon: 'fa-building' },
           { id: 'branches', label: 'Branches & Operations', icon: 'fa-code-branch' },
@@ -414,6 +452,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
             key={tab.id}
             className={`biz-tab-btn ${activeTab === tab.id ? 'active' : ''}`}
             onClick={() => setActiveTab(tab.id as any)}
+            style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
           >
             <i className={`fa-solid ${tab.icon}`} style={{ marginRight: '6px' }}></i>
             {tab.label}
@@ -423,9 +462,9 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
 
       {/* OVERVIEW TAB */}
       {activeTab === 'overview' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           {/* Business Profile Form */}
-          <div className="glass-card" style={{ padding: '28px', gridColumn: 'span 2' }}>
+          <div className="glass-card" style={{ padding: '28px', width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
               <i className="fa-solid fa-pen-to-square" style={{ color: 'var(--secondary-cyan, #00d4ff)' }}></i>
               <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Business Profile Configuration</h3>
@@ -508,26 +547,6 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                 </button>
               </div>
             </form>
-          </div>
-
-          {/* Quick Stats Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px' }}>
-            {[
-              { label: 'Active Branches', value: branches.length, icon: 'fa-code-branch', color: 'var(--secondary-cyan, #00d4ff)' },
-              { label: 'Team Members', value: team.length, icon: 'fa-users', color: '#a78bfa' },
-              { label: 'Configured Roles', value: displayRoles.length, icon: 'fa-user-shield', color: '#4ade80' },
-              { label: 'Employees', value: profile?.number_of_employees || 0, icon: 'fa-person', color: '#f59e0b' },
-            ].map(({ label, value, icon, color }) => (
-              <div key={label} className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: `${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', color }}>
-                  <i className={`fa-solid ${icon}`}></i>
-                </div>
-                <div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans' }}>{value}</div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)' }}>{label}</div>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       )}

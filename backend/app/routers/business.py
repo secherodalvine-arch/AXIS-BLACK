@@ -903,14 +903,24 @@ async def get_branch_performance(
         raise HTTPException(status_code=403, detail="Access denied: You can only view metrics for your assigned branch.")
 
     # Transactions scoped to branch_id
+    doc_perf = await get_business_doc(owner_id)
+    branches_perf = doc_perf.get("branches", [])
+    is_single_branch = len(branches_perf) <= 1
+
     if db_manager.is_connected:
-        cursor = db_manager.db.transactions.find({"user_id": owner_id, "branch_id": branch_id})
+        if is_single_branch:
+            cursor = db_manager.db.transactions.find({"user_id": owner_id, "$or": [{"branch_id": branch_id}, {"branch_id": None}, {"branch_id": ""}]})
+        else:
+            cursor = db_manager.db.transactions.find({"user_id": owner_id, "branch_id": branch_id})
         txns = await cursor.to_list(length=500)
         for t in txns:
             t.pop("_id", None)
     else:
         all_txns = db_manager.memory_store.get("transactions", {}).get(owner_id, [])
-        txns = [t for t in all_txns if t.get("branch_id") == branch_id]
+        if is_single_branch:
+            txns = [t for t in all_txns if t.get("branch_id") == branch_id or not t.get("branch_id")]
+        else:
+            txns = [t for t in all_txns if t.get("branch_id") == branch_id]
 
     revenue = sum(t["amount"] for t in txns if t.get("amount", 0) > 0)
     expenses = sum(abs(t["amount"]) for t in txns if t.get("amount", 0) < 0)
@@ -950,6 +960,8 @@ async def get_branch_details(
     if not branch:
         raise HTTPException(status_code=404, detail="Branch not found")
 
+    is_single_branch = len(branches) <= 1
+
     # Manager resolution (Owner can assign themselves!)
     manager_id = branch.get("manager_user_id")
     manager_info = None
@@ -975,13 +987,19 @@ async def get_branch_details(
 
     # Fetch branch transactions
     if db_manager.is_connected:
-        cursor = db_manager.db.transactions.find({"user_id": owner_id, "branch_id": branch_id})
+        if is_single_branch:
+            cursor = db_manager.db.transactions.find({"user_id": owner_id, "$or": [{"branch_id": branch_id}, {"branch_id": None}, {"branch_id": ""}]})
+        else:
+            cursor = db_manager.db.transactions.find({"user_id": owner_id, "branch_id": branch_id})
         txns = await cursor.to_list(length=200)
         for t in txns:
             t.pop("_id", None)
     else:
         all_txns = db_manager.memory_store.get("transactions", {}).get(owner_id, [])
-        txns = [t for t in all_txns if t.get("branch_id") == branch_id]
+        if is_single_branch:
+            txns = [t for t in all_txns if t.get("branch_id") == branch_id or not t.get("branch_id")]
+        else:
+            txns = [t for t in all_txns if t.get("branch_id") == branch_id]
 
     revenue = sum(t["amount"] for t in txns if t.get("amount", 0) > 0)
     expenses = sum(abs(t["amount"]) for t in txns if t.get("amount", 0) < 0)
@@ -990,7 +1008,10 @@ async def get_branch_details(
 
     # Fetch branch inventory
     inventory_items = await AxisDataStore.get_inventory(owner_id)
-    branch_inventory = [i for i in inventory_items if i.get("branch_id") == branch_id]
+    if is_single_branch:
+        branch_inventory = [i for i in inventory_items if i.get("branch_id") == branch_id or not i.get("branch_id")]
+    else:
+        branch_inventory = [i for i in inventory_items if i.get("branch_id") == branch_id]
     inv_valuation = sum(float(i.get("stock_quantity", 0)) * float(i.get("unit_cost", 0)) for i in branch_inventory)
 
     return {

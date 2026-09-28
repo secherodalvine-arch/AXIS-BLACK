@@ -36,6 +36,11 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
 
   useEffect(() => {
     fetchData();
+    const handleDataUpdated = () => {
+      fetchData();
+    };
+    window.addEventListener('axis-data-updated', handleDataUpdated);
+    return () => window.removeEventListener('axis-data-updated', handleDataUpdated);
   }, []);
 
   // Filtered Activities
@@ -131,10 +136,10 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
   };
 
   return (
-    <div className="analytics-page-container" style={{ padding: '1.5rem', maxWidth: '1400px', margin: '0 auto' }}>
+    <div className="analytics-page-container" style={{ padding: '0.75rem 0.5rem', maxWidth: '1400px', margin: '0 auto' }}>
       
       {/* ── Page Header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.25rem' }}>
             <span style={{
@@ -151,11 +156,11 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
             }}>
               <i className="fa-solid fa-clock-rotate-left"></i>
             </span>
-            <h1 className="activity-header-title" style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.02em' }}>
+            <h1 className="activity-header-title" style={{ margin: 0, fontSize: '1.4rem', fontWeight: 700, letterSpacing: '-0.02em' }}>
               Business Activities &amp; Audit Trail
             </h1>
           </div>
-          <p className="activity-header-sub" style={{ margin: 0, fontSize: '0.85rem' }}>
+          <p className="activity-header-sub" style={{ margin: 0, fontSize: '0.82rem' }}>
             Real-time immutable log of every action performed on inventory, ledger transactions, branch assignments, and team roles.
           </p>
         </div>
@@ -172,144 +177,145 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
         </div>
       </div>
 
-      {/* ── Summary Stat Cards ── */}
-      <div style={{
+      {/* ── Summary Stat Cards: 2x2 Grid ── */}
+      <div className="activity-stats-grid" style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '1rem',
-        marginBottom: '1.5rem'
+        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+        gap: '10px',
+        marginBottom: '1.25rem'
       }}>
-        <div className="activity-stat-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-            <span className="activity-stat-label">
+        <div className="activity-stat-card" style={{ padding: '14px', borderRadius: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
+            <span className="activity-stat-label" style={{ fontSize: '0.75rem' }}>
               Total Activities
             </span>
-            <span style={{ color: 'var(--secondary-cyan, #00d4ff)', fontSize: '0.9rem' }}>
+            <span style={{ color: 'var(--secondary-cyan, #00d4ff)', fontSize: '0.85rem' }}>
               <i className="fa-solid fa-list-check"></i>
             </span>
           </div>
-          <div className="activity-stat-val">
+          <div className="activity-stat-val" style={{ fontSize: '1.3rem' }}>
             {totalEvents}
           </div>
-          <div className="activity-stat-sub">
+          <div className="activity-stat-sub" style={{ fontSize: '0.72rem' }}>
             Recorded system events
           </div>
         </div>
 
-        <div className="activity-stat-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-            <span className="activity-stat-label">
+        <div className="activity-stat-card" style={{ padding: '14px', borderRadius: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
+            <span className="activity-stat-label" style={{ fontSize: '0.75rem' }}>
               Team Member Actions
             </span>
-            <span style={{ color: '#a78bfa', fontSize: '0.9rem' }}>
+            <span style={{ color: '#a78bfa', fontSize: '0.85rem' }}>
               <i className="fa-solid fa-users-gear"></i>
             </span>
           </div>
-          <div className="activity-stat-val" style={{ color: '#a78bfa' }}>
+          <div className="activity-stat-val" style={{ color: '#a78bfa', fontSize: '1.3rem' }}>
             {teamEvents}
           </div>
-          <div className="activity-stat-sub">
+          <div className="activity-stat-sub" style={{ fontSize: '0.72rem' }}>
             By managers &amp; staff
           </div>
         </div>
 
-        <div className="activity-stat-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-            <span className="activity-stat-label">
+        <div className="activity-stat-card" style={{ padding: '14px', borderRadius: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
+            <span className="activity-stat-label" style={{ fontSize: '0.75rem' }}>
               Inventory Changes
             </span>
-            <span style={{ color: '#38bdf8', fontSize: '0.9rem' }}>
+            <span style={{ color: '#38bdf8', fontSize: '0.85rem' }}>
               <i className="fa-solid fa-boxes-stacked"></i>
             </span>
           </div>
-          <div className="activity-stat-val" style={{ color: '#38bdf8' }}>
+          <div className="activity-stat-val" style={{ color: '#38bdf8', fontSize: '1.3rem' }}>
             {inventoryEvents}
           </div>
-          <div className="activity-stat-sub">
+          <div className="activity-stat-sub" style={{ fontSize: '0.72rem' }}>
             SKU creations, edits &amp; imports
           </div>
         </div>
 
-        <div className="activity-stat-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-            <span className="activity-stat-label">
+        <div className="activity-stat-card" style={{ padding: '14px', borderRadius: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
+            <span className="activity-stat-label" style={{ fontSize: '0.75rem' }}>
               Ledger Transactions
             </span>
-            <span style={{ color: '#10b981', fontSize: '0.9rem' }}>
+            <span style={{ color: '#10b981', fontSize: '0.85rem' }}>
               <i className="fa-solid fa-receipt"></i>
             </span>
           </div>
-          <div className="activity-stat-val" style={{ color: '#10b981' }}>
+          <div className="activity-stat-val" style={{ color: '#10b981', fontSize: '1.3rem' }}>
             {ledgerEvents}
           </div>
-          <div className="activity-stat-sub">
+          <div className="activity-stat-sub" style={{ fontSize: '0.72rem' }}>
             Revenue &amp; expenses logged
           </div>
         </div>
       </div>
 
       {/* ── Filters & Search Bar ── */}
-      <div className="activity-filter-bar">
-        {/* Search */}
-        <div style={{ flex: '1 1 260px', position: 'relative' }}>
-          <i className="fa-solid fa-magnifying-glass" style={{
-            position: 'absolute',
-            left: '12px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            color: 'var(--text-muted, #6b7280)',
-            fontSize: '0.85rem'
-          }}></i>
-          <input
-            type="text"
-            className="activity-search-input"
-            placeholder="Search by action, item, counterparty, actor, or SKU..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-          />
-        </div>
+      <div className="activity-filter-bar" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.25rem', padding: '12px', borderRadius: '12px' }}>
+        {/* Search & All Branches on ONE Line Horizontally */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%', flexWrap: 'nowrap' }}>
+          <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
+            <i className="fa-solid fa-magnifying-glass" style={{
+              position: 'absolute',
+              left: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: 'var(--text-muted, #6b7280)',
+              fontSize: '0.85rem'
+            }}></i>
+            <input
+              type="text"
+              className="activity-search-input"
+              placeholder="Search by action, item, counterparty, actor, or SKU..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '34px', height: '38px', borderRadius: '8px' }}
+            />
+          </div>
 
-        {/* Action Category Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-          {(['all', 'inventory', 'transaction', 'branch', 'role', 'team'] as const).map(cat => (
-            <button
-              key={cat}
-              onClick={() => setCategoryFilter(cat)}
-              className={`activity-cat-pill ${categoryFilter === cat ? 'active' : ''}`}
-            >
-              {cat === 'all' ? 'All Activities' : cat === 'transaction' ? 'Ledger' : cat}
-            </button>
-          ))}
-        </div>
+          {/* Branch Filter dropdown on same line */}
+          <select
+            value={branchFilter}
+            onChange={e => setBranchFilter(e.target.value)}
+            className="activity-select"
+            style={{ width: 'auto', flexShrink: 0, height: '38px', borderRadius: '8px', padding: '0 10px', fontSize: '0.82rem' }}
+          >
+            <option value="all">All Branches</option>
+            {branches.map(b => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
 
-        {/* Actor & Branch Dropdowns */}
-        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
           {/* Actor Filter */}
           <select
             value={actorFilter}
             onChange={e => setActorFilter(e.target.value as any)}
             className="activity-select"
+            style={{ width: 'auto', flexShrink: 0, height: '38px', borderRadius: '8px', padding: '0 10px', fontSize: '0.82rem' }}
           >
             <option value="all">All Actors</option>
             <option value="owner">Owner Only</option>
             <option value="team">Team Members</option>
           </select>
+        </div>
 
-          {/* Branch Filter */}
-          {branches.length > 0 && (
-            <select
-              value={branchFilter}
-              onChange={e => setBranchFilter(e.target.value)}
-              className="activity-select"
+        {/* Action Category Filter on ONE Line Horizontally */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'nowrap', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '2px' }}>
+          {(['all', 'inventory', 'transaction', 'branch', 'role', 'team'] as const).map(cat => (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(cat)}
+              className={`activity-cat-pill ${categoryFilter === cat ? 'active' : ''}`}
+              style={{ whiteSpace: 'nowrap', flexShrink: 0, fontSize: '0.78rem', padding: '5px 12px' }}
             >
-              <option value="all">All Branches</option>
-              {branches.map(b => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          )}
+              {cat === 'all' ? 'All Activities' : cat === 'transaction' ? 'Ledger' : cat}
+            </button>
+          ))}
         </div>
       </div>
 

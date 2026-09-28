@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { NavTab, Timeframe, Currency } from '../types';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { NavTab, Timeframe, Currency, MetricData, Transaction } from '../types';
 import { formatNotificationTime, formatNotificationDetailTime } from '../utils/dateUtils';
+import { formatCurrency } from '../utils/currencyUtils';
 
 export interface SystemNotification {
   id: string;
@@ -34,12 +35,16 @@ interface HeaderProps {
   onLogout?: () => void;
   onNavigateLogin?: () => void;
   onNavigateSettings?: () => void;
+  metrics?: MetricData[];
+  transactions?: Transaction[];
+  inventoryItems?: any[];
+  onNavigateTab?: (tab: NavTab) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   currentTab: _currentTab,
   timeframe: _timeframe,
-  currency: _currency,
+  currency = 'USD',
   searchQuery = '',
   userName = '',
   userEmail = '',
@@ -58,7 +63,11 @@ export const Header: React.FC<HeaderProps> = ({
   onSearchChange,
   onLogout,
   onNavigateLogin,
-  onNavigateSettings
+  onNavigateSettings,
+  metrics = [],
+  transactions = [],
+  inventoryItems = [],
+  onNavigateTab
 }) => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
@@ -110,6 +119,59 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  const trimmedSearch = searchQuery.trim().toLowerCase();
+
+  const matchedMetrics = useMemo(() => {
+    if (!trimmedSearch || !metrics.length) return [];
+    return metrics.filter(m =>
+      (m.title && m.title.toLowerCase().includes(trimmedSearch)) ||
+      (m.targetOrMeta && m.targetOrMeta.toLowerCase().includes(trimmedSearch)) ||
+      (m.value && m.value.toLowerCase().includes(trimmedSearch))
+    ).slice(0, 3);
+  }, [trimmedSearch, metrics]);
+
+  const matchedTransactions = useMemo(() => {
+    if (!trimmedSearch || !transactions.length) return [];
+    return transactions.filter(t =>
+      (t.counterparty && t.counterparty.toLowerCase().includes(trimmedSearch)) ||
+      (t.category && t.category.toLowerCase().includes(trimmedSearch)) ||
+      (t.id && t.id.toLowerCase().includes(trimmedSearch)) ||
+      (t.notes && t.notes.toLowerCase().includes(trimmedSearch))
+    ).slice(0, 4);
+  }, [trimmedSearch, transactions]);
+
+  const matchedInventory = useMemo(() => {
+    if (!trimmedSearch || !inventoryItems.length) return [];
+    return inventoryItems.filter(i =>
+      (i.name && i.name.toLowerCase().includes(trimmedSearch)) ||
+      (i.sku && i.sku.toLowerCase().includes(trimmedSearch)) ||
+      (i.category && i.category.toLowerCase().includes(trimmedSearch))
+    ).slice(0, 4);
+  }, [trimmedSearch, inventoryItems]);
+
+  const matchedInsights = useMemo(() => {
+    if (!trimmedSearch || !notifications.length) return [];
+    return notifications.filter(n =>
+      (n.title && n.title.toLowerCase().includes(trimmedSearch)) ||
+      (n.message && n.message.toLowerCase().includes(trimmedSearch))
+    ).slice(0, 3);
+  }, [trimmedSearch, notifications]);
+
+  const hasSearchMatches = matchedMetrics.length > 0 || matchedTransactions.length > 0 || matchedInventory.length > 0 || matchedInsights.length > 0;
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
   return (
     <header className="top-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', height: '64px', background: 'var(--header-bg, rgba(10, 10, 14, 0.85))', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--header-border, rgba(255, 255, 255, 0.08))', position: 'relative', zIndex: 100, gap: '14px' }}>
       {/* 1. START WITH SEARCH BAR */}
@@ -117,15 +179,146 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="mobile-toggle" onClick={onToggleMobileMenu} title="Toggle Navigation" style={{ color: 'var(--text-main, #ffffff)', cursor: 'pointer', fontSize: '1.2rem', padding: '6px' }}>
           <i className="fa-solid fa-bars"></i>
         </div>
-        <div className="global-search-bar" style={{ flex: 1, position: 'relative', width: '100%' }}>
+        <div className="global-search-bar" ref={searchContainerRef} style={{ flex: 1, position: 'relative', width: '100%' }}>
           <i className="fa-solid fa-magnifying-glass search-icon" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim, #9ca3af)', fontSize: '0.85rem' }}></i>
           <input 
             type="text" 
             placeholder="Search metrics, ledger transactions, inventory, insights..." 
             value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
+            onFocus={() => setIsSearchOpen(true)}
+            onChange={(e) => {
+              onSearchChange(e.target.value);
+              setIsSearchOpen(true);
+            }}
             style={{ width: '100%', padding: '9px 16px 9px 38px', background: 'var(--search-bg, #141418)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.12))', borderRadius: '20px', color: 'var(--text-main, #ffffff)', fontSize: '0.85rem' }}
           />
+
+          {isSearchOpen && trimmedSearch.length > 0 && (
+            <div className="search-dropdown glass-card" style={{
+              position: 'absolute',
+              top: 'calc(100% + 8px)',
+              left: 0,
+              right: 0,
+              maxHeight: '440px',
+              overflowY: 'auto',
+              background: 'var(--dropdown-bg, #10121a)',
+              border: '1px solid var(--dropdown-border, rgba(0, 212, 255, 0.35))',
+              borderRadius: '16px',
+              padding: '12px',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.9), 0 0 25px rgba(0, 212, 255, 0.12)',
+              zIndex: 1000
+            }}>
+              {!hasSearchMatches ? (
+                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted, #9ca3af)', fontSize: '0.85rem' }}>
+                  <i className="fa-solid fa-magnifying-glass" style={{ opacity: 0.4, fontSize: '1.2rem', marginBottom: '6px', display: 'block' }}></i>
+                  No records matching "{searchQuery}" across metrics, ledger, inventory, or insights.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {/* METRICS */}
+                  {matchedMetrics.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--secondary-cyan, #00d4ff)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <i className="fa-solid fa-chart-pie"></i> Metrics &amp; KPIs
+                      </div>
+                      {matchedMetrics.map(m => (
+                        <div
+                          key={m.id}
+                          onClick={() => {
+                            if (onNavigateTab) onNavigateTab('dashboard');
+                            setIsSearchOpen(false);
+                          }}
+                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.15s ease' }}
+                        >
+                          <div>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main, #ffffff)' }}>{m.title}</span>
+                            {m.targetOrMeta && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)' }}>{m.targetOrMeta}</div>}
+                          </div>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#00d4ff', fontFamily: 'JetBrains Mono' }}>{m.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* TRANSACTIONS */}
+                  {matchedTransactions.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <i className="fa-solid fa-receipt"></i> Ledger Transactions
+                      </div>
+                      {matchedTransactions.map(t => (
+                        <div
+                          key={t.id}
+                          onClick={() => {
+                            if (onNavigateTab) onNavigateTab('transactions');
+                            setIsSearchOpen(false);
+                          }}
+                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.15s ease' }}
+                        >
+                          <div style={{ overflow: 'hidden', paddingRight: '8px' }}>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main, #ffffff)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{t.counterparty}</div>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)' }}>{t.category} · {t.id}</div>
+                          </div>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: t.amount >= 0 ? '#4ade80' : '#ff8e8e', fontFamily: 'JetBrains Mono', whiteSpace: 'nowrap' }}>
+                            {t.amount >= 0 ? '+' : ''}{formatCurrency(t.amount, currency)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* INVENTORY */}
+                  {matchedInventory.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <i className="fa-solid fa-boxes-stacked"></i> Inventory SKUs
+                      </div>
+                      {matchedInventory.map(item => (
+                        <div
+                          key={item.sku || item.id}
+                          onClick={() => {
+                            if (onNavigateTab) onNavigateTab('inventory');
+                            setIsSearchOpen(false);
+                          }}
+                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.15s ease' }}
+                        >
+                          <div style={{ overflow: 'hidden', paddingRight: '8px' }}>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main, #ffffff)' }}>{item.name}</div>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)' }}>{item.sku || item.id} · {item.category}</div>
+                          </div>
+                          <span style={{ fontSize: '0.78rem', color: '#00d4ff', fontFamily: 'JetBrains Mono', whiteSpace: 'nowrap' }}>
+                            {item.stock_quantity ?? item.stockLevel ?? 0} in stock
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* INSIGHTS */}
+                  {matchedInsights.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <i className="fa-solid fa-bolt"></i> Insights &amp; Alerts
+                      </div>
+                      {matchedInsights.map(notif => (
+                        <div
+                          key={notif.id}
+                          onClick={() => {
+                            setSelectedNotif(notif);
+                            setIsSearchOpen(false);
+                          }}
+                          style={{ padding: '8px 10px', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.15s ease' }}
+                        >
+                          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main, #ffffff)' }}>{notif.title}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{notif.message}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -527,8 +720,8 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* NOTIFICATION DETAIL MODAL */}
       {selectedNotif && (
-        <div className="modal-overlay active" style={{ zIndex: 2000 }}>
-          <div className="modal-card glass-card" style={{ width: '460px', background: 'var(--dropdown-bg, #141418)', border: '1px solid var(--dropdown-border, rgba(0, 212, 255, 0.4))', boxShadow: 'var(--dropdown-shadow, 0 24px 80px rgba(0,0,0,0.95))' }}>
+        <div className="modal-overlay active" style={{ zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="modal-card glass-card" style={{ width: '460px', maxWidth: '95vw', maxHeight: '85vh', display: 'flex', flexDirection: 'column', background: 'var(--dropdown-bg, #141418)', border: '1px solid var(--dropdown-border, rgba(0, 212, 255, 0.4))', boxShadow: 'var(--dropdown-shadow, 0 24px 80px rgba(0,0,0,0.95))', borderRadius: '18px', padding: '20px' }}>
             <div className="modal-header" style={{ borderBottom: '1px solid var(--header-border, rgba(255, 255, 255, 0.1))', paddingBottom: '12px', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span className={`pill-tag ${selectedNotif.type === 'warning' ? 'pink' : selectedNotif.type === 'success' ? 'cyan' : 'lilac'}`} style={{ fontSize: '0.68rem' }}>
@@ -539,20 +732,22 @@ export const Header: React.FC<HeaderProps> = ({
               <button className="modal-close" onClick={() => setSelectedNotif(null)} style={{ color: 'var(--text-muted, #9ca3af)', background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer' }}>&times;</button>
             </div>
 
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans', margin: '0 0 12px 0' }}>
-              {selectedNotif.title}
-            </h3>
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans', margin: '0 0 12px 0' }}>
+                {selectedNotif.title}
+              </h3>
 
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-main, #e5e2e1)', lineHeight: 1.5, background: 'var(--modal-msg-bg, rgba(255, 255, 255, 0.03))', padding: '14px', borderRadius: '10px', border: '1px solid var(--modal-msg-border, rgba(255, 255, 255, 0.06))' }}>
-              {selectedNotif.message}
-            </p>
+              <p style={{ fontSize: '0.88rem', color: 'var(--text-main, #e5e2e1)', lineHeight: 1.5, background: 'var(--modal-msg-bg, rgba(255, 255, 255, 0.03))', padding: '14px', borderRadius: '10px', border: '1px solid var(--modal-msg-border, rgba(255, 255, 255, 0.06))' }}>
+                {selectedNotif.message}
+              </p>
+            </div>
 
-            <div className="modal-actions" style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="modal-actions" style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid var(--header-border, rgba(255, 255, 255, 0.08))' }}>
               <button 
                 type="button" 
                 className="action-btn-secondary"
                 onClick={() => deleteNotification(selectedNotif.id, {} as any)}
-                style={{ color: '#ff8e8e', border: '1px solid rgba(255, 142, 142, 0.3)' }}
+                style={{ color: '#ff8e8e', border: '1px solid rgba(255, 142, 142, 0.3)', padding: '8px 16px', fontSize: '0.85rem' }}
               >
                 <i className="fa-solid fa-trash-can"></i> Delete
               </button>
@@ -561,6 +756,7 @@ export const Header: React.FC<HeaderProps> = ({
                 type="button" 
                 className="action-btn-primary"
                 onClick={() => setSelectedNotif(null)}
+                style={{ padding: '8px 20px', fontSize: '0.85rem' }}
               >
                 Dismiss
               </button>

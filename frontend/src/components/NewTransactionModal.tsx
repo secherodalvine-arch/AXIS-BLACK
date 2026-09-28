@@ -82,15 +82,16 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   };
 
   return (
-    <div className="modal-overlay active">
-      <div className="modal-card glass-card" style={{ background: 'var(--dropdown-bg, #141418)', border: '1px solid var(--dropdown-border, rgba(0, 212, 255, 0.35))', boxShadow: 'var(--dropdown-shadow, 0 24px 80px rgba(0,0,0,0.9))', maxHeight: '88vh', overflowY: 'auto' }}>
-        <div className="modal-header" style={{ borderBottom: '1px solid var(--header-border, rgba(255, 255, 255, 0.1))', paddingBottom: '12px', marginBottom: '20px' }}>
+    <div className="modal-overlay active" style={{ zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+      <div className="modal-card glass-card" style={{ width: '560px', maxWidth: '95vw', maxHeight: '85vh', display: 'flex', flexDirection: 'column', background: 'var(--dropdown-bg, #141418)', border: '1px solid var(--dropdown-border, rgba(0, 212, 255, 0.35))', boxShadow: 'var(--dropdown-shadow, 0 24px 80px rgba(0,0,0,0.9))', padding: '24px', borderRadius: '20px' }}>
+        <div className="modal-header" style={{ borderBottom: '1px solid var(--header-border, rgba(255, 255, 255, 0.1))', paddingBottom: '12px', marginBottom: '16px', flexShrink: 0 }}>
           <h3 style={{ margin: 0, color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans', fontSize: '1.25rem', fontWeight: 800 }}>
             Record Ledger Entry
           </h3>
           <button className="modal-close" onClick={onClose} style={{ color: 'var(--text-muted, #9ca3af)', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>&times;</button>
         </div>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          <div style={{ overflowY: 'auto', flex: 1, paddingRight: '6px', minHeight: 0 }}>
           <div className="form-group">
             <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Counterparty / Description
@@ -265,7 +266,9 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
             )
           )}
 
-          <div className="modal-actions" style={{ marginTop: '24px' }}>
+          </div>
+
+          <div className="modal-actions" style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--header-border, rgba(255, 255, 255, 0.08))', flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
             <button type="button" className="action-btn-secondary" onClick={onClose}>
               Cancel
             </button>

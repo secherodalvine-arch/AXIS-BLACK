@@ -15,7 +15,7 @@ interface OverviewDashboardProps {
   onNavigateToLedger?: () => void;
   onAIActionClick: (title: string) => void;
   onQuickAISubmit: (query: string) => void;
-  onExportCSV: () => void;
+  onExportCSV: (txns?: Transaction[]) => void;
 }
 
 export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({

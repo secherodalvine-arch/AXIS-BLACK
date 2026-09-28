@@ -6,6 +6,7 @@ import io
 import datetime
 from app.database import AxisDataStore
 from app.auth.dependencies import get_current_user
+from app.routers.business import get_business_doc
 
 router = APIRouter(prefix="/api/inventory", tags=["Inventory Intelligence"])
 
@@ -78,6 +79,17 @@ async def create_inventory_item(
     # Sub-users don't have to select a branch — locked to their assigned branch automatically
     if is_sub_user and current_user.get("branch_id"):
         data["branch_id"] = current_user.get("branch_id")
+    elif not data.get("branch_id"):
+        try:
+            doc = await get_business_doc(owner_id)
+            branches = doc.get("branches", [])
+            if len(branches) == 1:
+                data["branch_id"] = branches[0]["id"]
+            elif branches:
+                main_b = next((b for b in branches if b.get("is_main")), branches[0])
+                data["branch_id"] = main_b["id"]
+        except Exception:
+            pass
 
     data["created_by"] = current_user.get("user_id")
     data["created_by_name"] = current_user.get("name", "User")
@@ -179,8 +191,26 @@ async def import_inventory_csv(
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
 
+    doc = await get_business_doc(owner_id)
+    branches = doc.get("branches", [])
+
     if is_sub_user and current_user.get("branch_id"):
         branch_id = current_user.get("branch_id")
+    elif not branch_id:
+        if len(branches) == 1:
+            branch_id = branches[0]["id"]
+        elif branches:
+            main_b = next((b for b in branches if b.get("is_main")), branches[0])
+            branch_id = main_b["id"]
+
+    branch_map = {}
+    for b in branches:
+        b_id = str(b.get("id", "")).strip()
+        b_name = str(b.get("name", "")).strip().lower()
+        if b_id:
+            branch_map[b_id.lower()] = b_id
+        if b_name:
+            branch_map[b_name] = b_id
 
     if not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only CSV files are accepted")
@@ -197,6 +227,15 @@ async def import_inventory_csv(
 
     for i, row in enumerate(reader):
         try:
+            raw_branch = (
+                row.get("branch_id") or row.get("Branch ID") or
+                row.get("branch") or row.get("Branch") or
+                row.get("branch_name") or row.get("Branch Name") or ""
+            )
+            raw_branch_str = str(raw_branch).strip()
+            resolved_branch = branch_map.get(raw_branch_str.lower()) if raw_branch_str else None
+            assigned_branch = resolved_branch or branch_id
+
             item = {
                 "sku": row.get("sku", row.get("SKU", f"SKU-{i+1}")),
                 "name": row.get("name", row.get("Name", row.get("Item Name", "Unknown"))),
@@ -206,7 +245,7 @@ async def import_inventory_csv(
                 "unit_cost": float(str(row.get("unit_cost", row.get("Unit Cost", row.get("Cost", 0)))).replace(",", "").replace("$", "")),
                 "selling_price": float(str(row.get("selling_price", row.get("Selling Price", row.get("Price", 0)))).replace(",", "").replace("$", "")),
                 "supplier": row.get("supplier", row.get("Supplier", "Unknown Supplier")),
-                "branch_id": branch_id or row.get("branch_id", row.get("Branch ID", None)),
+                "branch_id": assigned_branch,
                 "created_by": current_user.get("user_id"),
                 "created_by_name": current_user.get("name", "User")
             }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NavTab, Timeframe, Currency, Transaction, AIStreamItem, ChatMessage, MetricData } from './types';
 import { AppBackground } from './components/AppBackground';
 import { Sidebar } from './components/Sidebar';
@@ -337,6 +337,7 @@ export const App: React.FC = () => {
   const [serverNotifications, setServerNotifications] = useState<any[]>([]);
   const [activeInAppPopup, setActiveInAppPopup] = useState<SystemNotification | null>(null);
   const [inventoryAlerts, setInventoryAlerts] = useState<SystemNotification[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
 
   // Calculate real net liquidity and operating runway
   const netLiquidity = transactions.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
@@ -347,12 +348,13 @@ export const App: React.FC = () => {
     ? Math.max(1, Math.floor(Math.max(0, netLiquidity) / totalBurn)) 
     : (netLiquidity > 0 ? 12 : 0);
 
-  // Fetch live inventory items for automated low stock alerts
-  useEffect(() => {
+  // Fetch live inventory items for automated low stock alerts and global search
+  const fetchLiveInventory = useCallback(() => {
     if (user?.user_id) {
       getInventoryApi()
         .then(items => {
           if (items && items.length) {
+            setInventoryItems(items);
             const lowStock = items.filter((i: any) => {
               const stock = Number(i.stock_quantity ?? i.stockLevel ?? 0);
               const reorder = Number(i.reorder_point ?? i.minThreshold ?? 50);
@@ -368,12 +370,17 @@ export const App: React.FC = () => {
             }));
             setInventoryAlerts(alerts);
           } else {
+            setInventoryItems([]);
             setInventoryAlerts([]);
           }
         })
         .catch(err => console.log('Inventory notification fetch error:', err));
     }
   }, [user?.user_id]);
+
+  useEffect(() => {
+    fetchLiveInventory();
+  }, [fetchLiveInventory]);
 
   // Aggregate dynamic real notifications
   useEffect(() => {
@@ -504,8 +511,7 @@ export const App: React.FC = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
-  React.useEffect(() => {
-    // Fetch live data from backend whenever user is authenticated
+  const fetchLiveData = useCallback(() => {
     if (user?.user_id) {
       getDashboardMetricsApi()
         .then(res => { if (res && res.length) setMetrics(res); })
@@ -514,6 +520,8 @@ export const App: React.FC = () => {
       getTransactionsApi()
         .then(res => { if (res && res.length) setTransactions(res); })
         .catch(err => console.log('Transactions fetch error:', err));
+
+      fetchLiveInventory();
 
       getNotificationsApi()
         .then(serverNotifs => {
@@ -541,7 +549,13 @@ export const App: React.FC = () => {
         })
         .catch(err => console.log('Notifications fetch error:', err));
     }
-  }, [user?.user_id]);
+  }, [user?.user_id, fetchLiveInventory]);
+
+  React.useEffect(() => {
+    fetchLiveData();
+    window.addEventListener('axis-data-updated', fetchLiveData);
+    return () => window.removeEventListener('axis-data-updated', fetchLiveData);
+  }, [fetchLiveData]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -696,8 +710,39 @@ export const App: React.FC = () => {
     }, 1400);
   };
 
-  const handleExportCSV = () => {
-    showToast('Exported verified ledger to Axis_Black_Ledger_Q3.csv');
+  const handleExportCSV = (txnsToExport?: Transaction[]) => {
+    const list = (txnsToExport && Array.isArray(txnsToExport) && txnsToExport.length > 0) ? txnsToExport : transactions;
+    if (!list || list.length === 0) {
+      showToast('No ledger transactions available to export.');
+      return;
+    }
+
+    const headers = ['Transaction ID', 'Counterparty / Entity', 'Category', 'Date', 'Type', 'Amount', 'Currency', 'Status', 'Branch ID', 'Notes'];
+    const rows = list.map(t => [
+      `"${(t.id || '').replace(/"/g, '""')}"`,
+      `"${(t.counterparty || '').replace(/"/g, '""')}"`,
+      `"${(t.category || '').replace(/"/g, '""')}"`,
+      `"${(t.date || '').replace(/"/g, '""')}"`,
+      `"${(t.type || (t.amount >= 0 ? 'Revenue' : 'Expense')).replace(/"/g, '""')}"`,
+      Number(t.amount || 0),
+      `"${currency}"`,
+      `"${(t.status || 'Cleared').replace(/"/g, '""')}"`,
+      `"${(t.branch_id || '').replace(/"/g, '""')}"`,
+      `"${(t.notes || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Axis_Black_Ledger_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showToast(`Exported ${list.length} verified ledger transaction${list.length === 1 ? '' : 's'} to CSV`);
   };
 
   if (viewState === 'login') {
@@ -832,6 +877,10 @@ export const App: React.FC = () => {
             onLogout={handleLogout}
             onNavigateLogin={() => setViewState('login')}
             onNavigateSettings={() => setCurrentTab('settings')}
+            metrics={metrics}
+            transactions={transactions}
+            inventoryItems={inventoryItems}
+            onNavigateTab={(tab) => setCurrentTab(tab)}
           />
 
 

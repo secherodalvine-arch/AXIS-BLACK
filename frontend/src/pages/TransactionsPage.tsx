@@ -40,8 +40,10 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
     setCsvImporting(true);
     setCsvStatus(null);
     try {
-      const result = await importTransactionsCsvApi(file, branchFilter || undefined);
+      const targetBranch = branchFilter || (branches.length === 1 ? branches[0].id : undefined);
+      const result = await importTransactionsCsvApi(file, targetBranch);
       setCsvStatus({ text: result.message || `Imported ${result.imported} transactions`, type: 'success' });
+      window.dispatchEvent(new CustomEvent('axis-data-updated'));
     } catch (err: any) {
       setCsvStatus({ text: err.message || 'Import failed', type: 'error' });
     } finally {
@@ -162,12 +164,12 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
             Structured financial history, running balance, and account records
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto', maxWidth: '100%', paddingBottom: '4px' }}>
           {branches.length > 0 && (
             <select
               value={branchFilter}
               onChange={e => setBranchFilter(e.target.value)}
-              style={{ background: 'var(--header-btn-bg, #1a1a22)', border: '1px solid var(--header-btn-border, rgba(255,255,255,0.1))', borderRadius: '10px', padding: '8px 14px', color: branchFilter ? '#00d4ff' : 'var(--text-muted, #9ca3af)', fontSize: '0.82rem', cursor: 'pointer' }}
+              style={{ background: 'var(--header-btn-bg, #1a1a22)', border: '1px solid var(--header-btn-border, rgba(255,255,255,0.1))', borderRadius: '10px', padding: '8px 14px', color: branchFilter ? '#00d4ff' : 'var(--text-muted, #9ca3af)', fontSize: '0.82rem', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
               title="Filter by branch"
             >
               <option value="">All Branches</option>
@@ -180,12 +182,12 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
             onClick={() => csvInputRef.current?.click()}
             disabled={csvImporting}
             title="Import transactions from CSV"
-            style={{ gap: '8px', fontSize: '0.82rem', display: 'flex', alignItems: 'center' }}
+            style={{ gap: '8px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', flexShrink: 0, whiteSpace: 'nowrap' }}
           >
             {csvImporting ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-file-import"></i>}
             {csvImporting ? 'Importing...' : 'Import CSV'}
           </button>
-          <button className="action-btn-primary" onClick={onOpenModal}>
+          <button className="action-btn-primary" onClick={onOpenModal} style={{ flexShrink: 0, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
             <i className="fa-solid fa-plus"></i> Record Entry
           </button>
         </div>
@@ -260,7 +262,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
       </div>
 
       {/* DAILY USAGE & REMAINING BUDGET TELEMETRY */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
+      <div className="budget-grid-2x2" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
         
         {/* Card 1: Daily Allocated Limit */}
         <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '1rem', border: '1px solid rgba(0, 212, 255, 0.3)' }}>

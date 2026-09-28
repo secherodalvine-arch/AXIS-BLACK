@@ -6,7 +6,7 @@ import { formatRelativeTime } from '../utils/dateUtils';
 interface RecentLedgerTableProps {
   transactions: Transaction[];
   currency?: Currency;
-  onExportCSV: () => void;
+  onExportCSV: (txns?: Transaction[]) => void;
 }
 
 export const RecentLedgerTable: React.FC<RecentLedgerTableProps> = ({
@@ -29,15 +29,20 @@ export const RecentLedgerTable: React.FC<RecentLedgerTableProps> = ({
           <h3>Recent Ledger Transactions</h3>
           <p className="subtitle">Showing verified financial movements</p>
         </div>
-        <div className="card-actions">
+        <div className="card-actions" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', gap: '8px' }}>
           <input 
             type="text" 
             className="input-table-search"
             placeholder="Filter ledger..."
             value={searchFilter}
             onChange={(e) => setSearchFilter(e.target.value)}
+            style={{ flex: 1, minWidth: '100px', width: 'auto' }}
           />
-          <button className="action-btn-secondary" onClick={onExportCSV}>
+          <button 
+            className="action-btn-secondary" 
+            onClick={() => onExportCSV(filtered.length > 0 && searchFilter ? filtered : transactions)}
+            style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+          >
             <i className="fa-solid fa-download"></i> Export CSV
           </button>
         </div>
