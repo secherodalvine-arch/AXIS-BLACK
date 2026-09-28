@@ -254,10 +254,10 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
       </div>
 
       {/* ── Filters & Search Bar ── */}
-      <div className="activity-filter-bar" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.25rem', padding: '12px', borderRadius: '12px' }}>
-        {/* Search & All Branches on ONE Line Horizontally */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%', flexWrap: 'nowrap' }}>
-          <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
+      <div className="activity-filter-bar">
+        {/* Search input & Select Dropdowns */}
+        <div className="activity-filter-controls">
+          <div className="activity-search-box">
             <i className="fa-solid fa-magnifying-glass" style={{
               position: 'absolute',
               left: '12px',
@@ -276,42 +276,43 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
             />
           </div>
 
-          {/* Branch Filter dropdown on same line */}
-          <select
-            value={branchFilter}
-            onChange={e => setBranchFilter(e.target.value)}
-            className="activity-select"
-            style={{ width: 'auto', flexShrink: 0, height: '38px', borderRadius: '8px', padding: '0 10px', fontSize: '0.82rem' }}
-          >
-            <option value="all">All Branches</option>
-            {branches.map(b => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
+          <div className="activity-select-row">
+            {/* Branch Filter dropdown */}
+            <select
+              value={branchFilter}
+              onChange={e => setBranchFilter(e.target.value)}
+              className="activity-select"
+              style={{ flex: 1, minWidth: 0, height: '38px', borderRadius: '8px', padding: '0 10px', fontSize: '0.82rem' }}
+            >
+              <option value="all">All Branches</option>
+              {branches.map(b => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
 
-          {/* Actor Filter */}
-          <select
-            value={actorFilter}
-            onChange={e => setActorFilter(e.target.value as any)}
-            className="activity-select"
-            style={{ width: 'auto', flexShrink: 0, height: '38px', borderRadius: '8px', padding: '0 10px', fontSize: '0.82rem' }}
-          >
-            <option value="all">All Actors</option>
-            <option value="owner">Owner Only</option>
-            <option value="team">Team Members</option>
-          </select>
+            {/* Actor Filter */}
+            <select
+              value={actorFilter}
+              onChange={e => setActorFilter(e.target.value as any)}
+              className="activity-select"
+              style={{ flex: 1, minWidth: 0, height: '38px', borderRadius: '8px', padding: '0 10px', fontSize: '0.82rem' }}
+            >
+              <option value="all">All Actors</option>
+              <option value="owner">Owner Only</option>
+              <option value="team">Team Members</option>
+            </select>
+          </div>
         </div>
 
-        {/* Action Category Filter on ONE Line Horizontally */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'nowrap', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '2px' }}>
+        {/* Action Category Filter nicely arranged inside container */}
+        <div className="activity-pills-container">
           {(['all', 'inventory', 'transaction', 'branch', 'role', 'team'] as const).map(cat => (
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
               className={`activity-cat-pill ${categoryFilter === cat ? 'active' : ''}`}
-              style={{ whiteSpace: 'nowrap', flexShrink: 0, fontSize: '0.78rem', padding: '5px 12px' }}
             >
               {cat === 'all' ? 'All Activities' : cat === 'transaction' ? 'Ledger' : cat}
             </button>

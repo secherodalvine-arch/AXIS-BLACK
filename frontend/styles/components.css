@@ -1183,21 +1183,23 @@ body.light-theme .chat-input-area textarea,
     min-width: 0 !important;
   }
 
-  /* Modals — Fit screen width with smooth vertical scrolling */
+  /* Modals — Centered with scroll so save buttons are always visible */
   .modal-overlay {
     padding: 12px !important;
-    align-items: flex-end !important;
+    align-items: center !important;
+    overflow-y: auto !important;
   }
 
   .modal-card {
     width: 100% !important;
     max-width: 100% !important;
-    max-height: 90vh !important;
+    max-height: 88vh !important;
     padding: 20px 16px !important;
-    margin: 0 !important;
-    border-radius: 20px 20px 0 0 !important;
+    margin: auto !important;
+    border-radius: 18px !important;
     box-sizing: border-box !important;
     transform: translateY(0) !important;
+    overflow-y: auto !important;
   }
 
   .modal-header h3 {
@@ -1310,12 +1312,15 @@ body.light-theme .chat-input-area textarea,
   }
 
   .modal-overlay {
-    padding: 0 !important;
+    padding: 8px !important;
+    align-items: center !important;
   }
 
   .modal-card {
-    border-radius: 18px 18px 0 0 !important;
+    border-radius: 16px !important;
     padding: 16px 14px !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
   }
 }
 
@@ -2146,16 +2151,71 @@ body.light-theme .runway-recommendation-box,
 }
 
 .activity-filter-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  border-radius: 12px;
-  background: rgba(17, 24, 39, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  padding: 14px 16px !important;
+  border-radius: 12px !important;
+  background: rgba(17, 24, 39, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
   transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.activity-filter-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.activity-search-box {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.activity-select-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.activity-pills-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .activity-filter-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .activity-search-box {
+    width: 100%;
+  }
+  .activity-select-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .activity-select-row .activity-select {
+    width: 100% !important;
+    box-sizing: border-box;
+  }
 }
 
 .activity-search-input {
@@ -3174,7 +3234,96 @@ body.light-theme .biz-hint-banner-warning,
   border: 1px solid #fde68a !important;
   color: #92400e !important;
 }
+/* ─── Responsive Grid Utility Classes ─────────────────────────────────────── */
 
+/* Analytics KPI: 6 columns desktop → 2 columns small screens */
+.analytics-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
 
+/* Annual Stats: 4 columns desktop → 2 columns small screens */
+.annual-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+}
 
+/* MyBiz Quick Stats: 4 columns desktop → 2 columns small screens */
+.mybiz-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .analytics-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .annual-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .mybiz-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Notification frequency buttons: icon top, label bottom */
+.notif-freq-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 8px;
+  text-align: center;
+  min-height: 72px;
+}
+
+.notif-freq-btn .freq-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.notif-freq-btn .freq-period {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  line-height: 1.2;
+}
+
+.notif-freq-btn .freq-time {
+  font-size: 0.7rem;
+  opacity: 0.75;
+  line-height: 1.2;
+}
+
+/* Currency buttons: icon top, symbol+code below */
+.currency-select-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 16px 12px;
+  text-align: center;
+  min-height: 80px;
+}
+
+.currency-select-btn .curr-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.currency-select-btn .curr-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
 

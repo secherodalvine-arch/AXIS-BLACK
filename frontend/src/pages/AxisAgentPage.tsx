@@ -156,7 +156,7 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
   // ALWAYS default to the clean empty session on entering the page
   const [activeSessionId, setActiveSessionId] = useState<string>(initialSession.id);
   const [inputVal, setInputVal] = useState('');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch live chat sessions from MongoDB backend on mount & user change

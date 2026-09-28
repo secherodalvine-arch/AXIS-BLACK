@@ -140,7 +140,27 @@ export const App: React.FC = () => {
   const [resetToken, setResetToken] = useState<string>(initialIsReset ? initialToken : '');
   const [pendingVerifyEmail, setPendingVerifyEmail] = useState<string>('');
   const [user, setUser] = useState<UserProfile | null>(getStoredUser());
-  const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
+  const [currentTab, setCurrentTab] = useState<NavTab>(() => {
+    try {
+      const saved = localStorage.getItem('axis_active_tab') as NavTab | null;
+      const validTabs: NavTab[] = ['dashboard', 'business', 'inventory', 'analytics', 'transactions', 'activities', 'agent', 'forecast', 'settings'];
+      if (saved && validTabs.includes(saved)) {
+        return saved;
+      }
+    } catch {
+      // ignore
+    }
+    return 'dashboard';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('axis_active_tab', currentTab);
+    } catch {
+      // ignore
+    }
+  }, [currentTab]);
+
   const [timeframe, setTimeframe] = useState<Timeframe>('30d');
 
   const getAccountTheme = (uid?: string): 'light' | 'dark' | 'system' => {

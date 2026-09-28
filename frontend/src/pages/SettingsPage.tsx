@@ -642,11 +642,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     key={freq}
                     type="button"
                     onClick={() => setNotifSettings({ ...notifSettings, frequency: freq })}
-                    className={notifSettings.frequency === freq ? 'action-btn-primary' : 'action-btn-secondary'}
-                    style={{ padding: '10px 8px', justifyContent: 'center', textTransform: 'capitalize', fontSize: '0.82rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    className={`notif-freq-btn ${notifSettings.frequency === freq ? 'action-btn-primary' : 'action-btn-secondary'}`}
                   >
-                    <i className={`fa-solid ${freq === 'daily' ? 'fa-calendar-day' : freq === 'weekly' ? 'fa-calendar-week' : 'fa-calendar'}`} style={{ marginRight: '6px' }}></i>
-                    {freq} (at 6:00 PM)
+                    <i className={`fa-solid ${freq === 'daily' ? 'fa-calendar-day' : freq === 'weekly' ? 'fa-calendar-week' : 'fa-calendar'} freq-icon`} />
+                    <span className="freq-period">{freq}</span>
+                    <span className="freq-time">at 6:00 PM</span>
                   </button>
                 ))}
               </div>
@@ -909,7 +909,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 {savingNotif ? (
                   <><i className="fa-solid fa-circle-notch fa-spin"></i> Saving...</>
                 ) : (
-                  <><i className="fa-solid fa-check"></i> Save Notification Settings</>
+                  <><i className="fa-solid fa-check"></i> Save Settings</>
                 )}
               </button>
 
@@ -924,7 +924,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 {dispatchingNotif ? (
                   <><i className="fa-solid fa-spinner fa-spin"></i> Dispatching...</>
                 ) : (
-                  <><i className="fa-solid fa-paper-plane"></i> Send Business Summary Now</>
+                  <><i className="fa-solid fa-paper-plane"></i> Send Summary Now</>
                 )}
               </button>
             </div>
@@ -1276,18 +1276,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <button
               type="button"
               onClick={() => handleCurrencySelect('USD')}
-              className={(profile.currency || currency) === 'USD' ? 'action-btn-primary' : 'action-btn-secondary'}
-              style={{ flex: 1, padding: '14px', justifyContent: 'center', fontSize: '0.95rem' }}
+              className={`currency-select-btn ${(profile.currency || currency) === 'USD' ? 'action-btn-primary' : 'action-btn-secondary'}`}
+              style={{ flex: 1 }}
             >
-              <i className="fa-solid fa-dollar-sign"></i> US Dollar ($ USD)
+              <i className="fa-solid fa-dollar-sign curr-icon"></i>
+              <span className="curr-label">$USD</span>
             </button>
             <button
               type="button"
               onClick={() => handleCurrencySelect('KES')}
-              className={(profile.currency || currency) === 'KES' ? 'action-btn-primary' : 'action-btn-secondary'}
-              style={{ flex: 1, padding: '14px', justifyContent: 'center', fontSize: '0.95rem' }}
+              className={`currency-select-btn ${(profile.currency || currency) === 'KES' ? 'action-btn-primary' : 'action-btn-secondary'}`}
+              style={{ flex: 1 }}
             >
-              <i className="fa-solid fa-coins"></i> Kenya Shillings (KSh KES)
+              <i className="fa-solid fa-coins curr-icon"></i>
+              <span className="curr-label">KSh KES</span>
             </button>
           </div>
 

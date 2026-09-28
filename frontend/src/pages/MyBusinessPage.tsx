@@ -415,13 +415,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
       )}
 
       {/* 4 Quick Stat Cards: on one line horizontally, below business name and above tabs */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-        gap: '10px',
-        marginBottom: '20px',
-        width: '100%'
-      }}>
+      <div className="mybiz-stats-grid">
         {[
           { label: 'Active Branches', value: branches.length, icon: 'fa-code-branch', color: 'var(--secondary-cyan, #00d4ff)' },
           { label: 'Team Members', value: team.length, icon: 'fa-users', color: '#a78bfa' },
