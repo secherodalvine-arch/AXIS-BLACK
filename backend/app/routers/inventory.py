@@ -49,15 +49,12 @@ async def get_inventory(
     branch_id: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get inventory items. If team member is assigned a branch, restrict to that branch only."""
+    """Get inventory items for the business, with optional branch filter."""
     _check_inventory_permission(current_user)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
 
-    if is_sub_user and current_user.get("branch_id"):
-        target_branch = current_user.get("branch_id")
-    else:
-        target_branch = branch_id
+    target_branch = branch_id if (branch_id and branch_id.strip() and branch_id.upper() != "ALL") else None
 
     items = await AxisDataStore.get_inventory(owner_id)
     if target_branch:
@@ -76,8 +73,8 @@ async def create_inventory_item(
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
     data = payload.model_dump()
 
-    # Sub-users don't have to select a branch — locked to their assigned branch automatically
-    if is_sub_user and current_user.get("branch_id"):
+    # If branch not provided in payload and sub-user has an assigned branch, default to it
+    if not data.get("branch_id") and is_sub_user and current_user.get("branch_id"):
         data["branch_id"] = current_user.get("branch_id")
     elif not data.get("branch_id"):
         try:

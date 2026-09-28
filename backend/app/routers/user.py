@@ -106,10 +106,10 @@ async def change_user_password(
 
     user_doc = None
     if db_manager.is_connected:
-        user_doc = await db_manager.db.users.find_one({"$or": [{"user_id": user_id}, {"email": email}]})
+        user_doc = await db_manager.db.users.find_one({"$or": [{"user_id": user_id}, {"id": user_id}, {"email": email}]})
     else:
         user_doc = db_manager.memory_store["users"].get(user_id) or next(
-            (u for u in db_manager.memory_store["users"].values() if u.get("email") == email), None
+            (u for u in db_manager.memory_store["users"].values() if u.get("user_id") == user_id or u.get("id") == user_id or u.get("email") == email), None
         )
 
     if not user_doc or not verify_password(payload.current_password, user_doc.get("hashed_password", "")):

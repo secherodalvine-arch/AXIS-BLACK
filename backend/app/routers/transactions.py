@@ -42,11 +42,7 @@ async def get_user_transactions(
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
     
-    # Sub-users can only see information about their assigned branch
-    if is_sub_user and current_user.get("branch_id"):
-        target_branch = current_user.get("branch_id")
-    else:
-        target_branch = branch_id
+    target_branch = branch_id if (branch_id and branch_id.strip() and branch_id.upper() != "ALL") else None
 
     txns = await AxisDataStore.get_transactions(owner_id)
     if target_branch:
@@ -64,8 +60,8 @@ async def create_transaction(
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
     data = payload.model_dump()
 
-    # If sub-user has an assigned branch, lock it to their branch automatically (they don't have to select a branch)
-    if is_sub_user and current_user.get("branch_id"):
+    # If branch not provided in payload and sub-user has an assigned branch, default to it
+    if not data.get("branch_id") and is_sub_user and current_user.get("branch_id"):
         data["branch_id"] = current_user.get("branch_id")
     elif not data.get("branch_id"):
         try:

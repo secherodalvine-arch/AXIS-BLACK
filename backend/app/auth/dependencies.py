@@ -40,20 +40,26 @@ async def resolve_user_team_context(user: dict) -> dict:
         if biz_doc:
             sub_user_entry = next((u for u in biz_doc.get("sub_users", []) if (u.get("email") or "").lower() == email or u.get("id") == user_id), None)
             
-    # 2. If not found yet, scan all businesses for this email
-    if not sub_user_entry and email:
+    # 2. If not found yet, scan all businesses for this email or user_id
+    if not sub_user_entry and (email or user_id):
         if db_manager.is_connected:
-            biz_cursor = db_manager.db.businesses.find({"sub_users.email": {"$regex": f"^{re.escape(email)}$", "$options": "i"}})
-            async for b in biz_cursor:
-                b.pop("_id", None)
-                match = next((u for u in b.get("sub_users", []) if (u.get("email") or "").lower() == email), None)
-                if match:
-                    biz_doc = b
-                    sub_user_entry = match
-                    break
+            filter_or = []
+            if email:
+                filter_or.append({"sub_users.email": {"$regex": f"^{re.escape(email)}$", "$options": "i"}})
+            if user_id:
+                filter_or.append({"sub_users.id": user_id})
+            biz_cursor = db_manager.db.businesses.find({"$or": filter_or}) if filter_or else []
+            if biz_cursor:
+                async for b in biz_cursor:
+                    b.pop("_id", None)
+                    match = next((u for u in b.get("sub_users", []) if (email and (u.get("email") or "").lower() == email) or (user_id and (u.get("id") == user_id or u.get("user_id") == user_id))), None)
+                    if match:
+                        biz_doc = b
+                        sub_user_entry = match
+                        break
         else:
             for b_owner_id, b_doc in db_manager.memory_store.get("businesses", {}).items():
-                match = next((u for u in b_doc.get("sub_users", []) if (u.get("email") or "").lower() == email), None)
+                match = next((u for u in b_doc.get("sub_users", []) if (email and (u.get("email") or "").lower() == email) or (user_id and (u.get("id") == user_id or u.get("user_id") == user_id))), None)
                 if match:
                     biz_doc = b_doc
                     sub_user_entry = match
@@ -135,20 +141,24 @@ async def get_current_user(
 
     # Load user from DB / memory
     if db_manager.is_connected:
-        user = await db_manager.db.users.find_one({"$or": [{"user_id": user_id}, {"email": user_id}]})
+        user = await db_manager.db.users.find_one({"$or": [{"user_id": user_id}, {"id": user_id}, {"email": user_id}]})
         if not user:
             raise credentials_exception
         if "user_id" not in user:
-            user["user_id"] = str(user.get("_id", user_id))
+            user["user_id"] = str(user.get("_id", user.get("id", user_id)))
         user.pop("_id", None)
     else:
         user = db_manager.memory_store["users"].get(user_id)
         if not user:
-            user = next((u for u in db_manager.memory_store["users"].values() if u.get("email") == user_id), None)
+            user = next(
+                (u for u in db_manager.memory_store["users"].values() 
+                 if u.get("user_id") == user_id or u.get("id") == user_id or u.get("email") == user_id), 
+                None
+            )
         if not user:
             raise credentials_exception
         if "user_id" not in user:
-            user["user_id"] = user_id
+            user["user_id"] = user.get("id", user_id)
 
     # Chain team member context and synchronize permissions from owner's business
     user = await resolve_user_team_context(user)

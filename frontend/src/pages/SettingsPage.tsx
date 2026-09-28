@@ -40,6 +40,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   });
 
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark' | 'system'>(user?.theme || theme);
+  const isLight = currentTheme === 'light' || (currentTheme === 'system' && typeof window !== 'undefined' && window.matchMedia && !window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  const getPasswordStrength = (pwd: string): { label: string; color: string; width: string } => {
+    if (pwd.length === 0) return { label: '', color: 'transparent', width: '0%' };
+    if (pwd.length < 6) return { label: 'Too short (min. 6)', color: '#ef4444', width: '20%' };
+    if (pwd.length < 8) return { label: 'Weak', color: '#f97316', width: '40%' };
+    if (!/[A-Z]/.test(pwd) || !/[0-9]/.test(pwd)) return { label: 'Fair', color: '#eab308', width: '60%' };
+    if (!/[^A-Za-z0-9]/.test(pwd)) return { label: 'Good', color: '#22c55e', width: '80%' };
+    return { label: 'Strong', color: '#00d4ff', width: '100%' };
+  };
 
   // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -49,6 +59,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [showPasswords, setShowPasswords] = useState(false);
+
+  const newPasswordStrength = getPasswordStrength(newPassword);
 
   // Business summary notification preferences
   const [notifSettings, setNotifSettings] = useState(() => {
@@ -307,7 +319,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setPasswordSuccess(null);
     setPasswordError(null);
 
-    if (!currentPassword) {
+    if (!currentPassword.trim()) {
       setPasswordError('Please enter your current password.');
       return;
     }
@@ -317,6 +329,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
     if (newPassword !== confirmPassword) {
       setPasswordError('New password and confirmation do not match.');
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setPasswordError('New password must be different from your current password.');
       return;
     }
 
@@ -419,51 +435,78 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         
         {/* TEAM MEMBER ASSIGNMENT CARD */}
         {isTeamMember && (
-          <div className="glass-card" style={{ padding: '24px 28px', gridColumn: 'span 2', background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.08) 0%, rgba(167, 139, 250, 0.08) 100%)', border: '1px solid rgba(0, 212, 255, 0.3)' }}>
+          <div 
+            className="glass-card" 
+            style={{ 
+              padding: '24px 28px', 
+              gridColumn: 'span 2', 
+              background: isLight 
+                ? 'linear-gradient(135deg, rgba(0, 180, 216, 0.08) 0%, rgba(124, 58, 237, 0.06) 100%)' 
+                : 'linear-gradient(135deg, rgba(0, 212, 255, 0.08) 0%, rgba(167, 139, 250, 0.08) 100%)', 
+              border: isLight 
+                ? '1px solid rgba(0, 180, 216, 0.35)' 
+                : '1px solid rgba(0, 212, 255, 0.3)' 
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                  <span className="pill-tag cyan" style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
-                    <i className="fa-solid fa-users-gear" style={{ marginRight: '6px' }}></i> ASSIGNED TEAM ACCOUNT
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                  <span className="pill-tag cyan" style={{ fontSize: '0.75rem', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <i className="fa-solid fa-users-gear"></i> ASSIGNED TEAM ACCOUNT
                   </span>
-                  <span className="pill-tag purple" style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
-                    <i className="fa-solid fa-link" style={{ marginRight: '6px' }}></i> Chained to {user?.company || profile.company || 'Business Owner'}
+                  <span className="pill-tag purple" style={{ fontSize: '0.75rem', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <i className="fa-solid fa-link"></i> Chained to {user?.company || profile.company || 'Business Owner'}
                   </span>
                 </div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '8px 0 4px', fontFamily: 'Plus Jakarta Sans' }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '8px 0 4px', fontFamily: 'Plus Jakarta Sans', color: 'var(--text-main, #ffffff)' }}>
                   Assigned Role & Business Permissions
                 </h3>
-                <p style={{ fontSize: '0.85rem', color: '#9ca3af', margin: 0 }}>
-                  Your account is assigned by your organization owner. Your role, branch, and active feature access permissions automatically sync below.
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted, #9ca3af)', margin: 0, lineHeight: 1.5 }}>
+                  Your account is assigned by your organization owner. Your role, branch, and active feature access permissions automatically sync across the platform below.
                 </p>
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '18px' }}>
-              <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <span style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assigned Role</span>
-                <strong style={{ fontSize: '1.05rem', color: '#00d4ff', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+              <div style={{ 
+                padding: '14px 16px', 
+                borderRadius: '10px', 
+                background: isLight ? 'rgba(0, 0, 0, 0.03)' : 'rgba(255, 255, 255, 0.03)', 
+                border: isLight ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)' 
+              }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #9ca3af)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Assigned Role</span>
+                <strong style={{ fontSize: '1.05rem', color: isLight ? '#0284c7' : '#00d4ff', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontWeight: 700 }}>
                   <i className="fa-solid fa-id-badge"></i> {user?.role || profile.role || 'Staff Member'}
                 </strong>
               </div>
 
-              <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <span style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Business / Organization</span>
-                <strong style={{ fontSize: '1.05rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+              <div style={{ 
+                padding: '14px 16px', 
+                borderRadius: '10px', 
+                background: isLight ? 'rgba(0, 0, 0, 0.03)' : 'rgba(255, 255, 255, 0.03)', 
+                border: isLight ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)' 
+              }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #9ca3af)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Business / Organization</span>
+                <strong style={{ fontSize: '1.05rem', color: 'var(--text-main, #ffffff)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontWeight: 700 }}>
                   <i className="fa-solid fa-building"></i> {user?.company || profile.company || 'Assigned Business'}
                 </strong>
               </div>
 
-              <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <span style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Operating Branch</span>
-                <strong style={{ fontSize: '1.05rem', color: '#a78bfa', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+              <div style={{ 
+                padding: '14px 16px', 
+                borderRadius: '10px', 
+                background: isLight ? 'rgba(0, 0, 0, 0.03)' : 'rgba(255, 255, 255, 0.03)', 
+                border: isLight ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)' 
+              }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #9ca3af)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Operating Branch</span>
+                <strong style={{ fontSize: '1.05rem', color: isLight ? '#7c3aed' : '#a78bfa', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontWeight: 700 }}>
                   <i className="fa-solid fa-code-branch"></i> {user?.branch_name || 'All Branches'}
                 </strong>
               </div>
             </div>
 
             <div>
-              <span style={{ fontSize: '0.78rem', color: '#9ca3af', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', display: 'block', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>
                 Active Feature Access Privileges:
               </span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -477,6 +520,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       forecast: { label: 'Runway Simulator', icon: 'fa-cubes-stacked' },
                       agent: { label: 'Axis AI Agent', icon: 'fa-brain' },
                       activities: { label: 'Activities Log', icon: 'fa-clock-rotate-left' },
+                      business: { label: 'My Business', icon: 'fa-briefcase' },
+                      settings: { label: 'Settings', icon: 'fa-gear' },
                     };
                     const m = meta[perm] || { label: perm, icon: 'fa-check' };
                     return (
@@ -486,7 +531,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     );
                   })
                 ) : (
-                  <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>No privileges granted yet. Contact your business owner.</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted, #9ca3af)' }}>No privileges granted yet. Contact your business owner.</span>
                 )}
               </div>
             </div>
@@ -1184,10 +1229,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           )}
 
-          <form onSubmit={handleChangePassword} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+          <form onSubmit={handleChangePassword} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '18px' }}>
             <div style={{ minWidth: 0 }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Current Password
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted, #9ca3af)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Current Password <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <input
                 type={showPasswords ? 'text' : 'password'}
@@ -1206,14 +1251,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
 
             <div style={{ minWidth: 0 }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                New Password
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted, #9ca3af)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                New Password <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <input
                 type={showPasswords ? 'text' : 'password'}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Minimum 6 characters"
+                placeholder="Min. 6 characters"
                 required
                 style={{
                   width: '100%',
@@ -1223,11 +1268,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   fontSize: '0.95rem',
                 }}
               />
+              {newPassword && (
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ height: '4px', background: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ width: newPasswordStrength.width, background: newPasswordStrength.color, height: '100%', transition: 'all 0.3s ease' }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                    <span style={{ color: newPasswordStrength.color, fontSize: '11px', fontWeight: 600 }}>{newPasswordStrength.label}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted, #9ca3af)' }}>Min. 6 characters</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div style={{ minWidth: 0 }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Confirm New Password
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted, #9ca3af)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Confirm New Password <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <input
                 type={showPasswords ? 'text' : 'password'}
@@ -1243,13 +1299,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   fontSize: '0.95rem',
                 }}
               />
+              {confirmPassword && (
+                <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: confirmPassword === newPassword ? '#22c55e' : '#ef4444' }}>
+                  <i className={`fa-solid ${confirmPassword === newPassword ? 'fa-circle-check' : 'fa-circle-xmark'}`}></i>
+                  <span>{confirmPassword === newPassword ? 'Passwords match' : 'Passwords do not match'}</span>
+                </div>
+              )}
             </div>
 
-            <div style={{ gridColumn: '1 / -1', marginTop: '8px' }}>
+            <div style={{ gridColumn: '1 / -1', marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
               <button
                 type="submit"
                 className="action-btn-primary"
-                disabled={savingPassword}
+                disabled={savingPassword || (newPassword.length > 0 && newPassword.length < 6) || (confirmPassword.length > 0 && confirmPassword !== newPassword)}
                 style={{ padding: '12px 24px', fontSize: '0.92rem' }}
               >
                 {savingPassword ? (
@@ -1258,6 +1320,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <><i className="fa-solid fa-key"></i> Update Password</>
                 )}
               </button>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)' }}>
+                Password rules: Minimum 6 characters &bull; Mixed casing & numbers recommended
+              </span>
             </div>
           </form>
         </div>

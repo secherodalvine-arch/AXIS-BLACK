@@ -32,15 +32,13 @@ async def get_celestial_analytics(
 
     user_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
 
-    # Team member restriction: can only see information for their assigned branch
-    if is_sub_user and current_user.get("branch_id"):
-        branch_id = current_user.get("branch_id")
+    target_branch = branch_id if (branch_id and branch_id.strip() and branch_id.upper() != "ALL") else None
 
     all_txns = await AxisDataStore.get_transactions(user_id)
 
     # Filter txns if a specific branch is selected
-    if branch_id:
-        txns = [t for t in all_txns if t.get("branch_id") == branch_id]
+    if target_branch:
+        txns = [t for t in all_txns if t.get("branch_id") == target_branch]
     else:
         txns = all_txns
 

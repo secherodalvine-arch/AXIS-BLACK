@@ -580,11 +580,11 @@ async def refresh_token_endpoint(payload: RefreshTokenRequest):
         )
 
     if db_manager.is_connected:
-        user = await db_manager.db.users.find_one({"$or": [{"user_id": user_id}, {"email": user_id}]})
+        user = await db_manager.db.users.find_one({"$or": [{"user_id": user_id}, {"id": user_id}, {"email": user_id}]})
     else:
         user = db_manager.memory_store["users"].get(user_id)
         if not user:
-            user = next((u for u in db_manager.memory_store["users"].values() if u.get("email") == user_id), None)
+            user = next((u for u in db_manager.memory_store["users"].values() if u.get("user_id") == user_id or u.get("id") == user_id or u.get("email") == user_id), None)
 
     if not user:
         raise HTTPException(
