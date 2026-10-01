@@ -121,12 +121,30 @@ body.light-theme,
   margin-bottom: 0.85rem;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
+}
+
+.sheet-section-title-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sheet-section-badge {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(0, 212, 255, 0.12);
+  color: #00d4ff;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .sheet-templates-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1rem;
 }
 
@@ -135,7 +153,6 @@ body.light-theme,
   border: 1px solid var(--sheet-border);
   border-radius: 12px;
   padding: 1.25rem;
-  cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
@@ -148,8 +165,8 @@ body.light-theme,
 .sheet-template-card:hover {
   background: var(--sheet-card-hover);
   border-color: var(--sheet-active-cell);
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 .sheet-template-card.blank {
@@ -183,7 +200,8 @@ body.light-theme,
   font-size: 0.8rem;
   color: var(--sheet-text-muted);
   line-height: 1.4;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  flex: 1;
 }
 
 .template-tag {
@@ -192,11 +210,69 @@ body.light-theme,
   gap: 4px;
   font-size: 0.72rem;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 20px;
   background: var(--sheet-surface-alt);
   color: var(--sheet-text-muted);
-  margin-top: auto;
+}
+
+.sheet-card-action-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+  align-items: center;
+}
+
+.sheet-month-select {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: var(--sheet-surface-alt);
+  border: 1px solid var(--sheet-border);
+  color: var(--sheet-text-main);
+  font-size: 0.8rem;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+}
+
+.sheet-card-btn {
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--sheet-border);
+  background: var(--sheet-surface-alt);
+  color: var(--sheet-text-main);
+  transition: all 0.2s;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sheet-card-btn:hover {
+  background: var(--sheet-active-cell);
+  color: #0b0c10;
+  border-color: var(--sheet-active-cell);
+}
+
+.sheet-card-btn.primary {
+  background: rgba(0, 212, 255, 0.15);
+  border-color: rgba(0, 212, 255, 0.35);
+  color: #00d4ff;
+}
+
+.sheet-card-btn.primary:hover {
+  background: #00d4ff;
+  color: #0b0c10;
+}
+
+.light-theme .sheet-card-btn.primary:hover {
+  background: #0284c7;
+  color: #ffffff;
 }
 
 /* History / Recent Workbooks Table */
@@ -496,6 +572,81 @@ body.light-theme,
   color: #ef4444;
 }
 
+/* Save Button */
+.tool-btn.save-btn {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #10b981;
+  padding: 0 12px;
+  font-weight: 700;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+
+.tool-btn.save-btn:hover {
+  background: #059669;
+  border-color: #059669;
+  color: #ffffff;
+}
+
+.tool-btn.save-btn.dirty {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: #ffffff;
+  animation: pulseDirty 1.5s infinite;
+}
+
+@keyframes pulseDirty {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}
+
+/* Tool Dropdowns */
+.tool-dropdown {
+  position: relative;
+  display: inline-flex;
+}
+
+.tool-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  z-index: 100;
+  min-width: 210px;
+  background: var(--sheet-surface);
+  border: 1px solid var(--sheet-border);
+  border-radius: 8px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tool-dropdown-item {
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  color: var(--sheet-text-main);
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s;
+  user-select: none;
+}
+
+.tool-dropdown-item:hover {
+  background: var(--sheet-active-cell-bg);
+  color: var(--sheet-active-cell);
+}
+
+.tool-dropdown-item i {
+  width: 14px;
+  text-align: center;
+  font-size: 0.82rem;
+}
+
 .tool-select {
   height: 28px;
   padding: 0 8px;
@@ -677,6 +828,27 @@ body.light-theme,
   z-index: 5;
 }
 
+/* Multi-Cell Range Selection & Highlighting */
+.grid-cell.in-range {
+  background: var(--sheet-active-cell-bg) !important;
+}
+
+.grid-cell.range-top {
+  border-top: 2px solid var(--sheet-active-cell) !important;
+}
+
+.grid-cell.range-bottom {
+  border-bottom: 2px solid var(--sheet-active-cell) !important;
+}
+
+.grid-cell.range-left {
+  border-left: 2px solid var(--sheet-active-cell) !important;
+}
+
+.grid-cell.range-right {
+  border-right: 2px solid var(--sheet-active-cell) !important;
+}
+
 /* Excel Corner Dot Handle */
 .grid-cell.active-cell::after {
   content: '';
@@ -688,6 +860,132 @@ body.light-theme,
   background: var(--sheet-active-cell);
   border: 1px solid var(--sheet-bg);
   pointer-events: none;
+}
+
+/* Field Header Row (Row 1 for Structured Tables like Inventory & Ledger) */
+.grid-field-header-cell {
+  height: 32px;
+  background: var(--sheet-header-bg) !important;
+  border-right: 1px solid var(--sheet-border) !important;
+  border-bottom: 2px solid var(--sheet-active-cell) !important;
+  color: var(--sheet-active-cell) !important;
+  font-weight: 700 !important;
+  font-size: 0.76rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  user-select: none;
+  display: table-cell;
+  vertical-align: middle;
+}
+
+.grid-field-header-cell i {
+  margin-right: 6px;
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
+
+/* Right-Click Context Menu */
+.sheet-context-menu {
+  position: fixed;
+  z-index: 2100;
+  background: var(--sheet-surface);
+  border: 1px solid var(--sheet-border);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  padding: 5px;
+  min-width: 190px;
+  font-family: inherit;
+}
+
+.sheet-context-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  font-size: 0.8rem;
+  color: var(--sheet-text-main);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.12s;
+  user-select: none;
+}
+
+.sheet-context-item:hover {
+  background: var(--sheet-active-cell-bg);
+  color: var(--sheet-active-cell);
+}
+
+.sheet-context-item.danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.sheet-context-divider {
+  height: 1px;
+  background: var(--sheet-border);
+  margin: 4px 0;
+}
+
+/* Unsaved Changes Confirmation Modal */
+.unsaved-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.unsaved-modal-card {
+  width: 440px;
+  max-width: 95vw;
+  background: var(--sheet-surface);
+  border: 1px solid var(--sheet-border);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  padding: 24px;
+  color: var(--sheet-text-main);
+}
+
+.unsaved-modal-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #f59e0b;
+}
+
+.unsaved-modal-text {
+  font-size: 0.88rem;
+  color: var(--sheet-text-muted);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.unsaved-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+/* Tab Inline Rename Input */
+.sheet-tab-rename-input {
+  background: var(--sheet-bg);
+  border: 1px solid var(--sheet-active-cell);
+  color: var(--sheet-text-main);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  outline: none;
+  width: 120px;
 }
 
 /* Cell Inline Inputs */
