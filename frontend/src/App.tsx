@@ -534,11 +534,11 @@ export const App: React.FC = () => {
   const fetchLiveData = useCallback(() => {
     if (user?.user_id) {
       getDashboardMetricsApi()
-        .then(res => { if (res && res.length) setMetrics(res); })
+        .then(res => { if (Array.isArray(res) && res.length) setMetrics(res); })
         .catch(err => console.log('Metrics fetch error:', err));
 
       getTransactionsApi()
-        .then(res => { if (res && res.length) setTransactions(res); })
+        .then(res => { if (Array.isArray(res)) setTransactions(res); })
         .catch(err => console.log('Transactions fetch error:', err));
 
       fetchLiveInventory();
@@ -944,6 +944,7 @@ export const App: React.FC = () => {
                   transactions={transactions}
                   aiStream={aiStream}
                   currency={currency}
+                  user={user}
                   onNavigateToAgent={() => setCurrentTab('agent')}
                   onNavigateToLedger={() => setCurrentTab('transactions')}
                   onAIActionClick={handleAIActionClick}
@@ -1029,48 +1030,22 @@ export const App: React.FC = () => {
 
       {/* IN-APP / POPUP NOTIFICATION: Business Financial Insight */}
       {showTelemetryPopup && (
-        <div 
-          className="telemetry-popup-notification"
-          style={{
-            position: 'fixed',
-            bottom: '24px',
-            right: '24px',
-            zIndex: 9999,
-            maxWidth: '440px',
-            width: 'calc(100vw - 48px)',
-            background: 'rgba(15, 17, 23, 0.95)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(0, 212, 255, 0.4)',
-            borderRadius: '16px',
-            padding: '18px 20px',
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 212, 255, 0.15)',
-            animation: 'fadeInUp 0.3s ease-out'
-          }}
-        >
+        <div className="telemetry-popup-notification">
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '8px' }}>
-            <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#ffffff', fontFamily: 'Plus Jakarta Sans' }}>
+            <h4 className="telemetry-popup-title">
               Business Financial Insight
             </h4>
             <button
               onClick={handleDismissPopup}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#9ca3af',
-                cursor: 'pointer',
-                fontSize: '1.2rem',
-                lineHeight: 1,
-                padding: '2px 6px',
-                borderRadius: '6px'
-              }}
+              className="telemetry-popup-close"
               title="Dismiss popup"
             >
               &times;
             </button>
           </div>
 
-          <p style={{ margin: '0 0 14px 0', fontSize: '0.82rem', color: '#cbd5e1', lineHeight: '1.45' }}>
-            Verified net liquidity of <strong style={{ color: '#00d4ff' }}>{formatCurrency(netLiquidity, currency)}</strong> across active ledger entries. Operating runway calculated at <strong style={{ color: '#cebdff' }}>{runwayMonths} month{runwayMonths === 1 ? '' : 's'}</strong> based on cash flow analysis.
+          <p className="telemetry-popup-body">
+            Verified net liquidity of <strong style={{ color: 'var(--secondary-cyan, #00d4ff)' }}>{formatCurrency(netLiquidity, currency)}</strong> across active ledger entries. Operating runway calculated at <strong style={{ color: 'var(--primary-lilac, #cebdff)' }}>{runwayMonths} month{runwayMonths === 1 ? '' : 's'}</strong> based on cash flow analysis.
           </p>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
@@ -1099,7 +1074,7 @@ export const App: React.FC = () => {
       {toastMessage && (
         <div className="toast-container">
           <div className="toast">
-            <i className="fa-solid fa-circle-check" style={{ color: '#00d4ff' }}></i>
+            <i className="fa-solid fa-circle-check" style={{ color: 'var(--secondary-cyan, #00d4ff)' }}></i>
             <span>{toastMessage}</span>
           </div>
         </div>
@@ -1107,48 +1082,17 @@ export const App: React.FC = () => {
 
       {/* ── In-App Role Assignment & Branch Announcement Modal ── */}
       {activeInAppPopup && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0, 0, 0, 0.78)',
-          backdropFilter: 'blur(10px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 99999,
-          padding: '1.25rem'
-        }}>
-          <div style={{
-            background: '#0d131f',
-            border: '1px solid rgba(0, 212, 255, 0.45)',
-            boxShadow: '0 24px 70px rgba(0, 0, 0, 0.9), 0 0 50px rgba(0, 212, 255, 0.25)',
-            borderRadius: '16px',
-            maxWidth: '520px',
-            width: '100%',
-            padding: '1.75rem',
-            position: 'relative'
-          }}>
-            <div style={{
-              width: '52px',
-              height: '52px',
-              borderRadius: '14px',
-              background: 'rgba(0, 212, 255, 0.15)',
-              border: '1px solid rgba(0, 212, 255, 0.35)',
-              color: '#00d4ff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.35rem',
-              marginBottom: '1.2rem'
-            }}>
+        <div className="app-announcement-overlay">
+          <div className="app-announcement-card glass-card">
+            <div className="app-announcement-icon">
               <i className="fa-solid fa-bell"></i>
             </div>
 
-            <h3 style={{ margin: '0 0 0.5rem 0', color: '#ffffff', fontSize: '1.2rem', fontWeight: 700 }}>
+            <h3 className="app-announcement-title">
               {activeInAppPopup.title}
             </h3>
 
-            <p style={{ margin: '0 0 1.5rem 0', color: '#9ca3af', fontSize: '0.9rem', lineHeight: 1.6 }}>
+            <p className="app-announcement-message">
               {activeInAppPopup.message}
             </p>
 
@@ -1160,17 +1104,7 @@ export const App: React.FC = () => {
                   localStorage.setItem('axis_dismissed_popups', JSON.stringify([...dismissed, activeInAppPopup.id]));
                   setActiveInAppPopup(null);
                 }}
-                style={{
-                  background: 'linear-gradient(135deg, #00d4ff 0%, #0099ff 100%)',
-                  color: '#000000',
-                  fontWeight: 700,
-                  fontSize: '0.88rem',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '0.65rem 1.4rem',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 15px rgba(0, 212, 255, 0.4)'
-                }}
+                className="app-announcement-btn"
               >
                 Understood &amp; Continue
               </button>

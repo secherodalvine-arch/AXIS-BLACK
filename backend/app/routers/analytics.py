@@ -49,7 +49,7 @@ async def get_celestial_analytics(
     total_expenses = sum(abs(t["amount"]) for t in txns if t.get("amount", 0) < 0)
     net_cash = total_revenue - total_expenses
     net_margin = round(((total_revenue - total_expenses) / total_revenue * 100), 1) if total_revenue > 0 else 0.0
-    runway_months = round(net_cash / total_expenses, 1) if total_expenses > 0 else (12.0 if net_cash > 0 else 0.0)
+    runway_months = round(net_cash / total_expenses, 1) if (total_expenses > 0 and net_cash > 0) else (12.0 if net_cash > 0 else 0.0)
 
     # Aggregate by month
     monthly_map: Dict[str, Dict[str, float]] = {}
@@ -184,17 +184,29 @@ async def run_runway_simulation(
 
     user_id = current_user.get("owner_id") if current_user.get("is_sub_user") else current_user.get("user_id", "default_user")
     txns = await AxisDataStore.get_transactions(user_id)
+    if current_user.get("is_sub_user") and current_user.get("branch_id"):
+        txns = [t for t in txns if t.get("branch_id") == current_user.get("branch_id")]
+
     real_cash = sum(t.get("amount", 0) for t in txns)
     cash = max(0.0, real_cash) + payload.new_funding
 
     adjusted_burn = payload.monthly_burn_rate * (1 - (payload.capital_efficiency / 100.0))
-    runway_months = round(cash / adjusted_burn, 1) if adjusted_burn > 0 else (999.0 if cash > 0 else 0.0)
+    if cash > 0 and adjusted_burn > 0:
+        runway_months = round(cash / adjusted_burn, 1)
+        rec = "Optimal runway buffer achieved." if runway_months >= 12.0 else "Monitor cash runway and optimize operational expenditure."
+    elif cash <= 0:
+        runway_months = 0.0
+        rec = f"Cash reserves in deficit ({abs(real_cash):,.0f}). Capital injection or positive operating cash flow required to establish runway."
+    else:
+        runway_months = 999.0
+        rec = "Operating at zero or negative burn. Business is financially self-sustaining."
 
     return {
         "status": "simulated",
         "starting_cash": round(cash, 2),
+        "real_cash_balance": round(real_cash, 2),
         "adjusted_monthly_burn": round(adjusted_burn, 2),
         "runway_months": runway_months,
         "confidence_interval": "95%",
-        "recommendation": "Optimal runway buffer achieved." if runway_months >= 12.0 else ("Critical: Capital efficiency optimization required." if cash > 0 else "Log transactions in the Ledger to simulate runway.")
+        "recommendation": rec
     }

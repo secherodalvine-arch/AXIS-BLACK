@@ -456,7 +456,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
                     style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid rgba(0, 212, 255, 0.35)', borderRadius: '10px', padding: '12px' }}
                   >
                     {branches.map(b => (
-                      <option key={b.id} value={b.id} style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>
+                      <option key={b.id} value={b.id}>
                         {b.name} {b.location ? `(${b.location})` : ''} {b.is_main ? '· [HQ / Main Branch]' : ''}
                       </option>
                     ))}
@@ -495,12 +495,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
                     onChange={handleCategorySelectChange}
                     style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
                   >
-                    <option value="Hardware & Devices" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Hardware & Devices</option>
-                    <option value="Finished Goods & Products" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Finished Goods & Products</option>
-                    <option value="Raw Materials & Parts" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Raw Materials & Parts</option>
-                    <option value="Office Equipment & Facilities" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Office Equipment & Facilities</option>
-                    <option value="Packaging & Logistics" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Packaging & Logistics</option>
-                    <option value="__CUSTOM__" style={{ background: 'var(--dropdown-bg, #141418)', color: '#00d4ff', fontWeight: 'bold' }}>+ Custom Category...</option>
+                    <option value="Hardware & Devices">Hardware & Devices</option>
+                    <option value="Finished Goods & Products">Finished Goods & Products</option>
+                    <option value="Raw Materials & Parts">Raw Materials & Parts</option>
+                    <option value="Office Equipment & Facilities">Office Equipment & Facilities</option>
+                    <option value="Packaging & Logistics">Packaging & Logistics</option>
+                    <option value="__CUSTOM__">+ Custom Category...</option>
                   </select>
                 </div>
 

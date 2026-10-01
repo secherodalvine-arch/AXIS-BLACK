@@ -118,12 +118,12 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                 onChange={(e) => setAccountType(e.target.value as any)}
                 style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
               >
-                <option value="Cash" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Cash Account</option>
-                <option value="Bank" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Bank Account</option>
-                <option value="Accounts Receivable" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Accounts Receivable (Customer)</option>
-                <option value="Accounts Payable" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Accounts Payable (Supplier)</option>
-                <option value="Revenue" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Revenue Account</option>
-                <option value="Expense" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Expense Account</option>
+                <option value="Cash">Cash Account</option>
+                <option value="Bank">Bank Account</option>
+                <option value="Accounts Receivable">Accounts Receivable (Customer)</option>
+                <option value="Accounts Payable">Accounts Payable (Supplier)</option>
+                <option value="Revenue">Revenue Account</option>
+                <option value="Expense">Expense Account</option>
               </select>
             </div>
 
@@ -137,8 +137,8 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                 onChange={(e) => setType(e.target.value as 'Expense' | 'Revenue')}
                 style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
               >
-                <option value="Expense" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Expense (Money Out)</option>
-                <option value="Revenue" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Revenue (Money In)</option>
+                <option value="Expense">Expense (Money Out)</option>
+                <option value="Revenue">Revenue (Money In)</option>
               </select>
             </div>
           </div>
@@ -153,18 +153,18 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
               onChange={handleCategorySelectChange}
               style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
             >
-              <option value="Revenue & Sales" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Revenue & Sales</option>
-              <option value="Software & Subscriptions" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Software & Subscriptions</option>
-              <option value="Cloud & Infrastructure" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Cloud & Infrastructure</option>
-              <option value="Payroll & Compensation" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Payroll & Compensation</option>
-              <option value="Operations & Logistics" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Operations & Logistics</option>
-              <option value="Marketing & Growth" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Marketing & Growth</option>
-              <option value="Office & Facilities" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Office & Facilities</option>
-              <option value="Professional Services" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Professional Services</option>
-              <option value="Equipment & Assets" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Equipment & Assets</option>
-              <option value="Utilities" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Utilities</option>
-              <option value="Treasury & Capital" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Treasury & Capital</option>
-              <option value="__CUSTOM__" style={{ background: 'var(--dropdown-bg, #141418)', color: '#00d4ff', fontWeight: 'bold' }}>+ Custom Category...</option>
+              <option value="Revenue & Sales">Revenue & Sales</option>
+              <option value="Software & Subscriptions">Software & Subscriptions</option>
+              <option value="Cloud & Infrastructure">Cloud & Infrastructure</option>
+              <option value="Payroll & Compensation">Payroll & Compensation</option>
+              <option value="Operations & Logistics">Operations & Logistics</option>
+              <option value="Marketing & Growth">Marketing & Growth</option>
+              <option value="Office & Facilities">Office & Facilities</option>
+              <option value="Professional Services">Professional Services</option>
+              <option value="Equipment & Assets">Equipment & Assets</option>
+              <option value="Utilities">Utilities</option>
+              <option value="Treasury & Capital">Treasury & Capital</option>
+              <option value="__CUSTOM__">+ Custom Category...</option>
             </select>
           </div>
 
@@ -259,7 +259,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                 >
                   <option value="">All Branches / HQ</option>
                   {branches.map((b: any) => (
-                    <option key={b.id} value={b.id} style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #fff)' }}>{b.name}</option>
+                    <option key={b.id} value={b.id}>{b.name}</option>
                   ))}
                 </select>
               </div>

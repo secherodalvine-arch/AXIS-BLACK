@@ -11,6 +11,7 @@ interface OverviewDashboardProps {
   transactions: Transaction[];
   aiStream: AIStreamItem[];
   currency?: Currency;
+  user?: any;
   onNavigateToAgent?: () => void;
   onNavigateToLedger?: () => void;
   onAIActionClick: (title: string) => void;
@@ -23,6 +24,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
   transactions,
   aiStream: _aiStream,
   currency = 'USD',
+  user,
   onNavigateToAgent,
   onNavigateToLedger,
   onAIActionClick: _onAIActionClick,
@@ -47,7 +49,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
 
     const net = rev - exp;
     const margin = rev > 0 ? ((net / rev) * 100).toFixed(1) : '0.0';
-    const runway = exp > 0 ? Math.max(1, Math.floor(Math.max(0, net) / exp)) : (net > 0 ? 12 : 0);
+    const runway = (exp > 0 && net > 0) ? Math.max(0, +(net / exp).toFixed(1)) : (net > 0 ? 12 : 0);
 
     return {
       totalRevenue: rev,
@@ -60,6 +62,64 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
 
   return (
     <div className="tab-view active" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      {/* Team Operational Context Banner */}
+      {user?.is_sub_user && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          padding: '14px 20px',
+          borderRadius: '14px',
+          background: 'rgba(0, 212, 255, 0.06)',
+          border: '1px solid rgba(0, 212, 255, 0.25)',
+          color: 'var(--text-main, #ffffff)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '10px',
+              background: 'rgba(0, 212, 255, 0.15)',
+              border: '1px solid rgba(0, 212, 255, 0.35)',
+              color: 'var(--secondary-cyan, #00d4ff)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.1rem'
+            }}>
+              <i className="fa-solid fa-code-branch"></i>
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '0.96rem', fontFamily: 'Plus Jakarta Sans' }}>
+                {user.company || 'Business Dashboard'}
+              </div>
+              <div style={{ color: 'var(--text-muted, #9ca3af)', fontSize: '0.8rem', marginTop: '2px' }}>
+                Operational Scope: <strong style={{ color: 'var(--secondary-cyan, #00d4ff)' }}>{user.branch_name || 'Assigned Branch'}</strong>
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{
+              fontSize: '0.78rem',
+              padding: '5px 12px',
+              borderRadius: '20px',
+              background: 'rgba(206, 189, 255, 0.15)',
+              border: '1px solid rgba(206, 189, 255, 0.3)',
+              color: 'var(--primary-lilac, #cebdff)',
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <i className="fa-solid fa-user-shield"></i>
+              {user.role_name || user.role || 'Team Member'}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* 1. Automated Business Financial Insight */}
       <BusinessInsightBanner onExploreClick={handleExplore} metrics={metrics} currency={currency} />
 

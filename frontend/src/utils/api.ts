@@ -294,10 +294,10 @@ export const getDashboardMetricsApi = async () => {
   return await request<any[]>('/dashboard/me');
 };
 
-export const runRunwaySimulationApi = async (monthly_burn_rate: number, capital_efficiency: number) => {
+export const runRunwaySimulationApi = async (monthly_burn_rate: number, capital_efficiency: number, new_funding: number = 0) => {
   return await request<any>('/analytics/simulate', {
     method: 'POST',
-    body: JSON.stringify({ monthly_burn_rate, capital_efficiency })
+    body: JSON.stringify({ monthly_burn_rate, capital_efficiency, new_funding })
   });
 };
 

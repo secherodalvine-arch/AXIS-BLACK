@@ -25,6 +25,8 @@ async def get_dashboard_data(
                 detail="Access denied. Your assigned role does not have permission to view the dashboard."
             )
 
+    owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
+
     if is_sub_user and current_user.get("branch_id"):
         target_branch = current_user.get("branch_id")
     else:

@@ -8,9 +8,10 @@ interface RunwaySimulatorProps {
 }
 
 export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'USD' }) => {
-  const [revGrowth, setRevGrowth] = useState(5);
-  const [newHires, setNewHires] = useState(1);
-  const [mktBudget, setMktBudget] = useState(10000);
+  const [revGrowth, setRevGrowth] = useState(0);
+  const [newHires, setNewHires] = useState(0);
+  const [mktBudget, setMktBudget] = useState(0);
+  const [newFunding, setNewFunding] = useState(0);
   const [dbRunway, setDbRunway] = useState<number | null>(null);
   const [baseCash, setBaseCash] = useState<number | null>(null);
   const [baseBurn, setBaseBurn] = useState<number | null>(null);
@@ -23,11 +24,8 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
   const netBurn = baseBurn !== null
     ? Math.max(0, currentBurn + (newHires * 12000) + mktBudget - (currentBurn * (revGrowth / 100)))
     : null;
-  const calculatedRunway = dbRunway !== null
-    ? dbRunway.toFixed(1)
-    : (baseCash !== null && netBurn !== null && netBurn > 0)
-      ? (baseCash / netBurn).toFixed(1)
-      : null;
+  const effectiveCash = (baseCash ?? 0) + newFunding;
+  const calculatedRunway = dbRunway !== null ? dbRunway.toFixed(1) : null;
 
   useEffect(() => {
     setIsLoading(true);
@@ -35,13 +33,14 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
     getDashboardMetricsApi()
       .then(metrics => {
         if (metrics && metrics[0]) {
-          if (metrics[0].runwayMonths !== undefined) setDbRunway(metrics[0].runwayMonths);
           if (metrics[0].netLiquidity !== undefined) setBaseCash(metrics[0].netLiquidity);
           if (metrics[0].monthlyBurn !== undefined) setBaseBurn(metrics[0].monthlyBurn);
         }
       })
-      .catch(err => console.log('Dashboard metrics fetch error:', err))
-      .finally(() => setIsLoading(false));
+      .catch(err => {
+        console.log('Dashboard metrics fetch error:', err);
+        setIsLoading(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -51,7 +50,7 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
     const adjustedBurn = Math.max(0, currentBurn + (newHires * 12000) + mktBudget - (currentBurn * (revGrowth / 100)));
     const efficiencyFactor = Math.min(100, Math.max(0, revGrowth * 2));
     
-    runRunwaySimulationApi(adjustedBurn, efficiencyFactor)
+    runRunwaySimulationApi(adjustedBurn, efficiencyFactor, newFunding)
       .then(res => {
         if (res && typeof res.runway_months === 'number') {
           setDbRunway(res.runway_months);
@@ -59,8 +58,9 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
           if (res.recommendation) setRecommendation(res.recommendation);
         }
       })
-      .catch(err => console.log('Simulation backend error:', err));
-  }, [revGrowth, newHires, mktBudget, baseBurn]);
+      .catch(err => console.log('Simulation backend error:', err))
+      .finally(() => setIsLoading(false));
+  }, [revGrowth, newHires, mktBudget, newFunding, baseBurn]);
 
   return (
     <div className="tab-view active">
@@ -76,7 +76,7 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
           <div className="form-group" style={{ marginTop: '20px' }}>
             <label className="runway-param-label">
               <span>Monthly Revenue Growth</span>
-              <strong className="runway-param-value">{revGrowth}%</strong>
+              <strong className="runway-param-value">{revGrowth > 0 ? `+${revGrowth}%` : `${revGrowth}%`}</strong>
             </label>
             <input 
               type="range" 
@@ -112,10 +112,28 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
               type="range" 
               className="runway-slider"
               min="0" 
-              max="50000" 
-              step="5000"
+              max={currency === 'KES' ? 5000000 : 50000} 
+              step={currency === 'KES' ? 250000 : 2500}
               value={mktBudget}
               onChange={(e) => setMktBudget(Number(e.target.value))}
+            />
+          </div>
+
+          <div className="form-group" style={{ marginTop: '20px' }}>
+            <label className="runway-param-label">
+              <span>New Capital / Funding Injection</span>
+              <strong className="runway-param-value" style={{ color: 'var(--secondary-cyan, #00d4ff)' }}>
+                {formatCurrency(newFunding, currency)}
+              </strong>
+            </label>
+            <input 
+              type="range" 
+              className="runway-slider"
+              min="0" 
+              max={currency === 'KES' ? 25000000 : 200000} 
+              step={currency === 'KES' ? 500000 : 5000}
+              value={newFunding}
+              onChange={(e) => setNewFunding(Number(e.target.value))}
             />
           </div>
         </div>
@@ -124,7 +142,7 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
           {isLoading ? (
             <>
               <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '2rem', color: 'var(--secondary-cyan, #00d4ff)', marginBottom: '1rem' }}></i>
-              <p className="runway-outcome-desc">Fetching your real financial data...</p>
+              <p className="runway-outcome-desc">Executing Monte Carlo simulation...</p>
             </>
           ) : calculatedRunway === null ? (
             <>
@@ -141,16 +159,18 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
               </span>
               <h3 className="runway-outcome-title">Projected Runway Outcome</h3>
               <div style={{ margin: '24px 0' }}>
-                <span className="runway-outcome-number">
+                <span className="runway-outcome-number" style={{ color: calculatedRunway === '0.0' ? '#fb923c' : 'var(--secondary-cyan, #00d4ff)' }}>
                   {calculatedRunway}
                 </span>
-                <div className="runway-solvency-label">Months of Solvency</div>
+                <div className="runway-solvency-label">
+                  {calculatedRunway === '0.0' && effectiveCash <= 0 ? 'Months of Solvency (Capital Deficit)' : 'Months of Solvency'}
+                </div>
               </div>
               <p className="runway-outcome-desc">
-                Based on cash reserves of <strong>{baseCash !== null ? formatCurrency(baseCash, currency) : '—'}</strong> with projected net burn of <strong>{netBurn !== null ? `${formatCurrency(netBurn, currency)}/mo` : '—'}</strong>.
+                Based on cash reserves of <strong>{formatCurrency(effectiveCash, currency)}</strong> {newFunding > 0 ? `(incl. ${formatCurrency(newFunding, currency)} injection)` : ''} with projected net burn of <strong>{netBurn !== null ? `${formatCurrency(netBurn, currency)}/mo` : '—'}</strong>.
               </p>
               {recommendation && (
-                <div className="runway-recommendation-box">
+                <div className="runway-recommendation-box" style={{ marginTop: '16px' }}>
                   <i className="fa-solid fa-lightbulb" style={{ marginRight: '6px' }}></i> {recommendation}
                 </div>
               )}
@@ -161,4 +181,3 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
     </div>
   );
 };
-

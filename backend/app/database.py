@@ -144,7 +144,7 @@ class AxisDataStore:
         total_expense = sum(abs(t["amount"]) for t in txns if t.get("amount", 0) < 0)
         net_liquidity = total_revenue - total_expense
         monthly_burn = total_expense
-        runway_months = round(net_liquidity / monthly_burn, 1) if monthly_burn > 0 else (12.0 if net_liquidity > 0 else 0.0)
+        runway_months = round(net_liquidity / monthly_burn, 1) if (monthly_burn > 0 and net_liquidity > 0) else (12.0 if net_liquidity > 0 else 0.0)
 
         # Dynamic Inventory Calculation from real inventory SKUs
         total_stock_val = sum(item.get("stock_quantity", 0) * item.get("unit_cost", 0) for item in inventory_items)
