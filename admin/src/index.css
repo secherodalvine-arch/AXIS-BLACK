@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Reset */
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; padding: 0; }
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
+  overflow-x: hidden;
+}
+
+:root {
+  --bg-page: #f4f6fa;
+  --bg-card: #ffffff;
+  --bg-sidebar: #080f1a;
+  --bg-elevated: #ffffff;
+  --bg-input: #f1f5f9;
+  --bg-hover: rgba(0,0,0,0.04);
+  --text-primary: #0f172a;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
+  --border: #e2e8f0;
+  --border-subtle: #f1f5f9;
+  color-scheme: light;
+}
+
+html.dark {
+  --bg-page: #040810;
+  --bg-card: #080f1a;
+  --bg-sidebar: #060b13;
+  --bg-elevated: #0d1624;
+  --bg-input: #111d2e;
+  --bg-hover: rgba(255,255,255,0.04);
+  --text-primary: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-subtle: #64748b;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  color-scheme: dark;
+}
+
+/* Light mode overrides for navy classes */
+:root:not(.dark) .bg-navy-950 { background-color: #f1f5f9 !important; }
+:root:not(.dark) .bg-navy-900 { background-color: #ffffff !important; }
+:root:not(.dark) .bg-navy-800 { background-color: #f8fafc !important; }
+:root:not(.dark) .bg-navy-700 { background-color: #e2e8f0 !important; }
+:root:not(.dark) .border-white\/8,
+:root:not(.dark) .border-white\/10,
+:root:not(.dark) .border-white\/12 { border-color: #e2e8f0 !important; }
+:root:not(.dark) .text-white { color: #0f172a !important; }
+:root:not(.dark) .text-navy-300 { color: #334155 !important; }
+:root:not(.dark) .text-navy-400 { color: #475569 !important; }
+
+/* Keep sidebar permanently dark & sleek */
+aside.admin-sidebar {
+  background-color: #060b13 !important;
+}
+aside.admin-sidebar * {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.25); border-radius: 9999px; }
+html.dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade { animation: fadeIn 0.18s ease-out; }

@@ -4,7 +4,9 @@ const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://loca
 
 export interface UserProfile {
   user_id: string;
+  id?: string;
   name: string;
+  full_name?: string;
   email: string;
   role?: string;
   company?: string;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ActivityLog, Branch } from '../types';
 import { getActivitiesApi, getBranchesApi } from '../utils/api';
-import { formatNotificationTime } from '../utils/dateUtils';
+import { formatNotificationTime, fmtDateTime } from '../utils/dateUtils';
 
 interface ActivitiesPageProps {
   userRole?: string;
@@ -527,11 +527,8 @@ export const ActivitiesPage: React.FC<ActivitiesPageProps> = () => {
 
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
                 <span className="activity-modal-label">Exact Timestamp:</span>
-                <span className="activity-modal-val">
-                  {new Date(selectedActivity.timestamp).toLocaleString(undefined, {
-                    dateStyle: 'medium',
-                    timeStyle: 'medium'
-                  })}
+                <span className="activity-modal-val font-mono" style={{ color: 'var(--secondary-cyan, #00d4ff)' }}>
+                  {fmtDateTime(selectedActivity.timestamp)}
                 </span>
               </div>
             </div>

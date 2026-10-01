@@ -6,18 +6,24 @@ Axis Black is a financial and business intelligence platform for real-time finan
 
 ```
 AXIS-BLACK/
-├── frontend/     # React 18 + TypeScript + Vite UI dashboard
-├── backend/      # FastAPI Python REST API & MongoDB data layer
+├── admin/        # React 18 + TypeScript + Vite Admin Command Center (:5174)
+├── frontend/     # React 18 + TypeScript + Vite UI Dashboard (:5173)
+├── backend/      # FastAPI Python REST API & MongoDB Data Layer (:8000)
 └── email-api/    # Vercel-ready FastAPI serverless email microservice
 ```
 
 ## Microservice Overview
 
-### 1. Frontend (`/frontend`)
-- Tech Stack: React 18, TypeScript, Vite, Chart.js, Lucide Icons, ElevenLabs React SDK.
-- Function: Interactive UI dashboard for financial analytics, agent interactions, and voice controls.
+### 1. Admin Platform (`/admin`)
+- Tech Stack: React 18, TypeScript, Vite, Tailwind CSS, Lucide Icons, Recharts, Zustand.
+- Function: Executive Command Center for managing user accounts, live traffic telemetry, active visitor devices, system audit logs, database collections, and broadcasts.
+- Admin Credentials: Fully configurable in `backend/.env` via `ADMIN_DEFAULT_EMAIL`, `ADMIN_DEFAULT_PASSWORD`, and `ADMIN_INVITE_CODE`.
 
-### 2. Backend (`/backend`)
+### 2. Frontend (`/frontend`)
+- Tech Stack: React 18, TypeScript, Vite, Chart.js, Lucide Icons, ElevenLabs React SDK.
+- Function: Interactive UI dashboard for financial analytics, agent interactions, and voice controls. Accurately synchronizes with user device local time and streams client telemetry.
+
+### 3. Backend (`/backend`)
 - Tech Stack: Python 3.9+, FastAPI, Motor (Async MongoDB), PyJWT, Google GenAI, ElevenLabs.
 - Function: Core REST API server handling authentication, user profiles, transaction analytics, inventory records, and AI agent execution.
 
@@ -97,6 +103,15 @@ npm run dev
 ```
 - Application URL: http://localhost:5173
 
+### Admin Platform
+```bash
+cd admin
+npm install
+npm run dev
+```
+- Admin Console URL: http://localhost:5174
+- Admin Login & Registration: Configured in `backend/.env` (e.g. `ADMIN_DEFAULT_EMAIL`, `ADMIN_DEFAULT_PASSWORD`, `ADMIN_INVITE_CODE`)
+
 ### Email API
 ```bash
 cd email-api
@@ -119,6 +134,16 @@ uvicorn api.send_email:app --reload --port 8001
 2. Build command: `pip install -r requirements.txt`
 3. Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 4. Set required environment variables.
+
+### Admin Platform (Vercel)
+1. In Vercel, import the repository and set **Root Directory** to `admin` (or deploy with `vercel --cwd admin`).
+2. Framework Preset: **Vite** (automatically detected).
+3. Build Command: `npm run build` | Output Directory: `dist`.
+4. Configure Environment Variables in Vercel:
+   - `VITE_API_URL`: Your deployed FastAPI backend URL (e.g., `https://axis-black.onrender.com`).
+   - `VITE_USER_APP_URL`: Your deployed user app URL (e.g., `https://axis-black.vercel.app`).
+   - `VITE_WS_URL`: (Optional) WebSocket URL if different from `VITE_API_URL`.
+5. `admin/vercel.json` is pre-configured with SPA route rewrites (`/(.*) -> /index.html`) and asset cache headers.
 
 ### Frontend (Vercel / Netlify / Render)
 1. Build command: `npm run build`

@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Transaction, Currency } from '../types';
 import { USD_TO_KES_RATE, getCurrencySymbol } from '../utils/currencyUtils';
 import { getBranchesApi, getStoredUser } from '../utils/api';
+import { getLocalDateString } from '../utils/dateUtils';
 
 interface NewTransactionModalProps {
   isOpen: boolean;
   currency?: Currency;
   onClose: () => void;
-  onSubmit: (txn: Omit<Transaction, 'id'>) => void;
+  onSubmit: (txn: Omit<Transaction, 'id'> & { id?: string }) => void;
 }
 
 export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
@@ -20,13 +21,14 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   const isSubUserWithBranch = Boolean(currentUser?.is_sub_user && currentUser?.branch_id);
 
   const [counterparty, setCounterparty] = useState('');
+  const [customRef, setCustomRef] = useState('');
   const [type, setType] = useState<'Expense' | 'Revenue'>('Expense');
   const [category, setCategory] = useState<string>('Operations & Logistics');
   const [accountType, setAccountType] = useState<Transaction['accountType']>('Cash');
   const [customCategory, setCustomCategory] = useState('');
   const [isCustom, setIsCustom] = useState(false);
   const [amount, setAmount] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getLocalDateString());
   const [notes, setNotes] = useState('');
   const [branchId, setBranchId] = useState(currentUser?.branch_id || '');
   const [branches, setBranches] = useState<any[]>([]);
@@ -51,7 +53,9 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
     // Convert to USD base if entered in KES
     const numAmountInUSD = currency === 'KES' ? rawNum / USD_TO_KES_RATE : rawNum;
 
+    const userRef = customRef.trim();
     onSubmit({
+      ...(userRef ? { id: userRef } : {}),
       counterparty,
       type,
       category: finalCategory,
@@ -64,6 +68,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
     } as any);
 
     setCounterparty('');
+    setCustomRef('');
     setAmount('');
     setNotes('');
     setCustomCategory('');
@@ -92,19 +97,35 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
         </div>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
           <div style={{ overflowY: 'auto', flex: 1, paddingRight: '6px', minHeight: 0 }}>
-          <div className="form-group">
-            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Counterparty / Description
-            </label>
-            <input 
-              type="text" 
-              className="input-text" 
-              placeholder="e.g. Stripe Payout / AWS Cloud Services / Office Supplies"
-              value={counterparty}
-              onChange={(e) => setCounterparty(e.target.value)}
-              required
-              style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
-            />
+          <div className="form-row">
+            <div className="form-group" style={{ flex: 1.3 }}>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Counterparty / Description *
+              </label>
+              <input 
+                type="text" 
+                className="input-text" 
+                placeholder="e.g. Stripe Payout / AWS Cloud Services / Office Supplies"
+                value={counterparty}
+                onChange={(e) => setCounterparty(e.target.value)}
+                required
+                style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
+              />
+            </div>
+
+            <div className="form-group" style={{ flex: 1 }}>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Ref Code / ID <span style={{ color: '#9ca3af', fontWeight: 400, textTransform: 'none' }}>(Optional)</span>
+              </label>
+              <input 
+                type="text" 
+                className="input-text" 
+                placeholder="Auto-assigned if empty (e.g. TXN-1042)"
+                value={customRef}
+                onChange={(e) => setCustomRef(e.target.value)}
+                style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
+              />
+            </div>
           </div>
 
           <div className="form-row">

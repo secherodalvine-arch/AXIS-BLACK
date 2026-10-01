@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import ChartJS from 'chart.js/auto';
 import { Currency, Transaction } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
+import { toUtcDate } from '../utils/dateUtils';
 import { getBranchesApi, getAnalyticsApi } from '../utils/api';
 
 interface BusinessAnalyticsProps {
@@ -101,8 +102,8 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({
         return false;
       }
       if (t.date) {
-        const tTime = new Date(t.date).getTime();
-        if (!isNaN(tTime) && tTime < cutoff) return false;
+        const d = toUtcDate(t.date);
+        if (d && d.getTime() < cutoff) return false;
       }
       if (query) {
         const matches = (t.counterparty || '').toLowerCase().includes(query) ||
@@ -134,8 +135,8 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({
 
     effectiveTransactions.forEach(t => {
       if (!t.date) return;
-      const d = new Date(t.date);
-      if (isNaN(d.getTime())) return;
+      const d = toUtcDate(t.date);
+      if (!d || isNaN(d.getTime())) return;
       if (d.getFullYear() !== currentYear) return;
       const mIdx = d.getMonth();
       if (isNaN(mIdx) || mIdx < 0 || mIdx > 11) return;

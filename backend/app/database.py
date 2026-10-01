@@ -248,10 +248,12 @@ class AxisDataStore:
 
     @staticmethod
     async def add_transaction(user_id: str, txn_data: Dict[str, Any]) -> Dict[str, Any]:
-        existing_txns = await AxisDataStore.get_transactions(user_id)
-        txn_id = f"TXN-{1000 + len(existing_txns) + 1}"
+        target_id = str(txn_data.get("id") or "").strip()
+        if not target_id or target_id.lower() in ("undefined", "null", "none"):
+            existing_txns = await AxisDataStore.get_transactions(user_id)
+            target_id = f"TXN-{1000 + len(existing_txns) + 1}"
         doc = {
-            "id": txn_id,
+            "id": target_id,
             "user_id": user_id,
             "counterparty": txn_data.get("counterparty", "Unknown"),
             "type": txn_data.get("type", "Expense"),
@@ -263,15 +265,27 @@ class AxisDataStore:
             "branch_id": txn_data.get("branch_id"),
             "created_by": txn_data.get("created_by"),
             "created_by_name": txn_data.get("created_by_name"),
-            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+            "created_at": txn_data.get("created_at") or datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
 
         if db_manager.is_connected:
+            existing = await db_manager.db.transactions.find_one({"user_id": user_id, "id": target_id})
+            if existing:
+                await db_manager.db.transactions.update_one({"user_id": user_id, "id": target_id}, {"$set": doc})
+                return {k: v for k, v in doc.items() if k != "_id"}
             await db_manager.db.transactions.insert_one(doc)
         
         if user_id not in db_manager.memory_store["transactions"]:
             db_manager.memory_store["transactions"][user_id] = []
-        db_manager.memory_store["transactions"][user_id].insert(0, doc)
+        
+        txns = db_manager.memory_store["transactions"][user_id]
+        for idx, t in enumerate(txns):
+            if t.get("id") == target_id:
+                txns[idx].update(doc)
+                db_manager.save_memory_store()
+                return txns[idx]
+
+        txns.insert(0, doc)
         db_manager.save_memory_store()
 
         return {k: v for k, v in doc.items() if k != "_id"}

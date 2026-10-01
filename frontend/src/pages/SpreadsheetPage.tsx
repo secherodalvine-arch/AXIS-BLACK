@@ -171,11 +171,19 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>(() => {
     try {
       const saved = localStorage.getItem('axis_sheets_history');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.map((item, idx) => ({
+            ...item,
+            timestamp: item.timestamp || (Date.now() - (idx + 1) * 3600000)
+          }));
+        }
+      }
     } catch {}
     return [
-      { id: 'h-ledger', title: 'Ledger & Cashflow Records', sheetType: 'ledger', recordCount: 0, lastModified: 'Today', timestamp: Date.now() - 3600000, month: 'All' },
-      { id: 'h-inventory', title: 'Inventory & Stock Catalog', sheetType: 'inventory', recordCount: 0, lastModified: 'Today', timestamp: Date.now() - 7200000, month: 'All' }
+      { id: 'h-ledger', title: 'Ledger & Cashflow Records', sheetType: 'ledger', recordCount: 0, lastModified: '1h ago', timestamp: Date.now() - 3600000, month: 'All' },
+      { id: 'h-inventory', title: 'Inventory & Stock Catalog', sheetType: 'inventory', recordCount: 0, lastModified: '2h ago', timestamp: Date.now() - 7200000, month: 'All' }
     ];
   });
   const [historySearch, setHistorySearch] = useState('');
@@ -225,7 +233,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     { key: 'status', letter: 'G', label: 'Status', type: 'select', options: ['Cleared', 'Pending', 'Processing'], width: 110 },
     { key: 'notes', letter: 'H', label: 'Notes / Memo', type: 'text', width: 220 },
     { key: 'branch_id', letter: 'I', label: 'Branch Location', type: 'select', options: branches.map(b => b.name), width: 150 },
-    { key: 'id', letter: 'J', label: 'Ref Code', type: 'code', readOnly: true, width: 110 }
+    { key: 'id', letter: 'J', label: 'Ref Code (ID)', type: 'code', readOnly: false, width: 140 }
   ], [currency, branches]);
 
   // Matching "Add Inventory Item" modal fields exactly
@@ -326,7 +334,35 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     return () => window.removeEventListener('click', handleClickOutside);
   }, []);
 
-  // Save history to localStorage
+  // Dynamic real-time date/time relative formatter
+  const formatRelativeTime = (timestamp?: number | string): string => {
+    if (!timestamp) return 'Recently';
+    const time = typeof timestamp === 'number' ? timestamp : new Date(timestamp).getTime();
+    if (isNaN(time)) return String(timestamp);
+    const now = Date.now();
+    const elapsedSec = Math.floor((now - time) / 1000);
+
+    if (elapsedSec < 45) return 'Just now';
+    if (elapsedSec < 3600) {
+      const mins = Math.max(1, Math.floor(elapsedSec / 60));
+      return `${mins}m ago`;
+    }
+    if (elapsedSec < 86400) {
+      const hours = Math.floor(elapsedSec / 3600);
+      return `${hours}h ago`;
+    }
+    if (elapsedSec < 172800) {
+      return 'Yesterday';
+    }
+    const d = new Date(time);
+    return d.toLocaleDateString(undefined, { 
+      month: 'short', 
+      day: 'numeric', 
+      year: d.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined 
+    });
+  };
+
+  // Save history to localStorage with real-time timestamp
   const recordHistory = (title: string, sheetType: 'ledger' | 'inventory' | 'blank' | 'custom', count: number, month?: string) => {
     const now = Date.now();
     const newItem: HistoryItem = {
@@ -334,13 +370,13 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
       title,
       sheetType,
       recordCount: count,
-      lastModified: 'Just now',
+      lastModified: formatRelativeTime(now),
       timestamp: now,
       month: month || 'All'
     };
     setHistoryItems(prev => {
       const filtered = prev.filter(p => p.title !== title);
-      const updated = [newItem, ...filtered].slice(0, 15);
+      const updated = [newItem, ...filtered].slice(0, 20);
       try {
         localStorage.setItem('axis_sheets_history', JSON.stringify(updated));
       } catch {}
@@ -480,6 +516,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     setSelectedCell({ rowIdx: 0, colKey: 'col_A' });
     setSelectionRange(null);
     setViewMode('editor');
+    recordHistory('Blank Workbook (Sheet 1)', 'blank', 0);
   };
 
   // 4. Edit Inventory Records (Filtered by Month)
@@ -846,6 +883,13 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                 copy.sku = generateSmartItemCode(prospectiveCat, prospectiveName);
               }
             }
+            // Auto-assign Ref Code for ledger if user enters counterparty or amount and id is currently blank
+            if (t.saveTarget === 'ledger' && (colKey === 'counterparty' || colKey === 'amount')) {
+              const prospectiveParty = colKey === 'counterparty' ? newValue : copy.counterparty;
+              if (prospectiveParty && String(prospectiveParty).trim().length > 0 && (!copy.id || String(copy.id).trim() === '')) {
+                copy.id = `TXN-${Math.floor(1000 + Math.random() * 9000)}`;
+              }
+            }
             return copy;
           }
           return r;
@@ -920,9 +964,13 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
         );
 
         for (const row of rowsWithContent) {
-          const id = row.id ? String(row.id).trim() : '';
+          const userRef = row.id ? String(row.id).trim() : '';
+          const finalRef = userRef || `TXN-${Math.floor(1000 + Math.random() * 9000)}`;
+          row.id = finalRef; // Synchronize row in worksheet state
+
           const numAmount = parseFloat(row.amount) || 0;
           const updates = {
+            id: finalRef,
             counterparty: row.counterparty || 'New Record',
             type: row.type || 'Expense',
             accountType: row.accountType || 'Expense',
@@ -934,10 +982,15 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
             branch_id: row.branch_id || currentUser?.branch_id || undefined
           };
 
-          const existsOnServer = Boolean(id && liveLedger.some(t => t.id === id));
+          const existsOnServer = Boolean(
+            userRef && liveLedger.some(t => 
+              t.id && String(t.id).trim().toLowerCase() === userRef.toLowerCase()
+            )
+          );
+
           if (existsOnServer) {
             try {
-              await updateTransactionApi(id, updates);
+              await updateTransactionApi(userRef, updates);
             } catch {
               await createTransactionApi(updates);
             }
@@ -1734,7 +1787,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                   <i className="fa-solid fa-calculator"></i>
                 </div>
                 <div className="template-title">Business Scratchpad</div>
-                <div className="template-desc">Flexible projection models and multiplier math.</div>
+                <div className="template-desc">Draft financial sandbox &amp; scenario models. Test pricing, math, and projections without altering official accounting or stock records.</div>
                 <div className="sheet-card-action-row">
                   <button className="sheet-card-btn" onClick={openScratchpadWorkbook}>
                     <i className="fa-solid fa-bolt"></i> Open Scratchpad
@@ -1869,8 +1922,17 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                       <td style={{ fontFamily: 'JetBrains Mono', fontSize: '0.82rem' }}>
                         {item.recordCount} rows
                       </td>
-                      <td style={{ color: 'var(--sheet-text-muted)', fontSize: '0.82rem' }}>
-                        {item.lastModified}
+                      <td style={{ fontSize: '0.82rem' }} title={item.timestamp ? new Date(item.timestamp).toLocaleString() : ''}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ color: 'var(--sheet-text-main)', fontWeight: 500 }}>
+                            {formatRelativeTime(item.timestamp)}
+                          </span>
+                          {item.timestamp && (
+                            <span style={{ fontSize: '0.73rem', color: 'var(--sheet-text-muted)', opacity: 0.85 }}>
+                              {new Date(item.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} • {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>

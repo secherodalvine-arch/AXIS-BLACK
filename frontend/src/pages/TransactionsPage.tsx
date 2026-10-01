@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Transaction, Currency } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
-import { formatRelativeTime } from '../utils/dateUtils';
+import { formatRelativeTime, fmtDate, getLocalDateString } from '../utils/dateUtils';
 import { importTransactionsCsvApi, getBranchesApi, updateTransactionApi, deleteTransactionApi } from '../utils/api';
 
 interface TransactionsLedgerProps {
@@ -9,7 +9,7 @@ interface TransactionsLedgerProps {
   currency?: Currency;
   searchQuery?: string;
   onOpenModal: () => void;
-  onAddTransaction?: (txn: Omit<Transaction, 'id'>) => void;
+  onAddTransaction?: (txn: Omit<Transaction, 'id'> & { id?: string }) => void;
 }
 
 export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
@@ -146,11 +146,9 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
   const [quickCategory, setQuickCategory] = useState('Operations & Logistics');
 
   // Calculate Used Today (Sum of expense transactions logged today)
-  const now = new Date();
-  const todayUtcStr = now.toISOString().split('T')[0];
-  const todayLocalStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const todayLocalStr = getLocalDateString();
   const usedTodayUSD = transactions
-    .filter(t => (t.type === 'Expense' || t.amount < 0) && (t.date === todayUtcStr || t.date === todayLocalStr || (t.date && (t.date.startsWith(todayUtcStr) || t.date.startsWith(todayLocalStr)))))
+    .filter(t => (t.type === 'Expense' || t.amount < 0) && (t.date === todayLocalStr || (t.date && t.date.startsWith(todayLocalStr))))
     .reduce((acc, t) => acc + Math.abs(t.amount), 0);
 
   const remainingUSD = dailyBudgetLimit - usedTodayUSD;
@@ -591,10 +589,10 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
                   <tr key={t.id}>
                     <td className="ref-code">{t.id}</td>
                     <td style={{ fontSize: '0.85rem' }}>
-                      <span title={t.date} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <span title={fmtDate(t.date)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                         <span>{formatRelativeTime(t.date, { showTime: false })}</span>
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)', fontFamily: 'JetBrains Mono' }}>
-                          ({t.date})
+                          ({fmtDate(t.date)})
                         </span>
                       </span>
                     </td>

@@ -54,4 +54,12 @@ class Settings:
     TALKSASA_SENDER_ID: str = os.getenv("TALKSASA_SENDER_ID", "TALKSASA")
     TALKSASA_API_URL: str = os.getenv("TALKSASA_API_URL", "https://bulksms.talksasa.com/api/v3/sms/send")
 
+    # Admin Platform Configuration
+    ADMIN_DEFAULT_EMAIL: str = os.getenv("ADMIN_DEFAULT_EMAIL", "")
+    ADMIN_DEFAULT_PASSWORD: str = os.getenv("ADMIN_DEFAULT_PASSWORD", "")
+    ADMIN_DEFAULT_NAME: str = os.getenv("ADMIN_DEFAULT_NAME", "Axis Administrator")
+    ADMIN_INVITE_CODE: str = os.getenv("ADMIN_INVITE_CODE", "")
+    ADMIN_JWT_SECRET: str = os.getenv("ADMIN_JWT_SECRET", "axis-black-super-secure-admin-secret-2026")
+    ADMIN_JWT_EXPIRE_HOURS: int = int(os.getenv("ADMIN_JWT_EXPIRE_HOURS", "72"))
+
 settings = Settings()

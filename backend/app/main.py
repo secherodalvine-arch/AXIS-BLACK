@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse
 
 from app.config import settings
 from app.database import connect_to_mongo, close_mongo_connection
-from app.routers import user, dashboard, transactions, voice, auth, storage, inventory, analytics, agent, support, business, spreadsheet
+from app.routers import user, dashboard, transactions, voice, auth, storage, inventory, analytics, agent, support, business, spreadsheet, admin
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -67,6 +67,7 @@ app.include_router(voice.router)
 app.include_router(storage.router)
 app.include_router(business.router)
 app.include_router(spreadsheet.router)
+app.include_router(admin.router)
 
 
 # ── Static & Frontend ───────────────────────────────────────────
@@ -77,6 +78,12 @@ FRONTEND_ASSETS = os.path.join(FRONTEND_DIST, "assets")
 
 if os.path.isdir(FRONTEND_ASSETS):
     app.mount("/assets", StaticFiles(directory=FRONTEND_ASSETS), name="assets")
+
+ADMIN_DIST = os.path.join(os.path.dirname(__file__), "..", "..", "admin", "dist")
+ADMIN_ASSETS = os.path.join(ADMIN_DIST, "assets")
+
+if os.path.isdir(ADMIN_ASSETS):
+    app.mount("/admin/assets", StaticFiles(directory=ADMIN_ASSETS), name="admin_assets")
 
 def _serve_index() -> HTMLResponse:
     """Serve the Vite-built index.html (SPA entry-point)."""
@@ -90,6 +97,23 @@ def _serve_index() -> HTMLResponse:
             status_code=503,
         )
 
+def _serve_admin_index() -> HTMLResponse:
+    """Serve the Vite-built admin index.html."""
+    index_path = os.path.join(ADMIN_DIST, "index.html")
+    try:
+        with open(index_path, "r", encoding="utf-8") as f:
+            content = f.read().replace('href="/assets/', 'href="/admin/assets/').replace('src="/assets/', 'src="/admin/assets/')
+            return HTMLResponse(content=content)
+    except FileNotFoundError:
+        return HTMLResponse(
+            content="<h1>Admin Frontend not built.</h1><p>Run <code>npm run dev</code> in the admin/ directory or access via port 5174.</p>",
+            status_code=503,
+        )
+
+@app.get("/admin", response_class=HTMLResponse, tags=["Admin Platform"], include_in_schema=False)
+@app.get("/admin/{rest_of_path:path}", response_class=HTMLResponse, tags=["Admin Platform"], include_in_schema=False)
+async def serve_admin_spa(rest_of_path: str = ""):
+    return _serve_admin_index()
 
 @app.get("/", response_class=HTMLResponse, tags=["Frontend"], include_in_schema=False)
 async def serve_root():

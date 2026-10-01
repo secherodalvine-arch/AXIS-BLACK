@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Transaction, Currency } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
-import { formatRelativeTime } from '../utils/dateUtils';
+import { formatRelativeTime, fmtDate } from '../utils/dateUtils';
 
 interface RecentLedgerTableProps {
   transactions: Transaction[];
@@ -81,10 +81,10 @@ export const RecentLedgerTable: React.FC<RecentLedgerTableProps> = ({
                   </td>
                   <td>{t.category}</td>
                   <td>
-                    <span title={t.date} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <span title={fmtDate(t.date)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                       <span>{formatRelativeTime(t.date, { showTime: false })}</span>
                       <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)', fontFamily: 'JetBrains Mono' }}>
-                        ({t.date})
+                        ({fmtDate(t.date)})
                       </span>
                     </span>
                   </td>

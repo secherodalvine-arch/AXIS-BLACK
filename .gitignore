@@ -1,6 +1,8 @@
 # Frontend
 frontend/node_modules/
+admin/node_modules/
 frontend/dist/
+admin/dist/
 
 # Python
 __pycache__/

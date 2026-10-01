@@ -140,11 +140,11 @@ async def dispatch_user_summary_notification(
 
     # Record dispatch timestamp in user record
     try:
-        now_iso = datetime.datetime.utcnow().isoformat()
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         notif_settings["last_dispatched_at"] = now_iso
         user_doc["notification_settings"] = notif_settings
 
-        if db_manager.is_connected and db_manager.db:
+        if db_manager.is_connected and db_manager.db is not None:
             await db_manager.db["users"].update_one(
                 {"$or": [{"user_id": user_id}, {"email": user_email}]},
                 {"$set": {"notification_settings": notif_settings}}
@@ -162,7 +162,7 @@ async def get_all_active_users() -> List[dict]:
     """Retrieve all non-deleted, active users."""
     users = []
     try:
-        if db_manager.is_connected and db_manager.db:
+        if db_manager.is_connected and db_manager.db is not None:
             cursor = db_manager.db["users"].find({
                 "is_deleted": {"$ne": True},
                 "is_active": {"$ne": False},

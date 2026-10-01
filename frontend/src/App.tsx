@@ -38,9 +38,11 @@ import {
   markNotificationReadApi,
   updateUserProfileApi
 } from './utils/api';
+import { captureEvent } from './utils/traffic';
 
 import './styles/globals.css';
 import '../styles/homepage.css';
+
 
 const DEFAULT_METRICS: MetricData[] = [];
 
@@ -161,6 +163,45 @@ export const App: React.FC = () => {
       // ignore
     }
   }, [currentTab]);
+
+  // ── Traffic Recording & Telemetry (User End) ──
+  const activePage = viewState === 'dashboard' ? `/${currentTab}` : `/${viewState}`;
+  const lastCapturedPage = React.useRef<string>('');
+
+  useEffect(() => {
+    if (activePage === lastCapturedPage.current) return;
+    lastCapturedPage.current = activePage;
+
+    captureEvent({
+      user_id: user?.user_id || user?.id,
+      user_email: user?.email,
+      user_name: user?.full_name,
+      event: 'navigate',
+      page: activePage,
+      data: {
+        viewState,
+        currentTab,
+        url: window.location.href,
+        path: window.location.pathname
+      }
+    });
+  }, [activePage, user, viewState, currentTab]);
+
+  useEffect(() => {
+    const sendHeartbeat = () => {
+      captureEvent({
+        user_id: user?.user_id || user?.id,
+        user_email: user?.email,
+        user_name: user?.full_name,
+        event: 'heartbeat',
+        page: activePage,
+        data: { heartbeat: true }
+      });
+    };
+
+    const interval = setInterval(sendHeartbeat, 60000);
+    return () => clearInterval(interval);
+  }, [activePage, user]);
 
   const [timeframe, setTimeframe] = useState<Timeframe>('30d');
 
@@ -662,7 +703,7 @@ export const App: React.FC = () => {
     setViewState('login');
   };
 
-  const handleAddTransaction = async (newTxnData: Omit<Transaction, 'id'>) => {
+  const handleAddTransaction = async (newTxnData: Omit<Transaction, 'id'> & { id?: string }) => {
     try {
       const created = await createTransactionApi(newTxnData);
       setTransactions(prev => [created, ...prev]);
@@ -670,7 +711,7 @@ export const App: React.FC = () => {
     } catch {
       const newTxn: Transaction = {
         ...newTxnData,
-        id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`
+        id: newTxnData.id || `TXN-${Math.floor(1000 + Math.random() * 9000)}`
       };
       setTransactions(prev => [newTxn, ...prev]);
       showToast(`Recorded entry: ${newTxn.counterparty}`);
