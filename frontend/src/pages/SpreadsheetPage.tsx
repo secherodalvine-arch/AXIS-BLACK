@@ -16,6 +16,7 @@ import {
   UserProfile 
 } from '../utils/api';
 import '../styles/spreadsheet.css';
+import { generateSmartItemCode } from '../utils/skuUtils';
 
 interface SpreadsheetPageProps {
   currency?: Currency;
@@ -241,7 +242,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     { key: 'margin', letter: 'G', label: 'Gross Margin %', type: 'formula', readOnly: true, width: 120 },
     { key: 'supplier', letter: 'H', label: 'Supplier / Vendor', type: 'text', width: 180 },
     { key: 'branch_id', letter: 'I', label: 'Assign to Branch', type: 'select', options: branches.map(b => b.name), width: 150 },
-    { key: 'sku', letter: 'J', label: 'SKU Code', type: 'code', readOnly: true, width: 110 }
+    { key: 'sku', letter: 'J', label: 'Item Code (SKU)', type: 'code', readOnly: false, width: 140 }
   ], [branches]);
 
   // Generate blank columns beyond Z (52 columns: A..Z, AA..AZ)
@@ -837,6 +838,14 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
             if (t.saveTarget === 'ledger' && !copy.date) {
               copy.date = new Date().toISOString().split('T')[0];
             }
+            // Auto-assign smart item code if user enters item name or category and SKU is blank
+            if (t.saveTarget === 'inventory' && (colKey === 'name' || colKey === 'category')) {
+              const prospectiveName = colKey === 'name' ? newValue : copy.name;
+              const prospectiveCat = colKey === 'category' ? newValue : copy.category;
+              if (prospectiveName && String(prospectiveName).trim().length > 0 && (!copy.sku || String(copy.sku).trim() === '')) {
+                copy.sku = generateSmartItemCode(prospectiveCat, prospectiveName);
+              }
+            }
             return copy;
           }
           return r;
@@ -864,8 +873,12 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
         );
 
         for (const row of rowsWithContent) {
-          const sku = row.sku || row.id;
+          const userCode = row.sku ? String(row.sku).trim() : '';
+          const finalSku = userCode || generateSmartItemCode(row.category, row.name);
+          row.sku = finalSku; // Synchronize row in worksheet state
+
           const updates = {
+            sku: finalSku,
             name: row.name || 'New Item',
             category: row.category || 'Hardware & Devices',
             stock_quantity: parseInt(row.stock_quantity) || 0,
@@ -876,12 +889,23 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
             branch_id: row.branch_id || currentUser?.branch_id || undefined
           };
 
-          const existsOnServer = liveInventory.some(i => i.sku === sku || i.id === sku);
+          // Strict match: ONLY consider existing if userCode is non-empty and matched in live inventory
+          const existsOnServer = Boolean(
+            userCode && liveInventory.some(i => 
+              (i.sku && String(i.sku).trim().toLowerCase() === userCode.toLowerCase()) ||
+              (i.id && String(i.id).trim().toLowerCase() === userCode.toLowerCase())
+            )
+          );
+
           if (existsOnServer) {
-            await updateInventoryItemApi(sku, updates);
+            try {
+              await updateInventoryItemApi(userCode, updates);
+            } catch {
+              // Resilient fallback: If item wasn't found on server, create it as new SKU
+              await createInventoryItemApi(updates);
+            }
           } else {
-            const itemCode = sku || `SKU-${Math.floor(1000 + Math.random() * 9000)}`;
-            await createInventoryItemApi({ sku: itemCode, ...updates });
+            await createInventoryItemApi(updates);
           }
         }
 
@@ -896,7 +920,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
         );
 
         for (const row of rowsWithContent) {
-          const id = row.id;
+          const id = row.id ? String(row.id).trim() : '';
           const numAmount = parseFloat(row.amount) || 0;
           const updates = {
             counterparty: row.counterparty || 'New Record',
@@ -910,9 +934,13 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
             branch_id: row.branch_id || currentUser?.branch_id || undefined
           };
 
-          const existsOnServer = liveLedger.some(t => t.id === id);
+          const existsOnServer = Boolean(id && liveLedger.some(t => t.id === id));
           if (existsOnServer) {
-            await updateTransactionApi(id, updates);
+            try {
+              await updateTransactionApi(id, updates);
+            } catch {
+              await createTransactionApi(updates);
+            }
           } else {
             await createTransactionApi(updates);
           }

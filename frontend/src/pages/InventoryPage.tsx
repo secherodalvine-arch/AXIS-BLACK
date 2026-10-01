@@ -10,6 +10,7 @@ import {
   getBranchesApi, 
   getStoredUser 
 } from '../utils/api';
+import { generateSmartItemCode } from '../utils/skuUtils';
 
 interface InventoryViewProps {
   currency?: Currency;
@@ -41,6 +42,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
 
   // Form State (New SKU)
   const [name, setName] = useState('');
+  const [customSKU, setCustomSKU] = useState('');
   const [category, setCategory] = useState('Hardware & Devices');
   const [customCategory, setCustomCategory] = useState('');
   const [isCustomCategory, setIsCustomCategory] = useState(false);
@@ -153,7 +155,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
     setSubmitting(true);
 
     const finalCategory = isCustomCategory ? (customCategory.trim() || 'Inventory') : category;
-    const itemCode = `ITEM-${Math.floor(1000 + Math.random() * 9000)}`;
+    const itemCode = customSKU.trim() || generateSmartItemCode(finalCategory, name);
     const newItemData = {
       sku: itemCode,
       name,
@@ -172,6 +174,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
       fetchInventory();
       setIsModalOpen(false);
       setName('');
+      setCustomSKU('');
       setSupplier('');
       setCustomCategory('');
       setIsCustomCategory(false);
@@ -191,6 +194,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
       setItems(prev => [newLocalItem, ...prev]);
       setIsModalOpen(false);
       setName('');
+      setCustomSKU('');
       setSupplier('');
       setCustomCategory('');
       setIsCustomCategory(false);
@@ -620,19 +624,35 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
                 </div>
               )}
 
-              <div className="form-group">
-                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Item Name / Description
-                </label>
-                <input 
-                  type="text" 
-                  className="input-text" 
-                  placeholder="e.g. Server Rack Mount / Display Unit / Packaging Stock"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
-                />
+              <div className="form-row">
+                <div className="form-group" style={{ flex: 1.3 }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Item Name / Description *
+                  </label>
+                  <input 
+                    type="text" 
+                    className="input-text" 
+                    placeholder="e.g. Server Rack Mount / Display Unit"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
+                  />
+                </div>
+
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Item Code / SKU <span style={{ color: '#9ca3af', fontWeight: 400, textTransform: 'none' }}>(Optional)</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    className="input-text" 
+                    placeholder="Auto-assigned if empty (e.g. HW-1042)"
+                    value={customSKU}
+                    onChange={(e) => setCustomSKU(e.target.value)}
+                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
+                  />
+                </div>
               </div>
 
               <div className="form-row">

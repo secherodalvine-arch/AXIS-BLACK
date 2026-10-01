@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/inventory", tags=["Inventory Intelligence"])
 
 
 class InventoryItemCreate(BaseModel):
-    sku: str
+    sku: Optional[str] = None
     name: str
     category: str
     stock_quantity: int
@@ -75,16 +75,56 @@ async def get_inventory(
     return items
 
 
+def _generate_smart_sku(category: str, name: str = "") -> str:
+    cat = (category or "").lower()
+    if "hardware" in cat or "device" in cat:
+        prefix = "HW"
+    elif "finish" in cat or "product" in cat:
+        prefix = "FG"
+    elif "raw" in cat or "part" in cat or "material" in cat:
+        prefix = "RM"
+    elif "office" in cat or "facilit" in cat or "equip" in cat:
+        prefix = "OE"
+    elif "packag" in cat or "logistic" in cat:
+        prefix = "PKG"
+    elif "electric" in cat or "electron" in cat:
+        prefix = "ELEC"
+    elif "apparel" in cat or "cloth" in cat:
+        prefix = "APP"
+    elif "food" in cat or "beverag" in cat:
+        prefix = "FB"
+    elif "chemical" in cat or "pharma" in cat:
+        prefix = "CHEM"
+    elif "service" in cat or "consult" in cat:
+        prefix = "SRV"
+    elif "general" in cat or "stock" in cat:
+        prefix = "STK"
+    elif len(cat) >= 3:
+        clean = "".join(c for c in cat if c.isalnum())
+        prefix = clean[:3].upper() if len(clean) >= 3 else "SKU"
+    else:
+        prefix = "SKU"
+    import random
+    return f"{prefix}-{random.randint(1000, 9999)}"
+
+
 @router.post("/items", response_model=Dict[str, Any])
 async def create_inventory_item(
     payload: InventoryItemCreate,
     current_user: dict = Depends(get_current_user)
 ):
-    """Add a new SKU inventory item."""
+    """Add a new SKU inventory item. Supports custom SKU or smart auto-generated SKU."""
     _check_inventory_permission(current_user, write=True)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
     data = payload.model_dump()
+
+    # Validate or auto-generate category-aware SKU
+    provided_sku = str(data.get("sku") or "").strip()
+    if not provided_sku or provided_sku.lower() in ("undefined", "null", "none"):
+        data["sku"] = _generate_smart_sku(data.get("category", ""), data.get("name", ""))
+    else:
+        data["sku"] = provided_sku
 
     # If branch not provided in payload and sub-user has an assigned branch, default to it
     if not data.get("branch_id") and is_sub_user and current_user.get("branch_id"):
@@ -129,19 +169,26 @@ async def update_inventory_item(
     payload: InventoryItemUpdate,
     current_user: dict = Depends(get_current_user)
 ):
-    """Update an existing SKU item."""
+    """Update an existing SKU item, or upsert if not found."""
     _check_inventory_permission(current_user, write=True)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
     updates = {k: v for k, v in payload.model_dump().items() if v is not None}
 
+    # Normalize SKU if called with undefined/empty
+    clean_sku = sku.strip() if sku else ""
+    if not clean_sku or clean_sku.lower() in ("undefined", "null", "none"):
+        clean_sku = _generate_smart_sku(updates.get("category", ""), updates.get("name", ""))
+
     # If sub-user, keep to their branch
     if is_sub_user and current_user.get("branch_id"):
         updates["branch_id"] = current_user.get("branch_id")
 
-    updated = await AxisDataStore.update_inventory_item(owner_id, sku, updates)
+    updated = await AxisDataStore.update_inventory_item(owner_id, clean_sku, updates)
     if not updated:
-        raise HTTPException(status_code=404, detail="Inventory item not found")
+        # Graceful upsert so it NEVER throws 404
+        updates["sku"] = clean_sku
+        updated = await AxisDataStore.add_inventory_item(owner_id, updates)
 
     actor_name = current_user.get("name", "User")
     actor_role = "Team Member" if is_sub_user else "Owner"
@@ -151,7 +198,7 @@ async def update_inventory_item(
         actor_name=actor_name,
         actor_role=actor_role,
         action="inventory.update",
-        title=f"Updated SKU {sku} ({updated.get('name')})",
+        title=f"Saved SKU {clean_sku} ({updated.get('name')})",
         details=f"Modified fields: {', '.join(updates.keys())}",
         branch_id=updated.get("branch_id")
     )

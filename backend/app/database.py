@@ -289,28 +289,41 @@ class AxisDataStore:
 
     @staticmethod
     async def add_inventory_item(user_id: str, item_data: Dict[str, Any]) -> Dict[str, Any]:
+        target_sku = str(item_data.get("sku") or f"SKU-{1000 + len(item_data)}").strip()
         doc = {
-            "sku": item_data.get("sku", f"SKU-{1000 + len(item_data)}"),
+            "sku": target_sku,
             "user_id": user_id,
             "name": item_data.get("name", "Inventory Item"),
-            "category": item_data.get("category", "Hardware Modules"),
+            "category": item_data.get("category", "Hardware & Devices"),
             "stock_quantity": int(item_data.get("stock_quantity", 0)),
             "reorder_point": int(item_data.get("reorder_point", 50)),
             "unit_cost": float(item_data.get("unit_cost", 100.0)),
             "selling_price": float(item_data.get("selling_price", 150.0)),
             "supplier": item_data.get("supplier", "Global Supplier"),
-            "velocity": "1.8x/mo",
+            "velocity": item_data.get("velocity", "1.8x/mo"),
             "branch_id": item_data.get("branch_id"),
             "created_by": item_data.get("created_by"),
             "created_by_name": item_data.get("created_by_name"),
-            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+            "created_at": item_data.get("created_at") or datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
 
         if db_manager.is_connected:
+            existing = await db_manager.db.inventory.find_one({"user_id": user_id, "sku": target_sku})
+            if existing:
+                await db_manager.db.inventory.update_one({"user_id": user_id, "sku": target_sku}, {"$set": doc})
+                return {k: v for k, v in doc.items() if k != "_id"}
             await db_manager.db.inventory.insert_one(doc)
 
         if user_id not in db_manager.memory_store["inventory"]:
             db_manager.memory_store["inventory"][user_id] = []
+
+        items = db_manager.memory_store["inventory"][user_id]
+        for idx, item in enumerate(items):
+            if item.get("sku") == target_sku:
+                items[idx].update(doc)
+                db_manager.save_memory_store()
+                return items[idx]
+
         db_manager.memory_store["inventory"][user_id].insert(0, doc)
         db_manager.save_memory_store()
 
