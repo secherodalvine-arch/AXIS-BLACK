@@ -1,0 +1,547 @@
+/* ── Axis Spreadsheet (Microsoft Excel-Style Experience) ── */
+
+.axis-spreadsheet-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 120px);
+  min-height: 600px;
+  background: var(--card-bg, rgba(18, 19, 26, 0.95));
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--text-main, #ffffff);
+}
+
+/* ── Top Ribbon / Command Bar ── */
+.spreadsheet-ribbon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: rgba(14, 15, 20, 0.98);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.spreadsheet-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.excel-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: linear-gradient(135deg, #107c41 0%, #185a37 100%);
+  color: #ffffff;
+  border-radius: 6px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  box-shadow: 0 0 10px rgba(16, 124, 65, 0.4);
+}
+
+.spreadsheet-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.2px;
+}
+
+.spreadsheet-subtitle {
+  font-size: 0.72rem;
+  color: var(--text-muted, #9ca3af);
+  margin-left: 6px;
+}
+
+.spreadsheet-sync-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(74, 222, 128, 0.1);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  transition: all 0.3s ease;
+}
+
+.spreadsheet-sync-indicator.syncing {
+  background: rgba(250, 204, 21, 0.1);
+  color: #facc15;
+  border-color: rgba(250, 204, 21, 0.3);
+}
+
+.spreadsheet-sync-indicator.error {
+  background: rgba(255, 142, 142, 0.1);
+  color: #ff8e8e;
+  border-color: rgba(255, 142, 142, 0.3);
+}
+
+.sync-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.sync-dot.pulse {
+  animation: syncPulse 1.2s infinite ease-in-out;
+}
+
+@keyframes syncPulse {
+  0% { transform: scale(0.8); opacity: 0.6; }
+  50% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0.8); opacity: 0.6; }
+}
+
+.spreadsheet-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sheet-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: var(--text-main, #ffffff);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.sheet-tool-btn:hover {
+  background: rgba(0, 212, 255, 0.15);
+  border-color: #00d4ff;
+  color: #00d4ff;
+}
+
+.sheet-tool-btn.primary {
+  background: rgba(0, 212, 255, 0.18);
+  border-color: rgba(0, 212, 255, 0.4);
+  color: #00d4ff;
+}
+
+.sheet-tool-btn.primary:hover {
+  background: #00d4ff;
+  color: #0b0c10;
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.4);
+}
+
+.sheet-tool-btn.danger:hover {
+  background: rgba(255, 142, 142, 0.2);
+  border-color: #ff8e8e;
+  color: #ff8e8e;
+}
+
+/* ── Formula Bar ── */
+.spreadsheet-formula-bar {
+  display: flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: #121319;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.formula-cell-box {
+  min-width: 60px;
+  max-width: 80px;
+  padding: 4px 8px;
+  background: #181922;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: #00d4ff;
+  text-align: center;
+  user-select: none;
+}
+
+.formula-fx-symbol {
+  font-style: italic;
+  font-family: "Georgia", serif;
+  font-weight: 700;
+  color: #9ca3af;
+  font-size: 0.95rem;
+  padding: 0 4px;
+  user-select: none;
+}
+
+.formula-input-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.formula-input {
+  width: 100%;
+  background: #181922;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  color: #ffffff;
+  padding: 5px 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.formula-input:focus {
+  border-color: #00d4ff;
+  box-shadow: 0 0 6px rgba(0, 212, 255, 0.25);
+}
+
+.formula-chips {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.formula-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #9ca3af;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-family: 'JetBrains Mono', monospace;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.formula-chip:hover {
+  background: rgba(0, 212, 255, 0.15);
+  color: #00d4ff;
+  border-color: #00d4ff;
+}
+
+/* ── Spreadsheet Grid Table ── */
+.spreadsheet-grid-viewport {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  background: #0f1015;
+}
+
+.spreadsheet-grid-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.82rem;
+}
+
+/* Corner Cell (top left 0,0) */
+.grid-corner-cell {
+  width: 44px;
+  min-width: 44px;
+  background: #161720;
+  border-right: 1px solid #2a2b38;
+  border-bottom: 1px solid #2a2b38;
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 30;
+}
+
+/* Column Headers A, B, C... */
+.grid-col-header {
+  height: 28px;
+  background: #181924;
+  border-right: 1px solid #282938;
+  border-bottom: 1px solid #282938;
+  color: #9ca3af;
+  font-weight: 600;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  user-select: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.76rem;
+  padding: 2px 6px;
+  transition: background 0.15s;
+}
+
+.grid-col-header.selected-col {
+  background: rgba(0, 212, 255, 0.2);
+  color: #00d4ff;
+  font-weight: 700;
+}
+
+/* Row Headers 1, 2, 3... */
+.grid-row-header {
+  width: 44px;
+  min-width: 44px;
+  background: #181924;
+  border-right: 1px solid #282938;
+  border-bottom: 1px solid #282938;
+  color: #9ca3af;
+  text-align: center;
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  user-select: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.74rem;
+  padding: 0 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.grid-row-header.selected-row {
+  background: rgba(0, 212, 255, 0.2);
+  color: #00d4ff;
+  font-weight: 700;
+}
+
+/* Data Cells */
+.grid-cell {
+  height: 32px;
+  border-right: 1px solid #222330;
+  border-bottom: 1px solid #222330;
+  padding: 4px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #111218;
+  color: #e5e7eb;
+  position: relative;
+  user-select: none;
+  cursor: cell;
+  transition: background 0.1s;
+}
+
+.grid-cell:hover {
+  background: #161722;
+}
+
+/* Selected Active Cell */
+.grid-cell.active-cell {
+  outline: 2px solid #00d4ff !important;
+  outline-offset: -2px;
+  background: rgba(0, 212, 255, 0.08) !important;
+  z-index: 5;
+}
+
+/* Excel Corner Dot Handle */
+.grid-cell.active-cell::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 6px;
+  height: 6px;
+  background: #00d4ff;
+  border: 1px solid #0b0c10;
+  pointer-events: none;
+  box-shadow: 0 0 4px #00d4ff;
+}
+
+/* Cell Editing Input */
+.cell-inline-input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #1a1c26;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: inherit;
+  padding: 0;
+  margin: 0;
+  outline: none;
+}
+
+.cell-inline-select {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #1a1c26;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: inherit;
+  padding: 0;
+  outline: none;
+  cursor: pointer;
+}
+
+/* Type Styling */
+.cell-numeric {
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.cell-positive {
+  color: #4ade80 !important;
+}
+
+.cell-negative {
+  color: #ffafd3 !important;
+}
+
+.cell-code {
+  font-family: 'JetBrains Mono', monospace;
+  color: #00d4ff;
+  font-size: 0.78rem;
+}
+
+.cell-tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.cell-tag.revenue {
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+}
+
+.cell-tag.expense {
+  background: rgba(255, 175, 211, 0.15);
+  color: #ffafd3;
+}
+
+.cell-tag.cleared {
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+}
+
+.cell-tag.pending {
+  background: rgba(250, 204, 21, 0.15);
+  color: #facc15;
+}
+
+.cell-tag.optimal {
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+}
+
+.cell-tag.reorder {
+  background: rgba(255, 142, 142, 0.15);
+  color: #ff8e8e;
+}
+
+/* ── Bottom Sheet Tabs & Status Bar ── */
+.spreadsheet-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  background: #14151e;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  height: 38px;
+  overflow-x: auto;
+  gap: 8px;
+}
+
+.spreadsheet-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  overflow-x: auto;
+}
+
+.sheet-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: #1b1c28;
+  border: 1px solid #28293a;
+  border-bottom: none;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  color: #9ca3af;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.sheet-tab:hover {
+  background: #232534;
+  color: #ffffff;
+}
+
+.sheet-tab.active {
+  background: #0f1015;
+  color: #00d4ff;
+  border-color: #00d4ff;
+  border-bottom: 2px solid #00d4ff;
+  box-shadow: 0 -2px 10px rgba(0, 212, 255, 0.2);
+}
+
+.sheet-tab-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 4px;
+}
+
+.sheet-tab-add:hover {
+  background: rgba(0, 212, 255, 0.15);
+  color: #00d4ff;
+  border-color: #00d4ff;
+}
+
+/* Telemetry Stats on Bottom Right */
+.spreadsheet-status-telemetry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.74rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.telemetry-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.telemetry-label {
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.telemetry-val {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.telemetry-val.highlight {
+  color: #00d4ff;
+}

@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Transaction, Currency } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
 import { formatRelativeTime } from '../utils/dateUtils';
-import { importTransactionsCsvApi, getBranchesApi } from '../utils/api';
+import { importTransactionsCsvApi, getBranchesApi, updateTransactionApi, deleteTransactionApi } from '../utils/api';
 
 interface TransactionsLedgerProps {
   transactions: Transaction[];
@@ -28,6 +28,21 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
   const [csvImporting, setCsvImporting] = useState(false);
   const [csvStatus, setCsvStatus] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const csvInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Edit / Delete Record State
+  const [editingTxn, setEditingTxn] = useState<Transaction | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editCounterparty, setEditCounterparty] = useState('');
+  const [editType, setEditType] = useState<'Expense' | 'Revenue'>('Expense');
+  const [editCategory, setEditCategory] = useState('Operations & Logistics');
+  const [editAccountType, setEditAccountType] = useState<string>('Expense');
+  const [editAmount, setEditAmount] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editStatus, setEditStatus] = useState<'Cleared' | 'Pending' | 'Processing'>('Cleared');
+  const [editNotes, setEditNotes] = useState('');
+  const [editBranchId, setEditBranchId] = useState('');
 
   // Load branches once
   React.useEffect(() => {
@@ -56,6 +71,66 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
       setCsvImporting(false);
       if (csvInputRef.current) csvInputRef.current.value = '';
       setTimeout(() => setCsvStatus(null), 6000);
+    }
+  };
+
+  const handleOpenEdit = (t: Transaction) => {
+    setEditingTxn(t);
+    setEditCounterparty(t.counterparty || '');
+    setEditType(t.type || (t.amount >= 0 ? 'Revenue' : 'Expense'));
+    setEditCategory(t.category || 'Operations & Logistics');
+    setEditAccountType(t.accountType || (t.type === 'Revenue' ? 'Revenue' : 'Expense'));
+    setEditAmount(Math.abs(t.amount).toString());
+    setEditDate(t.date || '');
+    setEditStatus((t.status as any) || 'Cleared');
+    setEditNotes(t.notes || '');
+    setEditBranchId(t.branch_id || '');
+    setEditError(null);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTxn) return;
+    const numAmt = parseFloat(editAmount);
+    if (isNaN(numAmt) || numAmt < 0) {
+      setEditError('Please enter a valid amount');
+      return;
+    }
+    setIsSavingEdit(true);
+    setEditError(null);
+    try {
+      const finalAmt = editType === 'Expense' ? -Math.abs(numAmt) : Math.abs(numAmt);
+      await updateTransactionApi(editingTxn.id, {
+        counterparty: editCounterparty,
+        type: editType,
+        category: editCategory,
+        accountType: editAccountType,
+        amount: finalAmt,
+        date: editDate,
+        status: editStatus,
+        notes: editNotes,
+        branch_id: editBranchId || undefined
+      });
+      setIsEditModalOpen(false);
+      setEditingTxn(null);
+      window.dispatchEvent(new CustomEvent('axis-data-updated'));
+    } catch (err: any) {
+      setEditError(err.message || 'Failed to update transaction');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete transaction ${id} (${name})? This will permanently remove it from the ledger.`)) {
+      return;
+    }
+    try {
+      await deleteTransactionApi(id);
+      window.dispatchEvent(new CustomEvent('axis-data-updated'));
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete transaction');
     }
   };
 
@@ -491,12 +566,13 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
                 <th className="text-right">Money Out (-)</th>
                 <th className="text-right">Running Balance</th>
                 <th>Status</th>
+                <th style={{ textAlign: 'center', width: '90px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-dim, #64748b)' }}>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-dim, #64748b)' }}>
                     <i className="fa-solid fa-file-invoice" style={{ fontSize: '1.8rem', display: 'block', marginBottom: '0.75rem', opacity: 0.3 }}></i>
                     <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-muted, #94a3b8)', marginBottom: '0.35rem' }}>
                       {searchTerm || categoryFilter !== 'ALL' || statusFilter !== 'ALL'
@@ -555,6 +631,42 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
                         {t.status}
                       </span>
                     </td>
+                    <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                        <button
+                          onClick={() => handleOpenEdit(t)}
+                          style={{
+                            background: 'rgba(0, 212, 255, 0.1)',
+                            border: '1px solid rgba(0, 212, 255, 0.3)',
+                            color: '#00d4ff',
+                            borderRadius: '6px',
+                            padding: '5px 8px',
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                          title="Edit transaction"
+                        >
+                          <i className="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(t.id, t.counterparty)}
+                          style={{
+                            background: 'rgba(255, 142, 142, 0.1)',
+                            border: '1px solid rgba(255, 142, 142, 0.3)',
+                            color: '#ff8e8e',
+                            borderRadius: '6px',
+                            padding: '5px 8px',
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                          title="Delete transaction"
+                        >
+                          <i className="fa-solid fa-trash"></i>
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -562,6 +674,242 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
           </table>
         </div>
       </div>
+
+      {/* EDIT TRANSACTION MODAL */}
+      {isEditModalOpen && editingTxn && (
+        <div className="modal-overlay active" style={{ zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="modal-card glass-card" style={{ width: '560px', maxWidth: '95vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column', background: 'var(--dropdown-bg, #141418)', border: '1px solid rgba(0, 212, 255, 0.35)', boxShadow: '0 24px 80px rgba(0,0,0,0.9)', padding: '24px', borderRadius: '20px' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid var(--header-border, rgba(255, 255, 255, 0.1))', paddingBottom: '12px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans', fontSize: '1.25rem', fontWeight: 800 }}>
+                  Edit Ledger Entry
+                </h3>
+                <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#00d4ff' }}>
+                  {editingTxn.id}
+                </span>
+              </div>
+              <button onClick={() => setIsEditModalOpen(false)} style={{ color: 'var(--text-muted, #9ca3af)', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>&times;</button>
+            </div>
+
+            {editError && (
+              <div style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(255, 142, 142, 0.15)', border: '1px solid #ff8e8e', color: '#ff8e8e', fontSize: '0.82rem', marginBottom: '12px' }}>
+                <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '6px' }}></i> {editError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              <div style={{ overflowY: 'auto', flex: 1, paddingRight: '6px', minHeight: 0 }}>
+                {/* Transaction Type Radio Selector */}
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                    Transaction Flow Type
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setEditType('Revenue')}
+                      style={{
+                        padding: '10px',
+                        borderRadius: '10px',
+                        border: `1px solid ${editType === 'Revenue' ? '#4ade80' : 'rgba(255,255,255,0.1)'}`,
+                        background: editType === 'Revenue' ? 'rgba(74, 222, 128, 0.15)' : 'rgba(255,255,255,0.02)',
+                        color: editType === 'Revenue' ? '#4ade80' : 'var(--text-muted, #9ca3af)',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <i className="fa-solid fa-arrow-down-left"></i> Money In (Revenue)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditType('Expense')}
+                      style={{
+                        padding: '10px',
+                        borderRadius: '10px',
+                        border: `1px solid ${editType === 'Expense' ? '#ffafd3' : 'rgba(255,255,255,0.1)'}`,
+                        background: editType === 'Expense' ? 'rgba(255, 175, 211, 0.15)' : 'rgba(255,255,255,0.02)',
+                        color: editType === 'Expense' ? '#ffafd3' : 'var(--text-muted, #9ca3af)',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <i className="fa-solid fa-arrow-up-right"></i> Money Out (Expense)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                    Description / Counterparty *
+                  </label>
+                  <input
+                    type="text"
+                    className="input-text"
+                    value={editCounterparty}
+                    onChange={e => setEditCounterparty(e.target.value)}
+                    required
+                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #fff)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', padding: '10px' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                      Amount ({currency}) *
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      min="0"
+                      className="input-text"
+                      value={editAmount}
+                      onChange={e => setEditAmount(e.target.value)}
+                      required
+                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #fff)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', padding: '10px', fontFamily: 'JetBrains Mono' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                      Date *
+                    </label>
+                    <input
+                      type="date"
+                      className="input-text"
+                      value={editDate}
+                      onChange={e => setEditDate(e.target.value)}
+                      required
+                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #fff)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', padding: '10px' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                      Category
+                    </label>
+                    <select
+                      className="select-text"
+                      value={editCategory}
+                      onChange={e => setEditCategory(e.target.value)}
+                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #fff)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', padding: '10px' }}
+                    >
+                      <option value="Operations & Logistics">Operations & Logistics</option>
+                      <option value="Revenue & Sales">Revenue & Sales</option>
+                      <option value="Software & Subscriptions">Software & Subscriptions</option>
+                      <option value="Cloud & Infrastructure">Cloud & Infrastructure</option>
+                      <option value="Payroll & Compensation">Payroll & Compensation</option>
+                      <option value="Marketing & Growth">Marketing & Growth</option>
+                      <option value="Office & Facilities">Office & Facilities</option>
+                      <option value="Professional Services">Professional Services</option>
+                      <option value="Equipment & Assets">Equipment & Assets</option>
+                      <option value="Treasury & Capital">Treasury & Capital</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                      Account Ledger
+                    </label>
+                    <select
+                      className="select-text"
+                      value={editAccountType}
+                      onChange={e => setEditAccountType(e.target.value)}
+                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #fff)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', padding: '10px' }}
+                    >
+                      <option value="Cash">Cash Account</option>
+                      <option value="Bank">Bank Account</option>
+                      <option value="Accounts Receivable">Accounts Receivable</option>
+                      <option value="Accounts Payable">Accounts Payable</option>
+                      <option value="Revenue">Sales & Revenue</option>
+                      <option value="Expense">Operating Expense</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                      Status
+                    </label>
+                    <select
+                      className="select-text"
+                      value={editStatus}
+                      onChange={e => setEditStatus(e.target.value as any)}
+                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #fff)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', padding: '10px' }}
+                    >
+                      <option value="Cleared">Cleared</option>
+                      <option value="Pending">Pending</option>
+                      <option value="Processing">Processing</option>
+                    </select>
+                  </div>
+
+                  {branches.length > 0 && (
+                    <div className="form-group">
+                      <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                        Branch
+                      </label>
+                      <select
+                        className="select-text"
+                        value={editBranchId}
+                        onChange={e => setEditBranchId(e.target.value)}
+                        style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #fff)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', padding: '10px' }}
+                      >
+                        <option value="">No branch / Global HQ</option>
+                        {branches.map(b => (
+                          <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                    Notes & Reference Memo
+                  </label>
+                  <textarea
+                    rows={2}
+                    className="input-text"
+                    value={editNotes}
+                    onChange={e => setEditNotes(e.target.value)}
+                    placeholder="Optional notes, invoice #, or transaction details..."
+                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #fff)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', padding: '10px' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                <button
+                  type="button"
+                  className="action-btn-secondary"
+                  onClick={() => setIsEditModalOpen(false)}
+                  disabled={isSavingEdit}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="action-btn-primary"
+                  disabled={isSavingEdit}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                >
+                  {isSavingEdit ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-check"></i>}
+                  {isSavingEdit ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

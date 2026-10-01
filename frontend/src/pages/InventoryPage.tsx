@@ -1,7 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Currency } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
-import { getInventoryApi, createInventoryItemApi, importInventoryCsvApi, getBranchesApi, getStoredUser } from '../utils/api';
+import { 
+  getInventoryApi, 
+  createInventoryItemApi, 
+  updateInventoryItemApi, 
+  deleteInventoryItemApi, 
+  importInventoryCsvApi, 
+  getBranchesApi, 
+  getStoredUser 
+} from '../utils/api';
 
 interface InventoryViewProps {
   currency?: Currency;
@@ -15,8 +23,11 @@ interface InventoryItem {
   stockLevel: number;
   minThreshold: number;
   unitPriceUSD: number;
+  sellingPriceUSD?: number;
+  supplier?: string;
   turnoverRate: string;
   status: 'Optimal' | 'Reorder Soon' | 'Surge Buffer';
+  branch_id?: string;
 }
 
 export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', searchQuery = '' }) => {
@@ -28,7 +39,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Form State
+  // Form State (New SKU)
   const [name, setName] = useState('');
   const [category, setCategory] = useState('Hardware & Devices');
   const [customCategory, setCustomCategory] = useState('');
@@ -46,6 +57,22 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
   const [csvStatus, setCsvStatus] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const csvInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Edit SKU State
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editCategory, setEditCategory] = useState('Hardware & Devices');
+  const [editCustomCategory, setEditCustomCategory] = useState('');
+  const [isEditCustomCategory, setIsEditCustomCategory] = useState(false);
+  const [editStockQuantity, setEditStockQuantity] = useState('');
+  const [editReorderPoint, setEditReorderPoint] = useState('');
+  const [editUnitCost, setEditUnitCost] = useState('');
+  const [editSellingPrice, setEditSellingPrice] = useState('');
+  const [editSupplier, setEditSupplier] = useState('');
+  const [editBranchId, setEditBranchId] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
   const fetchInventory = () => {
     setIsLoading(true);
     const activeBranch = isSubUserWithBranch ? currentUser?.branch_id : (branchFilter || undefined);
@@ -59,8 +86,11 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
             stockLevel: Number(d.stock_quantity ?? d.stockLevel ?? 0),
             minThreshold: Number(d.reorder_point ?? d.minThreshold ?? 50),
             unitPriceUSD: Number(d.unit_cost ?? d.unitPriceUSD ?? 100),
+            sellingPriceUSD: Number(d.selling_price ?? (d.unit_cost ? d.unit_cost * 1.5 : 150)),
+            supplier: d.supplier || 'Primary Supplier',
             turnoverRate: d.velocity || '1.8x/mo',
-            status: Number(d.stock_quantity ?? d.stockLevel ?? 0) <= Number(d.reorder_point ?? d.minThreshold ?? 50) ? 'Reorder Soon' : 'Optimal'
+            status: Number(d.stock_quantity ?? d.stockLevel ?? 0) <= Number(d.reorder_point ?? d.minThreshold ?? 50) ? 'Reorder Soon' : 'Optimal',
+            branch_id: d.branch_id
           }));
           setItems(mapped);
         } else {
@@ -166,6 +196,90 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
       setIsCustomCategory(false);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleOpenEdit = (item: InventoryItem) => {
+    setEditingItem(item);
+    setEditName(item.name);
+    const standardCategories = [
+      'Hardware & Devices',
+      'Finished Goods & Products',
+      'Raw Materials & Parts',
+      'Office Equipment & Facilities',
+      'Packaging & Logistics'
+    ];
+    if (standardCategories.includes(item.category)) {
+      setEditCategory(item.category);
+      setIsEditCustomCategory(false);
+      setEditCustomCategory('');
+    } else {
+      setEditCategory('__CUSTOM__');
+      setIsEditCustomCategory(true);
+      setEditCustomCategory(item.category);
+    }
+    setEditStockQuantity(item.stockLevel.toString());
+    setEditReorderPoint(item.minThreshold.toString());
+    setEditUnitCost(item.unitPriceUSD.toString());
+    setEditSellingPrice((item.sellingPriceUSD || (item.unitPriceUSD * 1.5)).toString());
+    setEditSupplier(item.supplier || '');
+    setEditBranchId(item.branch_id || '');
+    setEditError(null);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditCategorySelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (val === '__CUSTOM__') {
+      setIsEditCustomCategory(true);
+      setEditCategory('__CUSTOM__');
+    } else {
+      setIsEditCustomCategory(false);
+      setEditCategory(val);
+    }
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem) return;
+    setIsSavingEdit(true);
+    setEditError(null);
+
+    const finalCategory = isEditCustomCategory ? (editCustomCategory.trim() || 'Inventory') : editCategory;
+    const updates = {
+      name: editName,
+      category: finalCategory,
+      stock_quantity: parseInt(editStockQuantity) || 0,
+      reorder_point: parseInt(editReorderPoint) || 50,
+      unit_cost: parseFloat(editUnitCost) || 0,
+      selling_price: parseFloat(editSellingPrice) || 0,
+      supplier: editSupplier || 'Global Supplier',
+      branch_id: editBranchId || undefined
+    };
+
+    try {
+      await updateInventoryItemApi(editingItem.id, updates);
+      setIsEditModalOpen(false);
+      setEditingItem(null);
+      fetchInventory();
+      window.dispatchEvent(new CustomEvent('axis-data-updated'));
+    } catch (err: any) {
+      setEditError(err.message || 'Failed to update item');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleDelete = async (sku: string, itemName: string) => {
+    if (!window.confirm(`Are you sure you want to delete SKU "${sku}" (${itemName})? This will permanently remove it from inventory.`)) {
+      return;
+    }
+    try {
+      await deleteInventoryItemApi(sku);
+      fetchInventory();
+      window.dispatchEvent(new CustomEvent('axis-data-updated'));
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete inventory item');
     }
   };
 
@@ -353,19 +467,20 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
                 <th>Total Valuation</th>
                 <th>Turnover</th>
                 <th>Status</th>
+                <th style={{ textAlign: 'center', width: '90px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-dim, #64748b)' }}>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-dim, #64748b)' }}>
                     <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '1.6rem', display: 'block', marginBottom: '0.75rem', color: '#00d4ff', opacity: 0.7 }}></i>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-muted, #94a3b8)' }}>Loading your inventory from the server...</div>
                   </td>
                 </tr>
               ) : filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-dim, #64748b)' }}>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-dim, #64748b)' }}>
                     <i className="fa-solid fa-boxes-stacked" style={{ fontSize: '1.8rem', display: 'block', marginBottom: '0.75rem', opacity: 0.3 }}></i>
                     <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-muted, #94a3b8)', marginBottom: '0.35rem' }}>
                       {filterCategory !== 'ALL' ? `No items in "${filterCategory}" category` : 'No inventory items yet'}
@@ -404,6 +519,42 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
                         <span className={`status-badge ${item.status === 'Reorder Soon' ? 'status-pending' : item.status === 'Optimal' ? 'status-cleared' : 'status-processing'}`}>
                           {item.status}
                         </span>
+                      </td>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                          <button
+                            onClick={() => handleOpenEdit(item)}
+                            style={{
+                              background: 'rgba(0, 212, 255, 0.1)',
+                              border: '1px solid rgba(0, 212, 255, 0.3)',
+                              color: '#00d4ff',
+                              borderRadius: '6px',
+                              padding: '5px 8px',
+                              fontSize: '0.78rem',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s'
+                            }}
+                            title="Edit inventory SKU"
+                          >
+                            <i className="fa-solid fa-pen-to-square"></i>
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item.id, item.name)}
+                            style={{
+                              background: 'rgba(255, 142, 142, 0.1)',
+                              border: '1px solid rgba(255, 142, 142, 0.3)',
+                              color: '#ff8e8e',
+                              borderRadius: '6px',
+                              padding: '5px 8px',
+                              fontSize: '0.78rem',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s'
+                            }}
+                            title="Delete SKU"
+                          >
+                            <i className="fa-solid fa-trash"></i>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -611,6 +762,194 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
                 </button>
                 <button type="submit" className="action-btn-primary" disabled={submitting}>
                   {submitting ? 'Saving...' : 'Save Inventory Item'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT INVENTORY ITEM MODAL */}
+      {isEditModalOpen && editingItem && (
+        <div className="modal-overlay active" style={{ zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="modal-card glass-card" style={{ width: '560px', maxWidth: '95vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column', background: 'var(--dropdown-bg, #141418)', border: '1px solid rgba(0, 212, 255, 0.35)', boxShadow: '0 24px 80px rgba(0,0,0,0.9)', padding: '24px', borderRadius: '20px' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid var(--header-border, rgba(255, 255, 255, 0.1))', paddingBottom: '12px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+              <div>
+                <h3 style={{ margin: 0, color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans', fontSize: '1.25rem', fontWeight: 800 }}>
+                  Edit Inventory SKU
+                </h3>
+                <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#00d4ff' }}>
+                  {editingItem.id}
+                </span>
+              </div>
+              <button className="modal-close" onClick={() => setIsEditModalOpen(false)} style={{ color: 'var(--text-muted, #9ca3af)', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>&times;</button>
+            </div>
+
+            {editError && (
+              <div style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(255, 142, 142, 0.15)', border: '1px solid #ff8e8e', color: '#ff8e8e', fontSize: '0.82rem', marginBottom: '12px' }}>
+                <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '6px' }}></i> {editError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              <div style={{ overflowY: 'auto', flex: 1, paddingRight: '6px', minHeight: 0 }}>
+                {branches.length > 0 && !isSubUserWithBranch && (
+                  <div className="form-group" style={{ marginBottom: '14px' }}>
+                    <label style={{ fontSize: '0.78rem', color: '#00d4ff', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                      Branch Location
+                    </label>
+                    <select
+                      className="select-text"
+                      value={editBranchId}
+                      onChange={e => setEditBranchId(e.target.value)}
+                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid rgba(0, 212, 255, 0.35)', borderRadius: '10px', padding: '10px' }}
+                    >
+                      <option value="">HQ / Unassigned</option>
+                      {branches.map(b => (
+                        <option key={b.id} value={b.id}>{b.name} {b.location ? `(${b.location})` : ''}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                    Item Name / Description *
+                  </label>
+                  <input
+                    type="text"
+                    className="input-text"
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    required
+                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '10px' }}
+                  />
+                </div>
+
+                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                      Category
+                    </label>
+                    <select
+                      className="select-text"
+                      value={isEditCustomCategory ? '__CUSTOM__' : editCategory}
+                      onChange={handleEditCategorySelectChange}
+                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '10px' }}
+                    >
+                      <option value="Hardware & Devices">Hardware & Devices</option>
+                      <option value="Finished Goods & Products">Finished Goods & Products</option>
+                      <option value="Raw Materials & Parts">Raw Materials & Parts</option>
+                      <option value="Office Equipment & Facilities">Office Equipment & Facilities</option>
+                      <option value="Packaging & Logistics">Packaging & Logistics</option>
+                      <option value="__CUSTOM__">+ Custom Category...</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                      Stock Quantity Units *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      className="input-text"
+                      value={editStockQuantity}
+                      onChange={e => setEditStockQuantity(e.target.value)}
+                      required
+                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '10px' }}
+                    />
+                  </div>
+                </div>
+
+                {isEditCustomCategory && (
+                  <div className="form-group" style={{ marginBottom: '14px' }}>
+                    <label style={{ fontSize: '0.75rem', color: '#00d4ff', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>
+                      Custom Category Name
+                    </label>
+                    <input
+                      type="text"
+                      className="input-text"
+                      value={editCustomCategory}
+                      onChange={e => setEditCustomCategory(e.target.value)}
+                      required={isEditCustomCategory}
+                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid #00d4ff', borderRadius: '10px', padding: '10px' }}
+                    />
+                  </div>
+                )}
+
+                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                      Reorder Alert Point
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      className="input-text"
+                      value={editReorderPoint}
+                      onChange={e => setEditReorderPoint(e.target.value)}
+                      required
+                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '10px' }}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                      Supplier / Vendor
+                    </label>
+                    <input
+                      type="text"
+                      className="input-text"
+                      value={editSupplier}
+                      onChange={e => setEditSupplier(e.target.value)}
+                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '10px' }}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                      Unit Cost ($)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="input-text"
+                      value={editUnitCost}
+                      onChange={e => setEditUnitCost(e.target.value)}
+                      required
+                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '10px' }}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                      Selling Price ($)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="input-text"
+                      value={editSellingPrice}
+                      onChange={e => setEditSellingPrice(e.target.value)}
+                      required
+                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '10px' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-actions" style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--header-border, rgba(255, 255, 255, 0.08))', flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button type="button" className="action-btn-secondary" onClick={() => setIsEditModalOpen(false)} disabled={isSavingEdit}>
+                  Cancel
+                </button>
+                <button type="submit" className="action-btn-primary" disabled={isSavingEdit} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  {isSavingEdit ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-check"></i>}
+                  {isSavingEdit ? 'Saving...' : 'Update SKU'}
                 </button>
               </div>
             </form>

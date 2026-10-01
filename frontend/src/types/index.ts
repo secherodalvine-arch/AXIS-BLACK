@@ -1,5 +1,6 @@
 export type NavTab = 
   | 'dashboard'
+  | 'spreadsheet'
   | 'inventory'
   | 'analytics'
   | 'transactions'
@@ -131,4 +132,14 @@ export interface ActivityLog {
   branch_name?: string;
   timestamp: string;
 }
+
+export interface CustomSpreadsheet {
+  id: string;
+  title: string;
+  description?: string;
+  columns: { key: string; label: string; width?: number; type?: 'text' | 'number' | 'currency' | 'date' }[];
+  rows: Record<string, any>[];
+  updated_at?: string;
+}
+
 

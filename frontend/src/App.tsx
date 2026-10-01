@@ -8,6 +8,7 @@ import { AxisVoiceSupportAgent } from './components/AxisVoiceSupportAgent';
 import { formatCurrency } from './utils/currencyUtils';
 
 import { OverviewDashboard as DashboardPage } from './pages/DashboardPage';
+import { SpreadsheetPage } from './pages/SpreadsheetPage';
 import { InventoryView as InventoryPage } from './pages/InventoryPage';
 import { BusinessAnalytics as AnalyticsPage } from './pages/AnalyticsPage';
 import { TransactionsLedger as TransactionsPage } from './pages/TransactionsPage';
@@ -143,7 +144,7 @@ export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<NavTab>(() => {
     try {
       const saved = localStorage.getItem('axis_active_tab') as NavTab | null;
-      const validTabs: NavTab[] = ['dashboard', 'business', 'inventory', 'analytics', 'transactions', 'activities', 'agent', 'forecast', 'settings'];
+      const validTabs: NavTab[] = ['dashboard', 'spreadsheet', 'business', 'inventory', 'analytics', 'transactions', 'activities', 'agent', 'forecast', 'settings'];
       if (saved && validTabs.includes(saved)) {
         return saved;
       }
@@ -913,6 +914,7 @@ export const App: React.FC = () => {
                   if (t === 'settings') return true;
                   if (isOwner) return true;
                   if (t === 'business') return false; // Strictly owner only
+                  if (t === 'spreadsheet') return isOwner || perms.includes('transactions') || perms.includes('inventory') || perms.includes('dashboard') || perms.includes('analytics');
                   return perms.includes(t);
                 };
 
@@ -950,6 +952,15 @@ export const App: React.FC = () => {
                   onAIActionClick={handleAIActionClick}
                   onQuickAISubmit={handleQuickAISubmit}
                   onExportCSV={handleExportCSV}
+                />
+              )}
+
+              {currentTab === 'spreadsheet' && (!user?.is_sub_user || user?.permissions?.some(p => ['transactions', 'inventory', 'dashboard', 'analytics'].includes(p))) && (
+                <SpreadsheetPage
+                  currency={currency}
+                  transactions={transactions}
+                  user={user}
+                  onRefreshData={fetchLiveData}
                 />
               )}
 

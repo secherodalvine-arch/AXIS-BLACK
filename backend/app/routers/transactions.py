@@ -23,6 +23,18 @@ class TransactionPayload(BaseModel):
     branch_id: Optional[str] = None
 
 
+class TransactionUpdate(BaseModel):
+    counterparty: Optional[str] = None
+    type: Optional[str] = None
+    category: Optional[str] = None
+    accountType: Optional[str] = None
+    date: Optional[str] = None
+    status: Optional[str] = None
+    amount: Optional[float] = None
+    notes: Optional[str] = None
+    branch_id: Optional[str] = None
+
+
 def _check_txn_permission(current_user: dict, write: bool = False):
     if current_user.get("is_sub_user"):
         perms = current_user.get("permissions") or []
@@ -137,6 +149,40 @@ async def delete_transaction(
         )
         return {"status": "deleted", "id": txn_id}
     raise HTTPException(status_code=404, detail="Transaction not found")
+
+
+@router.put("/me/{txn_id}", response_model=Dict[str, Any])
+async def update_transaction(
+    txn_id: str,
+    payload: TransactionUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    _check_txn_permission(current_user, write=True)
+    is_sub_user = bool(current_user.get("is_sub_user"))
+    owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
+    updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+
+    if is_sub_user and current_user.get("branch_id"):
+        updates["branch_id"] = current_user.get("branch_id")
+
+    updated = await AxisDataStore.update_transaction(owner_id, txn_id, updates)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    actor_name = current_user.get("name", "User")
+    actor_role = "Team Member" if is_sub_user else "Owner"
+    await AxisDataStore.log_activity(
+        owner_id=owner_id,
+        actor_id=current_user.get("user_id", ""),
+        actor_name=actor_name,
+        actor_role=actor_role,
+        action="transaction.update",
+        title=f"Updated ledger entry {txn_id}",
+        details=f"Modified: {', '.join(updates.keys())}",
+        branch_id=updated.get("branch_id")
+    )
+
+    return updated
 
 
 @router.post("/me/import-csv", response_model=Dict[str, Any])

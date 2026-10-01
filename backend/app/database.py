@@ -24,7 +24,8 @@ class DatabaseManager:
         "transactions": {},
         "inventory": {},
         "analytics": {},
-        "copilot_chats": {}
+        "copilot_chats": {},
+        "spreadsheets": {}
     }
 
     def load_memory_store(self):
@@ -348,6 +349,30 @@ class AxisDataStore:
         return len(db_manager.memory_store["inventory"][user_id]) < before
 
     @staticmethod
+    async def update_transaction(user_id: str, txn_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        updates["updated_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        if "amount" in updates and updates["amount"] is not None:
+            updates["amount"] = float(updates["amount"])
+            
+        if db_manager.is_connected:
+            await db_manager.db.transactions.update_one(
+                {"user_id": user_id, "id": txn_id},
+                {"$set": updates}
+            )
+            item = await db_manager.db.transactions.find_one({"user_id": user_id, "id": txn_id})
+            if item:
+                item.pop("_id", None)
+                return item
+
+        txns = db_manager.memory_store.get("transactions", {}).get(user_id, [])
+        for i, t in enumerate(txns):
+            if t.get("id") == txn_id:
+                txns[i].update(updates)
+                db_manager.save_memory_store()
+                return txns[i]
+        return None
+
+    @staticmethod
     async def delete_transaction(user_id: str, txn_id: str) -> bool:
         if db_manager.is_connected:
             res = await db_manager.db.transactions.delete_one({"user_id": user_id, "id": txn_id})
@@ -357,6 +382,54 @@ class AxisDataStore:
         db_manager.memory_store["transactions"][user_id] = [t for t in txns if t.get("id") != txn_id]
         db_manager.save_memory_store()
         return len(db_manager.memory_store["transactions"][user_id]) < before
+
+    @staticmethod
+    async def get_custom_spreadsheets(user_id: str) -> List[Dict[str, Any]]:
+        if db_manager.is_connected:
+            docs = await db_manager.db.spreadsheets.find({"user_id": user_id}).to_list(length=100)
+            if docs:
+                return [{k: v for k, v in d.items() if k != "_id"} for d in docs]
+            return []
+        return db_manager.memory_store.get("spreadsheets", {}).get(user_id, [])
+
+    @staticmethod
+    async def save_custom_spreadsheet(user_id: str, sheet_data: Dict[str, Any]) -> Dict[str, Any]:
+        sheet_id = sheet_data.get("id") or f"SHEET-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
+        sheet_data["id"] = sheet_id
+        sheet_data["user_id"] = user_id
+        sheet_data["updated_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        if db_manager.is_connected:
+            await db_manager.db.spreadsheets.update_one(
+                {"user_id": user_id, "id": sheet_id},
+                {"$set": sheet_data},
+                upsert=True
+            )
+
+        if "spreadsheets" not in db_manager.memory_store:
+            db_manager.memory_store["spreadsheets"] = {}
+        if user_id not in db_manager.memory_store["spreadsheets"]:
+            db_manager.memory_store["spreadsheets"][user_id] = []
+
+        sheets = db_manager.memory_store["spreadsheets"][user_id]
+        idx = next((i for i, s in enumerate(sheets) if s.get("id") == sheet_id), None)
+        if idx is not None:
+            sheets[idx] = sheet_data
+        else:
+            sheets.append(sheet_data)
+        db_manager.save_memory_store()
+        return sheet_data
+
+    @staticmethod
+    async def delete_custom_spreadsheet(user_id: str, sheet_id: str) -> bool:
+        if db_manager.is_connected:
+            res = await db_manager.db.spreadsheets.delete_one({"user_id": user_id, "id": sheet_id})
+            return res.deleted_count > 0
+        sheets = db_manager.memory_store.get("spreadsheets", {}).get(user_id, [])
+        before = len(sheets)
+        db_manager.memory_store["spreadsheets"][user_id] = [s for s in sheets if s.get("id") != sheet_id]
+        db_manager.save_memory_store()
+        return len(db_manager.memory_store["spreadsheets"][user_id]) < before
 
     # ── Activity Audit Logging ──
     @staticmethod

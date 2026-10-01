@@ -493,6 +493,13 @@ export const deleteTransactionApi = async (id: string) => {
   });
 };
 
+export const updateTransactionApi = async (id: string, txnData: any) => {
+  return await request<any>(`/transactions/me/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(txnData)
+  });
+};
+
 // ── Inventory Update & Deletion ──
 export const updateInventoryItemApi = async (sku: string, itemData: any) => {
   return await request<any>(`/inventory/items/${sku}`, {
@@ -504,6 +511,40 @@ export const updateInventoryItemApi = async (sku: string, itemData: any) => {
 export const deleteInventoryItemApi = async (sku: string) => {
   return await request<any>(`/inventory/items/${sku}`, {
     method: 'DELETE'
+  });
+};
+
+// ── Axis Spreadsheet Engine APIs ──
+export const getSpreadsheetOverviewApi = async () => {
+  return await request<any>('/spreadsheet/overview');
+};
+
+export const getCustomSpreadsheetsApi = async () => {
+  return await request<any[]>('/spreadsheet/custom');
+};
+
+export const saveCustomSpreadsheetApi = async (sheetData: any) => {
+  return await request<any>('/spreadsheet/custom', {
+    method: 'POST',
+    body: JSON.stringify(sheetData)
+  });
+};
+
+export const deleteCustomSpreadsheetApi = async (sheetId: string) => {
+  return await request<any>(`/spreadsheet/custom/${sheetId}`, {
+    method: 'DELETE'
+  });
+};
+
+export const batchSyncSpreadsheetApi = async (payload: {
+  dataset: string;
+  sheet_id?: string;
+  branch_id?: string;
+  items: { action: string; id?: string; data: any }[];
+}) => {
+  return await request<any>('/spreadsheet/batch-sync', {
+    method: 'POST',
+    body: JSON.stringify(payload)
   });
 };
 

@@ -96,6 +96,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         )}
 
+        {(isOwner || canAccess('transactions') || canAccess('inventory') || canAccess('dashboard')) && (
+          <button 
+            className={`nav-item ${currentTab === 'spreadsheet' ? 'active' : ''}`}
+            onClick={() => onTabChange('spreadsheet')}
+            title={isCollapsed ? "Spreadsheet" : undefined}
+          >
+            <div className="nav-icon-wrapper"><i className="fa-solid fa-table-cells"></i></div>
+            {!isCollapsed && (
+              <span className="nav-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                <span>Spreadsheet</span>
+                <span style={{ fontSize: '0.62rem', background: '#107c41', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 700, letterSpacing: '0.4px', marginLeft: '6px' }}>SHEETS</span>
+              </span>
+            )}
+          </button>
+        )}
+
         {canAccess('agent') && (
           <button 
             className={`nav-item ${currentTab === 'agent' ? 'active' : ''}`}
