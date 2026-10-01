@@ -53,7 +53,7 @@ interface WorksheetTab {
   rows: any[];
   saveTarget: 'workbook' | 'inventory' | 'ledger';
   monthFilter?: string;
-  isStructuredTable?: boolean; // true for Inventory / Ledger with dedicated Row 1 field headers
+  isStructuredTable?: boolean;
 }
 
 // Generate Excel Column Letter: 0->A, 25->Z, 26->AA, 27->AB...
@@ -67,19 +67,6 @@ export const getColumnLetter = (colIdx: number): string => {
   return letter;
 };
 
-// Available months helper (Current month + last 11 months)
-export const getAvailableMonthsList = () => {
-  const months = [{ value: 'ALL', label: 'All Months / Complete History' }];
-  const now = new Date();
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const val = d.toISOString().slice(0, 7); // e.g. "2026-10"
-    const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    months.push({ value: val, label });
-  }
-  return months;
-};
-
 export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   currency = 'USD',
   user: currentUser,
@@ -90,18 +77,70 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   const [workbookTitle, setWorkbookTitle] = useState('Enterprise Financial Model');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
 
-  // ── Month Filter for Opening Records ──
-  const availableMonths = useMemo(() => getAvailableMonthsList(), []);
-  const [hubInvMonth, setHubInvMonth] = useState<string>(new Date().toISOString().slice(0, 7));
-  const [hubLedgerMonth, setHubLedgerMonth] = useState<string>(new Date().toISOString().slice(0, 7));
-  const [csvImportMonth, setCsvImportMonth] = useState<string>(new Date().toISOString().slice(0, 7));
-
   // ── Raw Data Stores ──
   const [liveLedger, setLiveLedger] = useState<any[]>([]);
   const [liveInventory, setLiveInventory] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // ── Dynamic Existing Months (Only show months that actually have data) ──
+  const existingInventoryMonths = useMemo(() => {
+    const set = new Set<string>();
+    liveInventory.forEach(item => {
+      const raw = item.created_at || item.date || item.updated_at;
+      if (raw && typeof raw === 'string') {
+        const match = raw.match(/^(\d{4}-\d{2})/);
+        if (match) set.add(match[1]);
+      }
+    });
+    const sorted = Array.from(set).sort().reverse();
+    const list = [{ value: 'ALL', label: 'All Records / Complete History' }];
+    sorted.forEach(m => {
+      const [y, mon] = m.split('-');
+      const dateObj = new Date(parseInt(y), parseInt(mon) - 1, 1);
+      const label = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      list.push({ value: m, label });
+    });
+    return list;
+  }, [liveInventory]);
+
+  const existingLedgerMonths = useMemo(() => {
+    const set = new Set<string>();
+    liveLedger.forEach(txn => {
+      const raw = txn.date || txn.created_at;
+      if (raw && typeof raw === 'string') {
+        const match = raw.match(/^(\d{4}-\d{2})/);
+        if (match) set.add(match[1]);
+      }
+    });
+    const sorted = Array.from(set).sort().reverse();
+    const list = [{ value: 'ALL', label: 'All Records / Complete History' }];
+    sorted.forEach(m => {
+      const [y, mon] = m.split('-');
+      const dateObj = new Date(parseInt(y), parseInt(mon) - 1, 1);
+      const label = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      list.push({ value: m, label });
+    });
+    return list;
+  }, [liveLedger]);
+
+  const [hubInvMonth, setHubInvMonth] = useState<string>('ALL');
+  const [hubLedgerMonth, setHubLedgerMonth] = useState<string>('ALL');
+  const [csvImportMonth, setCsvImportMonth] = useState<string>('ALL');
+
+  // Automatically update selected month to latest data month if available
+  useEffect(() => {
+    if (existingInventoryMonths.length > 1 && hubInvMonth === 'ALL') {
+      setHubInvMonth(existingInventoryMonths[1].value);
+    }
+  }, [existingInventoryMonths, hubInvMonth]);
+
+  useEffect(() => {
+    if (existingLedgerMonths.length > 1 && hubLedgerMonth === 'ALL') {
+      setHubLedgerMonth(existingLedgerMonths[1].value);
+    }
+  }, [existingLedgerMonths, hubLedgerMonth]);
 
   // ── Worksheets Tabs in Current Workbook ──
   const [openTabs, setOpenTabs] = useState<WorksheetTab[]>([]);
@@ -122,6 +161,10 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   // ── Toolbar Dropdown Menus ──
   const [openInsertRowMenu, setOpenInsertRowMenu] = useState(false);
   const [openInsertColMenu, setOpenInsertColMenu] = useState(false);
+
+  // ── Column & Row Resizing State ──
+  const [colWidths, setColWidths] = useState<Record<string, number>>({});
+  const [rowHeights, setRowHeights] = useState<Record<number, number>>({});
 
   // ── History Tracking ──
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>(() => {
@@ -152,7 +195,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   // ── Context Menu State ──
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; rowIdx: number; colKey: string } | null>(null);
 
-  // Cell formatting store: key format `${tabId}_${rowIdx}_${colKey}`
+  // Cell formatting store
   const [cellStyles, setCellStyles] = useState<Record<string, { bold?: boolean; italic?: boolean; underline?: boolean; align?: 'left' | 'center' | 'right'; format?: string }>>({});
 
   const cellInputRef = useRef<HTMLInputElement | null>(null);
@@ -163,8 +206,8 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   // ── Standard Input Form Column Schemas ──
   // Matching "Add Transaction" fields exactly
   const ledgerColumns: ColumnDef[] = useMemo(() => [
-    { key: 'date', letter: 'A', label: 'Date (YYYY-MM-DD)', type: 'date', width: 130 },
-    { key: 'counterparty', letter: 'B', label: 'Description / Counterparty', type: 'text', width: 240 },
+    { key: 'date', letter: 'A', label: 'Date', type: 'date', width: 120 },
+    { key: 'counterparty', letter: 'B', label: 'Description / Counterparty', type: 'text', width: 230 },
     { key: 'type', letter: 'C', label: 'Flow Type', type: 'select', options: ['Expense', 'Revenue'], width: 120 },
     { key: 'accountType', letter: 'D', label: 'Account Ledger', type: 'select', options: ['Cash', 'Bank', 'Accounts Receivable', 'Accounts Payable', 'Revenue', 'Expense'], width: 160 },
     { key: 'category', letter: 'E', label: 'Category', type: 'select', options: [
@@ -174,14 +217,14 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     ], width: 190 },
     { key: 'amount', letter: 'F', label: `Amount (${currency})`, type: 'currency', width: 130 },
     { key: 'status', letter: 'G', label: 'Status', type: 'select', options: ['Cleared', 'Pending', 'Processing'], width: 110 },
-    { key: 'notes', letter: 'H', label: 'Notes / Reference Memo', type: 'text', width: 230 },
+    { key: 'notes', letter: 'H', label: 'Notes / Memo', type: 'text', width: 220 },
     { key: 'branch_id', letter: 'I', label: 'Branch Location', type: 'select', options: branches.map(b => b.name), width: 150 },
     { key: 'id', letter: 'J', label: 'Ref Code', type: 'code', readOnly: true, width: 110 }
   ], [currency, branches]);
 
   // Matching "Add Inventory Item" modal fields exactly
   const inventoryColumns: ColumnDef[] = useMemo(() => [
-    { key: 'name', letter: 'A', label: 'Item Name / Description', type: 'text', width: 240 },
+    { key: 'name', letter: 'A', label: 'Item Name / Description', type: 'text', width: 230 },
     { key: 'category', letter: 'B', label: 'Category', type: 'select', options: [
       'Hardware & Devices', 'Finished Goods & Products', 'Raw Materials & Parts', 
       'Office Equipment & Facilities', 'Packaging & Logistics', 'General Stock'
@@ -191,12 +234,12 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     { key: 'unit_cost', letter: 'E', label: `Unit Cost ($)`, type: 'currency', width: 120 },
     { key: 'selling_price', letter: 'F', label: `Selling Price ($)`, type: 'currency', width: 130 },
     { key: 'margin', letter: 'G', label: 'Gross Margin %', type: 'formula', readOnly: true, width: 120 },
-    { key: 'supplier', letter: 'H', label: 'Supplier / Vendor', type: 'text', width: 190 },
+    { key: 'supplier', letter: 'H', label: 'Supplier / Vendor', type: 'text', width: 180 },
     { key: 'branch_id', letter: 'I', label: 'Assign to Branch', type: 'select', options: branches.map(b => b.name), width: 150 },
     { key: 'sku', letter: 'J', label: 'SKU Code', type: 'code', readOnly: true, width: 110 }
   ], [branches]);
 
-  // Generate blank columns beyond Z (e.g. 52 columns: A..Z, AA..AZ)
+  // Generate blank columns beyond Z (52 columns: A..Z, AA..AZ)
   const generateBlankColumns = useCallback((count: number = 52): ColumnDef[] => {
     return Array.from({ length: count }, (_, i) => {
       const letter = getColumnLetter(i);
@@ -239,7 +282,6 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
       setLiveInventory(iList);
       setBranches(Array.isArray(bList) ? bList : []);
 
-      // Update history record counts
       setHistoryItems(prev => prev.map(h => {
         if (h.sheetType === 'ledger') return { ...h, recordCount: tList.length };
         if (h.sheetType === 'inventory') return { ...h, recordCount: iList.length };
@@ -278,7 +320,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     return () => window.removeEventListener('click', handleClickOutside);
   }, []);
 
-  // Save history to localStorage (only when user actually saves work)
+  // Save history to localStorage
   const recordHistory = (title: string, sheetType: 'ledger' | 'inventory' | 'blank' | 'custom', count: number, month?: string) => {
     const now = Date.now();
     const newItem: HistoryItem = {
@@ -328,9 +370,10 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   // 2. New Ledger Entry (Add Transaction)
   const openNewLedgerEntry = () => {
     const emptyRows = generateCleanRows(ledgerColumns, 80);
-    // Pre-populate today's date on first row for convenience
+    // Automatically set current date so user doesn't have to fill it
+    const today = new Date().toISOString().split('T')[0];
     if (emptyRows[0]) {
-      emptyRows[0].date = new Date().toISOString().split('T')[0];
+      emptyRows[0].date = today;
       emptyRows[0].type = 'Expense';
       emptyRows[0].status = 'Cleared';
     }
@@ -376,15 +419,20 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
 
   // 4. Edit Inventory Records (Filtered by Month)
   const openEditInventoryRecords = (month: string = hubInvMonth) => {
-    // Filter actual records by month without injecting any fake SKUs!
-    const filteredRecords = month === 'ALL'
+    // If 'ALL', loads all records. If specific month, filter by created_at / date
+    let filteredRecords = month === 'ALL'
       ? [...liveInventory]
       : liveInventory.filter(item => {
-          const itemDate = item.created_at || item.date || '';
+          const itemDate = item.created_at || item.date || item.updated_at || '';
           return itemDate.startsWith(month);
         });
 
-    // Clean padding: only add clean empty rows if less than 60, with NO fake SKUs!
+    // If month filter yielded 0 records but inventory has records, fallback to all records
+    if (filteredRecords.length === 0 && liveInventory.length > 0 && month !== 'ALL') {
+      filteredRecords = [...liveInventory];
+    }
+
+    // Padded clean empty rows without fake SKUs
     const rows = [...filteredRecords];
     while (rows.length < 80) {
       const emptyRow: any = { _id: `empty-inv-${rows.length + 1}` };
@@ -392,7 +440,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
       rows.push(emptyRow);
     }
 
-    const monthLabel = availableMonths.find(m => m.value === month)?.label || month;
+    const monthLabel = existingInventoryMonths.find(m => m.value === month)?.label || month;
     const invTab: WorksheetTab = {
       id: 'tab-inventory',
       title: month === 'ALL' ? 'Inventory (All)' : `Inventory (${month})`,
@@ -416,10 +464,16 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
 
   // 5. Edit Ledger Records (Filtered by Month)
   const openEditLedgerRecords = (month: string = hubLedgerMonth) => {
-    // Filter actual records by month without injecting any fake transactions!
-    const filteredRecords = month === 'ALL'
+    let filteredRecords = month === 'ALL'
       ? [...liveLedger]
-      : liveLedger.filter(txn => txn.date && txn.date.startsWith(month));
+      : liveLedger.filter(txn => {
+          const txnDate = txn.date || txn.created_at || '';
+          return txnDate.startsWith(month);
+        });
+
+    if (filteredRecords.length === 0 && liveLedger.length > 0 && month !== 'ALL') {
+      filteredRecords = [...liveLedger];
+    }
 
     const rows = [...filteredRecords];
     while (rows.length < 80) {
@@ -428,7 +482,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
       rows.push(emptyRow);
     }
 
-    const monthLabel = availableMonths.find(m => m.value === month)?.label || month;
+    const monthLabel = existingLedgerMonths.find(m => m.value === month)?.label || month;
     const ledgerTab: WorksheetTab = {
       id: 'tab-ledger',
       title: month === 'ALL' ? 'Ledger (All)' : `Ledger (${month})`,
@@ -546,7 +600,6 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   };
 
   const handleAddNewBlankTab = () => {
-    // Plus creates a brand new blank worksheet with clean cells
     const newIdx = openTabs.length + 1;
     const blankCols = generateBlankColumns(52);
     const blankRows = generateCleanRows(blankCols, 100);
@@ -591,6 +644,47 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   const activeColumns: ColumnDef[] = currentTab ? currentTab.columns : [];
   const activeRows: any[] = currentTab ? currentTab.rows : [];
   const isCurrentTabDirty = Boolean(currentTab && dirtyTabs[currentTab.id]);
+
+  // ── Column & Row Resizing Handlers ──
+  const startColumnResize = (e: React.MouseEvent, colKey: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startWidth = colWidths[colKey] || activeColumns.find(c => c.key === colKey)?.width || 120;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const newWidth = Math.max(60, startWidth + (moveEvent.clientX - startX));
+      setColWidths(prev => ({ ...prev, [colKey]: newWidth }));
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
+  const startRowResize = (e: React.MouseEvent, rowIdx: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startY = e.clientY;
+    const startHeight = rowHeights[rowIdx] || 32;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const newHeight = Math.max(24, startHeight + (moveEvent.clientY - startY));
+      setRowHeights(prev => ({ ...prev, [rowIdx]: newHeight }));
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
 
   // ── Formula Engine ──
   const evaluateFormula = useCallback((val: any, row: any, colKey: string): any => {
@@ -641,7 +735,6 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
       }
     }
 
-    // Auto-computed gross profit margin for inventory
     if (colKey === 'margin' && currentTab?.sheetType === 'inventory') {
       const cost = Number(row.unit_cost ?? 0);
       const sell = Number(row.selling_price ?? 0);
@@ -672,10 +765,14 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   const updateCellValue = (rowIdx: number, colKey: string, newValue: any) => {
     if (!currentTab) return;
 
-    // Update local worksheet rows
     const updatedRows = activeRows.map((r, idx) => {
       if (idx === rowIdx) {
-        return { ...r, [colKey]: newValue };
+        const copy = { ...r, [colKey]: newValue };
+        // Auto populate date if user enters any ledger field and date is empty
+        if (currentTab.saveTarget === 'ledger' && !copy.date) {
+          copy.date = new Date().toISOString().split('T')[0];
+        }
+        return copy;
       }
       return r;
     });
@@ -758,7 +855,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
         window.dispatchEvent(new CustomEvent('axis-data-updated'));
         if (onRefreshData) onRefreshData();
 
-      // 3. Save as Custom Workbook Model (Does NOT pollute Inventory or Ledger)
+      // 3. Save as Custom Workbook Model
       } else {
         await saveCustomSpreadsheetApi({
           id: currentTab.id,
@@ -768,7 +865,6 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
         });
       }
 
-      // Mark tab clean
       setDirtyTabs(prev => ({ ...prev, [currentTab.id]: false }));
       setSyncStatus('synced');
       setSyncMessage('All Changes Saved');
@@ -851,16 +947,14 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     setIsEditing(false);
   };
 
-  // ── Keyboard Shortcuts (Ctrl+S, Ctrl+C, Ctrl+V, Shift+Arrows, Delete) ──
+  // ── Keyboard Shortcuts ──
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Ctrl+S / Cmd+S: Save
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
       e.preventDefault();
       handleSaveWorkbook();
       return;
     }
 
-    // Ctrl+B / Ctrl+I / Ctrl+U
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
       e.preventDefault();
       toggleStyle('bold');
@@ -881,7 +975,6 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     const { rowIdx, colKey } = selectedCell;
     const colIdx = activeColumns.findIndex(c => c.key === colKey);
 
-    // When editing inside input
     if (isEditing) {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -902,7 +995,6 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
       return;
     }
 
-    // Shift + Arrow (Expand Range Selection)
     if (e.shiftKey && ['ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft'].includes(e.key)) {
       e.preventDefault();
       setSelectionRange(prev => {
@@ -918,7 +1010,6 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
       return;
     }
 
-    // Navigation Arrows
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (rowIdx < activeRows.length - 1) handleSelectCell(rowIdx + 1, colKey);
@@ -939,7 +1030,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
       clearSelectedCells();
     } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const col = activeColumns[colIdx];
-      if (col && !col.readOnly) {
+      if (col && !col.readOnly && col.type !== 'select') {
         setIsEditing(true);
         setEditValue(e.key);
         setTimeout(() => cellInputRef.current?.focus(), 30);
@@ -947,7 +1038,6 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     }
   };
 
-  // Clear highlighted / selected cells
   const clearSelectedCells = () => {
     if (!selectionRange) {
       if (selectedCell) updateCellValue(selectedCell.rowIdx, selectedCell.colKey, '');
@@ -1015,7 +1105,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     }
   };
 
-  // ── Row & Column Insertion from Toolbar (Position Selection) ──
+  // ── Row & Column Insertion & Deletion ──
   const handleInsertRowAt = (position: 'above' | 'below' | 'top' | 'bottom') => {
     if (!currentTab) return;
     const activeIdx = selectedCell ? selectedCell.rowIdx : 0;
@@ -1025,7 +1115,6 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     else if (position === 'below') insertIndex = activeIdx + 1;
     else if (position === 'top') insertIndex = 0;
     else if (position === 'bottom') {
-      // Find last row with actual data
       const lastDataIdx = activeRows.reduce((last, r, idx) => {
         return Object.values(r).some(v => v !== null && v !== undefined && String(v).trim() !== '') ? idx : last;
       }, 0);
@@ -1081,18 +1170,29 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
       letter: newLetter,
       label: `Column ${newLetter}`,
       type: 'text',
-      width: 130
+      width: 120
     };
 
     const updatedCols = [...activeColumns];
     updatedCols.splice(insertIndex, 0, newCol);
-
-    // Re-letter all columns
     const relettered = updatedCols.map((c, idx) => ({ ...c, letter: getColumnLetter(idx) }));
 
     setOpenTabs(prev => prev.map(t => t.id === currentTab.id ? { ...t, columns: relettered } : t));
     setDirtyTabs(prev => ({ ...prev, [currentTab.id]: true }));
     setOpenInsertColMenu(false);
+  };
+
+  const handleDeleteActiveColumn = () => {
+    if (!selectedCell || !currentTab) return;
+    const colKey = selectedCell.colKey;
+    if (activeColumns.length <= 1) return;
+
+    if (!window.confirm(`Delete column ${colKey}?`)) return;
+
+    const updatedCols = activeColumns.filter(c => c.key !== colKey).map((c, idx) => ({ ...c, letter: getColumnLetter(idx) }));
+    setOpenTabs(prev => prev.map(t => t.id === currentTab.id ? { ...t, columns: updatedCols } : t));
+    setDirtyTabs(prev => ({ ...prev, [currentTab.id]: true }));
+    setSelectedCell({ rowIdx: selectedCell.rowIdx, colKey: updatedCols[0]?.key || 'col_A' });
   };
 
   // Export CSV
@@ -1239,7 +1339,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                 Axis Sheets
                 <span className="sheet-hub-badge">EXCEL PRO</span>
               </h2>
-              <p>Select what you want to do: enter new records, open &amp; edit business data by month, or build financial models</p>
+              <p>Select an action below to enter new records, edit existing data, or create custom models</p>
             </div>
           </div>
 
@@ -1250,7 +1350,6 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                 <i className="fa-solid fa-pen-to-square" style={{ color: '#00d4ff' }}></i>
                 <span>Data Entry &amp; New Worksheets</span>
               </div>
-              <span className="sheet-section-badge">Fast Recording</span>
             </div>
 
             <div className="sheet-templates-grid">
@@ -1260,9 +1359,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                   <i className="fa-solid fa-boxes-stacked"></i>
                 </div>
                 <div className="template-title">New Inventory Entry</div>
-                <div className="template-desc">
-                  Opens a clean worksheet with exact headers from <strong>Add Inventory Item</strong> (Item Name, Category, Stock Units, Unit Cost, Selling Price, Supplier).
-                </div>
+                <div className="template-desc">Fast entry with exact inventory form fields.</div>
                 <div className="sheet-card-action-row">
                   <button className="sheet-card-btn primary" onClick={openNewInventoryEntry}>
                     <i className="fa-solid fa-plus"></i> Start Inventory Entry
@@ -1276,9 +1373,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                   <i className="fa-solid fa-receipt"></i>
                 </div>
                 <div className="template-title">New Ledger Entry</div>
-                <div className="template-desc">
-                  Opens a clean worksheet with exact headers from <strong>Add Transaction</strong> (Date, Counterparty, Flow Type, Account, Category, Amount, Status, Memo).
-                </div>
+                <div className="template-desc">Fast cashflow entry with auto-recorded dates.</div>
                 <div className="sheet-card-action-row">
                   <button className="sheet-card-btn primary" onClick={openNewLedgerEntry}>
                     <i className="fa-solid fa-plus"></i> Start Ledger Entry
@@ -1292,12 +1387,10 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                   <i className="fa-solid fa-table"></i>
                 </div>
                 <div className="template-title">Blank Workbook</div>
-                <div className="template-desc">
-                  Fresh endless worksheet with clean columns A to AZ and 100+ rows, formulas, and custom save targeting.
-                </div>
+                <div className="template-desc">Clean 52-column calculation grid with formulas.</div>
                 <div className="sheet-card-action-row">
                   <button className="sheet-card-btn" onClick={openBlankWorkbook}>
-                    <i className="fa-solid fa-plus"></i> Blank Sheet
+                    <i className="fa-solid fa-plus"></i> Create Blank Sheet
                   </button>
                 </div>
               </div>
@@ -1311,7 +1404,6 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                 <i className="fa-solid fa-folder-open" style={{ color: '#10b981' }}></i>
                 <span>Open &amp; Edit Live Business Records</span>
               </div>
-              <span className="sheet-section-badge">Month Filtered</span>
             </div>
 
             <div className="sheet-templates-grid">
@@ -1321,16 +1413,14 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                   <i className="fa-solid fa-layer-group"></i>
                 </div>
                 <div className="template-title">Edit Inventory Records</div>
-                <div className="template-desc">
-                  Select a month to load only items for that period. No duplicate or ghost records. Edit in-grid and save to update live stock.
-                </div>
+                <div className="template-desc">Open &amp; edit live stock items filtered by period.</div>
                 <div className="sheet-card-action-row">
                   <select 
                     className="sheet-month-select" 
                     value={hubInvMonth} 
                     onChange={e => setHubInvMonth(e.target.value)}
                   >
-                    {availableMonths.map(m => (
+                    {existingInventoryMonths.map(m => (
                       <option key={m.value} value={m.value}>{m.label}</option>
                     ))}
                   </select>
@@ -1346,16 +1436,14 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                   <i className="fa-solid fa-money-bill-transfer"></i>
                 </div>
                 <div className="template-title">Edit Ledger &amp; Cashflow</div>
-                <div className="template-desc">
-                  Select a month to load verified cash movements for that month. Edit transactions and reconcile balances in real time.
-                </div>
+                <div className="template-desc">Open &amp; edit verified transactions by period.</div>
                 <div className="sheet-card-action-row">
                   <select 
                     className="sheet-month-select" 
                     value={hubLedgerMonth} 
                     onChange={e => setHubLedgerMonth(e.target.value)}
                   >
-                    {availableMonths.map(m => (
+                    {existingLedgerMonths.map(m => (
                       <option key={m.value} value={m.value}>{m.label}</option>
                     ))}
                   </select>
@@ -1371,9 +1459,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                   <i className="fa-solid fa-calculator"></i>
                 </div>
                 <div className="template-title">Business Scratchpad</div>
-                <div className="template-desc">
-                  Flexible financial modeling worksheet with custom multiplier math, rates, and unit revenue projections.
-                </div>
+                <div className="template-desc">Flexible projection models and multiplier math.</div>
                 <div className="sheet-card-action-row">
                   <button className="sheet-card-btn" onClick={openScratchpadWorkbook}>
                     <i className="fa-solid fa-bolt"></i> Open Scratchpad
@@ -1387,9 +1473,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                   <i className="fa-solid fa-file-import"></i>
                 </div>
                 <div className="template-title">Import CSV File</div>
-                <div className="template-desc">
-                  Tag imported rows with a specific month/period and open them into a custom worksheet.
-                </div>
+                <div className="template-desc">Upload external sheet tagged with a period.</div>
                 <div className="sheet-card-action-row">
                   <input ref={fileInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleImportCSV} />
                   <select 
@@ -1397,7 +1481,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                     value={csvImportMonth} 
                     onChange={e => setCsvImportMonth(e.target.value)}
                   >
-                    {availableMonths.map(m => (
+                    {existingLedgerMonths.map(m => (
                       <option key={m.value} value={m.value}>{m.label}</option>
                     ))}
                   </select>
@@ -1545,7 +1629,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            {/* Save Target Selector (For Blank Workbook mapping) */}
+            {/* Save Target Selector */}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--sheet-text-muted)' }}>Save as:</span>
               <select
@@ -1589,12 +1673,22 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
             <button className="tool-btn" onClick={handleExportWorkbook} title="Export CSV">
               <i className="fa-solid fa-file-excel"></i> Export
             </button>
+
+            {/* Explicit Close Workbook Button on Top */}
+            <button 
+              className="sheet-back-btn" 
+              onClick={requestNavigateToHub} 
+              title="Close workbook and return to hub"
+              style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+            >
+              <i className="fa-solid fa-xmark"></i> Close
+            </button>
           </div>
         </div>
 
         {/* ── 2. Pro Spreadsheet Feature Ribbon / Toolbar ── */}
         <div className="spreadsheet-pro-toolbar">
-          {/* Explicit Save Button with Dirty Animation */}
+          {/* Explicit Save Button */}
           <div className="tool-group">
             <button 
               className={`tool-btn save-btn ${isCurrentTabDirty ? 'dirty' : ''}`}
@@ -1693,23 +1787,23 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
               <button 
                 className="tool-btn primary" 
                 onClick={(e) => { e.stopPropagation(); setOpenInsertRowMenu(!openInsertRowMenu); }}
-                title="Add Row Placement Options"
+                title="Insert Row Options"
               >
                 <i className="fa-solid fa-plus"></i> Row <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.65rem', marginLeft: '4px' }}></i>
               </button>
               {openInsertRowMenu && (
                 <div className="tool-dropdown-menu" onClick={e => e.stopPropagation()}>
                   <div className="tool-dropdown-item" onClick={() => handleInsertRowAt('above')}>
-                    <i className="fa-solid fa-arrow-up"></i> Insert Row Above Active Cell
+                    <i className="fa-solid fa-arrow-up"></i> Insert Row Above
                   </div>
                   <div className="tool-dropdown-item" onClick={() => handleInsertRowAt('below')}>
-                    <i className="fa-solid fa-arrow-down"></i> Insert Row Below Active Cell
+                    <i className="fa-solid fa-arrow-down"></i> Insert Row Below
                   </div>
                   <div className="tool-dropdown-item" onClick={() => handleInsertRowAt('top')}>
-                    <i className="fa-solid fa-angles-up"></i> Insert Row at Top (First Row)
+                    <i className="fa-solid fa-angles-up"></i> Insert Row at Top
                   </div>
                   <div className="tool-dropdown-item" onClick={() => handleInsertRowAt('bottom')}>
-                    <i className="fa-solid fa-angles-down"></i> Insert Row at Bottom (End)
+                    <i className="fa-solid fa-angles-down"></i> Insert Row at Bottom
                   </div>
                 </div>
               )}
@@ -1718,23 +1812,25 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
             <button className="tool-btn danger" onClick={handleDeleteActiveRow} title="Delete Selected Row">
               <i className="fa-solid fa-trash-can"></i> Row
             </button>
+          </div>
 
-            {/* Column Placement Dropdown */}
+          {/* Column Placement Dropdown & Delete Col */}
+          <div className="tool-group">
             <div className="tool-dropdown">
               <button 
                 className="tool-btn" 
                 onClick={(e) => { e.stopPropagation(); setOpenInsertColMenu(!openInsertColMenu); }}
-                title="Add Column Placement Options"
+                title="Insert Column Options"
               >
                 <i className="fa-solid fa-plus"></i> Col <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.65rem', marginLeft: '4px' }}></i>
               </button>
               {openInsertColMenu && (
                 <div className="tool-dropdown-menu" onClick={e => e.stopPropagation()}>
                   <div className="tool-dropdown-item" onClick={() => handleInsertColumnAt('left')}>
-                    <i className="fa-solid fa-arrow-left"></i> Insert Column Left of Active Cell
+                    <i className="fa-solid fa-arrow-left"></i> Insert Column Left
                   </div>
                   <div className="tool-dropdown-item" onClick={() => handleInsertColumnAt('right')}>
-                    <i className="fa-solid fa-arrow-right"></i> Insert Column Right of Active Cell
+                    <i className="fa-solid fa-arrow-right"></i> Insert Column Right
                   </div>
                   <div className="tool-dropdown-item" onClick={() => handleInsertColumnAt('end')}>
                     <i className="fa-solid fa-angles-right"></i> Insert Column at End
@@ -1742,6 +1838,10 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                 </div>
               )}
             </div>
+
+            <button className="tool-btn danger" onClick={handleDeleteActiveColumn} title="Delete Selected Column">
+              <i className="fa-solid fa-trash-can"></i> Col
+            </button>
           </div>
 
           {/* Functions Menu */}
@@ -1820,13 +1920,20 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                 <th className="grid-corner-cell"></th>
                 {activeColumns.map(col => {
                   const isSelectedCol = selectedCell?.colKey === col.key;
+                  const currentWidth = colWidths[col.key] || col.width || 120;
                   return (
                     <th 
                       key={col.key} 
                       className={`grid-col-header ${isSelectedCol ? 'selected-col' : ''}`}
-                      style={{ width: col.width ? `${col.width}px` : undefined }}
+                      style={{ width: `${currentWidth}px`, minWidth: `${currentWidth}px`, maxWidth: `${currentWidth}px` }}
                     >
-                      {col.letter}
+                      <span>{col.letter}</span>
+                      {/* Column Resize Handle */}
+                      <div 
+                        className="col-resize-handle" 
+                        onMouseDown={(e) => startColumnResize(e, col.key)} 
+                        title="Drag to resize column"
+                      />
                     </th>
                   );
                 })}
@@ -1854,15 +1961,25 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                 const maxR = selectionRange ? Math.max(selectionRange.startRow, selectionRange.endRow) : rowIdx;
                 const minC = selectionRange ? Math.min(selectionRange.startColIdx, selectionRange.endColIdx) : -1;
                 const maxC = selectionRange ? Math.max(selectionRange.startColIdx, selectionRange.endColIdx) : -1;
+                const currentRowHeight = rowHeights[rowIdx] || 32;
 
                 return (
-                  <tr key={row._id || row.id || row.sku || `row-${rowIdx}`}>
+                  <tr 
+                    key={row._id || row.id || row.sku || `row-${rowIdx}`}
+                    style={{ height: `${currentRowHeight}px` }}
+                  >
                     {/* Sticky Row Number (1, 2, 3... end-to-end) */}
                     <td 
                       className={`grid-row-header ${isSelectedRow ? 'selected-row' : ''}`}
                       onClick={() => handleSelectCell(rowIdx, activeColumns[0]?.key || 'col_A')}
                     >
-                      {rowIdx + 1}
+                      <span>{rowIdx + 1}</span>
+                      {/* Row Resize Handle */}
+                      <div 
+                        className="row-resize-handle" 
+                        onMouseDown={(e) => startRowResize(e, rowIdx)}
+                        title="Drag to resize row height"
+                      />
                     </td>
 
                     {/* Columns A, B, C... */}
@@ -1908,44 +2025,33 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                           onDoubleClick={() => handleDoubleClickCell(rowIdx, col.key)}
                           onContextMenu={(e) => handleContextMenu(e, rowIdx, col.key)}
                         >
-                          {isCellEditingNow ? (
-                            col.type === 'select' && col.options ? (
-                              <select
-                                className="cell-inline-select"
-                                value={editValue}
-                                autoFocus
-                                onChange={e => {
-                                  setEditValue(e.target.value);
-                                  updateCellValue(rowIdx, col.key, e.target.value);
-                                  setIsEditing(false);
-                                }}
-                                onBlur={commitEdit}
-                              >
-                                <option value="">-- Select --</option>
-                                {col.options.map(opt => (
-                                  <option key={opt} value={opt}>
-                                    {opt}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              <input
-                                ref={cellInputRef}
-                                type={col.type === 'date' ? 'date' : 'text'}
-                                className="cell-inline-input"
-                                value={editValue}
-                                onChange={e => setEditValue(e.target.value)}
-                                onBlur={commitEdit}
-                              />
-                            )
+                          {col.type === 'select' && col.options ? (
+                            /* Direct Interactive Select Dropdown for single-click choice */
+                            <select
+                              className="cell-inline-select"
+                              value={String(cellVal ?? '')}
+                              onChange={e => updateCellValue(rowIdx, col.key, e.target.value)}
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <option value="">--</option>
+                              {col.options.map(opt => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </select>
+                          ) : isCellEditingNow ? (
+                            <input
+                              ref={cellInputRef}
+                              type={col.type === 'number' || col.type === 'currency' ? 'number' : col.type === 'date' ? 'date' : 'text'}
+                              step={col.type === 'currency' ? '0.01' : 'any'}
+                              className="cell-inline-input"
+                              value={editValue}
+                              onChange={e => setEditValue(e.target.value)}
+                              onBlur={commitEdit}
+                            />
                           ) : (
-                            col.type === 'select' && (col.key === 'type' || col.key === 'status') && cellVal ? (
-                              <span className={`cell-tag ${String(cellVal).toLowerCase()}`}>
-                                {cellVal}
-                              </span>
-                            ) : (
-                              <span>{formatCellValue(cellVal, col, row)}</span>
-                            )
+                            <span>{formatCellValue(cellVal, col, row)}</span>
                           )}
                         </td>
                       );
@@ -2008,6 +2114,9 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
             <div className="sheet-context-item danger" onClick={() => { handleDeleteActiveRow(); setContextMenu(null); }}>
               <span><i className="fa-solid fa-trash" style={{ marginRight: '8px' }}></i> Delete Row</span>
             </div>
+            <div className="sheet-context-item danger" onClick={() => { handleDeleteActiveColumn(); setContextMenu(null); }}>
+              <span><i className="fa-solid fa-trash" style={{ marginRight: '8px' }}></i> Delete Column</span>
+            </div>
             <div className="sheet-context-item" onClick={() => { clearSelectedCells(); setContextMenu(null); }}>
               <span><i className="fa-solid fa-eraser" style={{ marginRight: '8px' }}></i> Clear Cell</span>
               <span style={{ opacity: 0.6, fontSize: '0.72rem' }}>Del</span>
@@ -2017,7 +2126,6 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
 
         {/* ── 6. Bottom Worksheet Tabs & Status Bar ── */}
         <div className="spreadsheet-bottom-bar">
-          {/* Tabs bar */}
           <div className="spreadsheet-tabs">
             {openTabs.map(tab => (
               <button
@@ -2032,7 +2140,6 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
               >
                 <i className={`fa-solid ${tab.icon}`}></i>
 
-                {/* Inline Tab Renaming */}
                 {renamingTabId === tab.id ? (
                   <input
                     type="text"
@@ -2054,7 +2161,6 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                   </span>
                 )}
 
-                {/* Close Tab (×) closes worksheet from view WITHOUT deleting data */}
                 <span 
                   className="sheet-tab-close" 
                   onClick={e => requestCloseTab(e, tab.id)}
@@ -2065,7 +2171,6 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
               </button>
             ))}
 
-            {/* Plus creates a new clean blank worksheet */}
             <button 
               className="sheet-tab-add" 
               onClick={handleAddNewBlankTab}
@@ -2075,7 +2180,6 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
             </button>
           </div>
 
-          {/* Quick Telemetry (Status Bar) */}
           <div className="spreadsheet-status-telemetry">
             <div className="telemetry-item">
               <span className="telemetry-label">Rows:</span>
