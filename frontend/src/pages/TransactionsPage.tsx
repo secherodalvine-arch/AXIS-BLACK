@@ -31,7 +31,13 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
 
   // Load branches once
   React.useEffect(() => {
-    getBranchesApi().then(b => setBranches(Array.isArray(b) ? b : [])).catch(() => {});
+    getBranchesApi().then(b => {
+      const list = Array.isArray(b) ? b : [];
+      setBranches(list);
+      if (list.length === 1) {
+        setBranchFilter(list[0].id);
+      }
+    }).catch(() => {});
   }, []);
 
   const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -148,8 +154,9 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
     const matchesCategory = categoryFilter === 'ALL' || t.category === categoryFilter;
     const matchesStatus = statusFilter === 'ALL' || t.status === statusFilter;
     const matchesAccount = accountLedgerFilter === 'ALL' || t.accountType === accountLedgerFilter;
+    const matchesBranch = !branchFilter || t.branch_id === branchFilter;
 
-    return matchesSearch && matchesCategory && matchesStatus && matchesAccount;
+    return matchesSearch && matchesCategory && matchesStatus && matchesAccount && matchesBranch;
   });
 
   return (
@@ -165,7 +172,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto', maxWidth: '100%', paddingBottom: '4px' }}>
-          {branches.length > 0 && (
+          {branches.length > 1 && (
             <select
               value={branchFilter}
               onChange={e => setBranchFilter(e.target.value)}
@@ -175,6 +182,28 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
               <option value="">All Branches</option>
               {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
+          )}
+          {branches.length === 1 && (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                borderRadius: '10px',
+                background: 'rgba(0, 212, 255, 0.08)',
+                border: '1px solid rgba(0, 212, 255, 0.25)',
+                color: 'var(--secondary-cyan, #00d4ff)',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                flexShrink: 0,
+                whiteSpace: 'nowrap'
+              }}
+              title="Assigned branch"
+            >
+              <i className="fa-solid fa-code-branch"></i>
+              {branches[0].name}
+            </span>
           )}
           <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvImport} />
           <button

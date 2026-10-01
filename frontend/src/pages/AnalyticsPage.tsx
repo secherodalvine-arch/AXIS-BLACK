@@ -65,7 +65,13 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({
   };
 
   useEffect(() => {
-    getBranchesApi().then(b => setBranches(Array.isArray(b) ? b : [])).catch(() => {});
+    getBranchesApi().then(b => {
+      const list = Array.isArray(b) ? b : [];
+      setBranches(list);
+      if (list.length === 1) {
+        setBranchFilter(list[0].id);
+      }
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -355,35 +361,43 @@ export const BusinessAnalytics: React.FC<BusinessAnalyticsProps> = ({
         {/* Controls: Branch Scope & Timeframes */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
           {/* Branch Filter Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0, 212, 255, 0.08)', border: '1px solid rgba(0, 212, 255, 0.3)', borderRadius: '10px', padding: '4px 10px' }}>
-            <span style={{ fontSize: '0.72rem', fontFamily: 'JetBrains Mono', color: '#00d4ff', fontWeight: 700 }}>
-              <i className="fa-solid fa-code-branch" style={{ marginRight: '4px' }}></i> BRANCH:
-            </span>
-            <select
-              value={branchFilter}
-              onChange={e => setBranchFilter(e.target.value)}
-              style={{
-                background: 'var(--dropdown-bg, #141418)',
-                color: 'var(--text-main, #fff)',
-                border: 'none',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                outline: 'none',
-                cursor: 'pointer',
-                padding: '4px 6px'
-              }}
-            >
-              <option value="">All Branches</option>
-              {branches.map(b => (
-                <option key={b.id} value={b.id}>
-                  {b.name} {b.is_main ? '· (HQ)' : ''}
-                </option>
-              ))}
-            </select>
-            {loadingAnalytics && (
-              <i className="fa-solid fa-spinner fa-spin" style={{ color: '#00d4ff', fontSize: '0.75rem' }}></i>
-            )}
-          </div>
+          {branches.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0, 212, 255, 0.08)', border: '1px solid rgba(0, 212, 255, 0.3)', borderRadius: '10px', padding: '4px 10px' }}>
+              <span style={{ fontSize: '0.72rem', fontFamily: 'JetBrains Mono', color: '#00d4ff', fontWeight: 700 }}>
+                <i className="fa-solid fa-code-branch" style={{ marginRight: '4px' }}></i> BRANCH:
+              </span>
+              {branches.length > 1 ? (
+                <select
+                  value={branchFilter}
+                  onChange={e => setBranchFilter(e.target.value)}
+                  style={{
+                    background: 'var(--dropdown-bg, #141418)',
+                    color: 'var(--text-main, #fff)',
+                    border: 'none',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    outline: 'none',
+                    cursor: 'pointer',
+                    padding: '4px 6px'
+                  }}
+                >
+                  <option value="">All Branches</option>
+                  {branches.map(b => (
+                    <option key={b.id} value={b.id}>
+                      {b.name} {b.is_main ? '· (HQ)' : ''}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main, #fff)', padding: '4px 6px' }}>
+                  {branches[0].name} {branches[0].is_main ? '· (HQ)' : ''}
+                </span>
+              )}
+              {loadingAnalytics && (
+                <i className="fa-solid fa-spinner fa-spin" style={{ color: '#00d4ff', fontSize: '0.75rem' }}></i>
+              )}
+            </div>
+          )}
 
           {/* Timeframe Presets */}
           <div className="timeframe-selector" style={{ background: 'var(--glass-bg-hover, rgba(255, 255, 255, 0.05))', border: '1px solid var(--glass-border, rgba(255, 255, 255, 0.15))', padding: '4px' }}>

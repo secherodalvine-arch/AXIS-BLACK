@@ -54,7 +54,10 @@ async def get_inventory(
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
 
-    target_branch = branch_id if (branch_id and branch_id.strip() and branch_id.upper() != "ALL") else None
+    if is_sub_user and current_user.get("branch_id"):
+        target_branch = current_user.get("branch_id")
+    else:
+        target_branch = branch_id if (branch_id and branch_id.strip() and branch_id.upper() != "ALL") else None
 
     items = await AxisDataStore.get_inventory(owner_id)
     if target_branch:

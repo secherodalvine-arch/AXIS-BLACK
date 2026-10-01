@@ -48,7 +48,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
 
   const fetchInventory = () => {
     setIsLoading(true);
-    const activeBranch = branchFilter || undefined;
+    const activeBranch = isSubUserWithBranch ? currentUser?.branch_id : (branchFilter || undefined);
     getInventoryApi(activeBranch)
       .then((data) => {
         if (data && data.length) {
@@ -96,7 +96,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
     setCsvImporting(true);
     setCsvStatus(null);
     try {
-      const activeBranch = branchFilter || (branches.length === 1 ? branches[0].id : (currentUser?.branch_id || undefined));
+      const activeBranch = isSubUserWithBranch ? currentUser?.branch_id : (branchFilter || (branches.length === 1 ? branches[0].id : undefined));
       const result = await importInventoryCsvApi(file, activeBranch);
       setCsvStatus({ text: result.message || `Imported ${result.imported} items`, type: 'success' });
       fetchInventory();
@@ -216,7 +216,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
         </div>
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto', maxWidth: '100%', paddingBottom: '4px' }}>
-          {branches.length > 0 && (
+          {branches.length > 0 && !isSubUserWithBranch && (
             <select
               value={branchFilter}
               onChange={e => setBranchFilter(e.target.value)}
@@ -225,6 +225,24 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
               <option value="">All Branches</option>
               {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
+          )}
+          {isSubUserWithBranch && (
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'rgba(0, 212, 255, 0.1)',
+              border: '1px solid rgba(0, 212, 255, 0.3)',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              fontSize: '0.8rem',
+              color: '#00d4ff',
+              flexShrink: 0,
+              whiteSpace: 'nowrap'
+            }}>
+              <i className="fa-solid fa-code-branch"></i>
+              <span>{branches.find(b => b.id === currentUser?.branch_id)?.name || currentUser?.branch_name || 'Assigned Branch'}</span>
+            </div>
           )}
           <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvImport} />
           <button

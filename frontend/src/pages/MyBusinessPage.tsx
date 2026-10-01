@@ -458,13 +458,13 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
       {activeTab === 'overview' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           {/* Business Profile Form */}
-          <div className="glass-card" style={{ padding: '28px', width: '100%' }}>
+          <div className="glass-card biz-profile-card">
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
               <i className="fa-solid fa-pen-to-square" style={{ color: 'var(--secondary-cyan, #00d4ff)' }}></i>
               <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Business Profile Configuration</h3>
             </div>
             <form onSubmit={handleSaveProfile}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+              <div className="biz-profile-grid">
                 {[
                   { label: 'Business Name', key: 'business_name', placeholder: 'e.g. REINOSERVICES' },
                   { label: 'Phone', key: 'phone', placeholder: '+254 700 000 000' },
@@ -473,7 +473,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                   { label: 'Headquarters / Main Location', key: 'location', placeholder: 'Nairobi, Kenya' },
                   { label: 'Founded Year', key: 'founded_year', placeholder: '2022' },
                 ].map(({ label, key, placeholder }) => (
-                  <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div key={key} className="biz-profile-field">
                     <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>
                     <input
                       type={key === 'founded_year' ? 'number' : 'text'}
@@ -485,7 +485,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                   </div>
                 ))}
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div className="biz-profile-field">
                   <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Business Category</label>
                   <select
                     value={profile?.business_category || ''}
@@ -497,7 +497,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                   </select>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div className="biz-profile-field">
                   <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Industry</label>
                   <select
                     value={profile?.industry || ''}
@@ -509,7 +509,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                   </select>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div className="biz-profile-field">
                   <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>No. of Employees</label>
                   <input
                     type="number"
@@ -521,7 +521,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                   />
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: 'span 2' }}>
+                <div className="biz-profile-field-full">
                   <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Business Description</label>
                   <textarea
                     placeholder="Brief description of products, services, and business model..."

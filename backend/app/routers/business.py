@@ -146,6 +146,12 @@ async def get_business_profile(current_user: dict = Depends(get_current_user)):
             "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
     
+    # Scoped branch access for team members
+    if is_sub_user and user_branch:
+        doc_copy = dict(doc)
+        doc_copy["branches"] = [b for b in doc.get("branches", []) if b["id"] == user_branch]
+        return doc_copy
+
     return doc
 
 
@@ -220,6 +226,11 @@ async def list_branches(current_user: dict = Depends(get_current_user)):
         doc.setdefault("branches", []).append(main_branch)
         await save_business_doc(owner_id, doc)
         branches = [main_branch]
+
+    # Scoped access: if a team member is assigned a specific branch, they see ONLY that branch
+    if is_sub_user and user_branch:
+        scoped = [b for b in branches if b["id"] == user_branch]
+        return scoped if scoped else branches
 
     return branches
 
@@ -854,7 +865,7 @@ async def get_business_activities(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied. Your assigned role has not been granted the 'activities' privilege."
             )
-    target_branch = branch_id if (branch_id and branch_id.upper() != "ALL") else None
+    target_branch = user_branch if (is_sub_user and user_branch) else (branch_id if (branch_id and branch_id.upper() != "ALL") else None)
     return await AxisDataStore.get_activities(owner_id, target_branch, limit=limit)
 
 
