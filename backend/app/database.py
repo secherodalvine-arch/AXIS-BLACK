@@ -136,8 +136,16 @@ class AxisDataStore:
         inventory_items = await AxisDataStore.get_inventory(user_id)
 
         if branch_id:
-            txns = [t for t in txns if t.get("branch_id") == branch_id]
-            inventory_items = [i for i in inventory_items if i.get("branch_id") == branch_id]
+            try:
+                from app.routers.business import get_business_doc
+                biz_doc = await get_business_doc(user_id)
+                branches = biz_doc.get("branches", [])
+                is_main_or_only = len(branches) <= 1 or (branches and (next((b for b in branches if b.get("is_main")), branches[0]).get("id") == branch_id))
+                txns = [t for t in txns if t.get("branch_id") == branch_id or (is_main_or_only and not t.get("branch_id"))]
+                inventory_items = [i for i in inventory_items if i.get("branch_id") == branch_id or (is_main_or_only and not i.get("branch_id"))]
+            except Exception:
+                txns = [t for t in txns if t.get("branch_id") == branch_id or not t.get("branch_id")]
+                inventory_items = [i for i in inventory_items if i.get("branch_id") == branch_id or not i.get("branch_id")]
 
         # Dynamic Financial Calculation from real transactions
         total_revenue = sum(t["amount"] for t in txns if t.get("amount", 0) > 0)

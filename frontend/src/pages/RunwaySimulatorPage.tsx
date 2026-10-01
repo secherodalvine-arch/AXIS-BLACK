@@ -1,20 +1,43 @@
 import React, { useState, useEffect } from 'react';
-import { Currency } from '../types';
+import { Currency, Transaction } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
-import { runRunwaySimulationApi, getDashboardMetricsApi } from '../utils/api';
+import { runRunwaySimulationApi, getDashboardMetricsApi, getTransactionsApi } from '../utils/api';
 
 interface RunwaySimulatorProps {
   currency?: Currency;
+  transactions?: Transaction[];
 }
 
-export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'USD' }) => {
+export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'USD', transactions }) => {
   const [revGrowth, setRevGrowth] = useState(0);
   const [newHires, setNewHires] = useState(0);
   const [mktBudget, setMktBudget] = useState(0);
   const [newFunding, setNewFunding] = useState(0);
   const [dbRunway, setDbRunway] = useState<number | null>(null);
-  const [baseCash, setBaseCash] = useState<number | null>(null);
-  const [baseBurn, setBaseBurn] = useState<number | null>(null);
+  const [baseCash, setBaseCash] = useState<number | null>(() => {
+    if (transactions && transactions.length > 0) {
+      let rev = 0;
+      let exp = 0;
+      transactions.forEach(t => {
+        const amt = Number(t.amount) || 0;
+        if (amt > 0) rev += amt;
+        else exp += Math.abs(amt);
+      });
+      return rev - exp;
+    }
+    return null;
+  });
+  const [baseBurn, setBaseBurn] = useState<number | null>(() => {
+    if (transactions && transactions.length > 0) {
+      let exp = 0;
+      transactions.forEach(t => {
+        const amt = Number(t.amount) || 0;
+        if (amt < 0) exp += Math.abs(amt);
+      });
+      return exp;
+    }
+    return null;
+  });
   const [confidence, setConfidence] = useState<string>('95%');
   const [recommendation, setRecommendation] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
@@ -27,6 +50,21 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
   const effectiveCash = (baseCash ?? 0) + newFunding;
   const calculatedRunway = dbRunway !== null ? dbRunway.toFixed(1) : null;
 
+  // React to transactions prop updates
+  useEffect(() => {
+    if (transactions && transactions.length > 0 && baseBurn === null) {
+      let rev = 0;
+      let exp = 0;
+      transactions.forEach(t => {
+        const amt = Number(t.amount) || 0;
+        if (amt > 0) rev += amt;
+        else exp += Math.abs(amt);
+      });
+      setBaseCash(rev - exp);
+      setBaseBurn(exp);
+    }
+  }, [transactions, baseBurn]);
+
   useEffect(() => {
     setIsLoading(true);
     // Fetch live backend metrics to seed real baseline cash & burn
@@ -35,13 +73,31 @@ export const RunwaySimulator: React.FC<RunwaySimulatorProps> = ({ currency = 'US
         if (metrics && metrics[0]) {
           if (metrics[0].netLiquidity !== undefined) setBaseCash(metrics[0].netLiquidity);
           if (metrics[0].monthlyBurn !== undefined) setBaseBurn(metrics[0].monthlyBurn);
+        } else if (!transactions || transactions.length === 0) {
+          getTransactionsApi().then(txns => {
+            if (Array.isArray(txns) && txns.length > 0) {
+              const rev = txns.reduce((sum, t) => sum + (Number(t.amount) > 0 ? Number(t.amount) : 0), 0);
+              const exp = txns.reduce((sum, t) => sum + (Number(t.amount) < 0 ? Math.abs(Number(t.amount)) : 0), 0);
+              setBaseCash(rev - exp);
+              setBaseBurn(exp);
+            }
+          }).catch(() => {});
         }
       })
-      .catch(err => {
-        console.log('Dashboard metrics fetch error:', err);
+      .catch(() => {
+        if (!transactions || transactions.length === 0) {
+          getTransactionsApi().then(txns => {
+            if (Array.isArray(txns) && txns.length > 0) {
+              const rev = txns.reduce((sum, t) => sum + (Number(t.amount) > 0 ? Number(t.amount) : 0), 0);
+              const exp = txns.reduce((sum, t) => sum + (Number(t.amount) < 0 ? Math.abs(Number(t.amount)) : 0), 0);
+              setBaseCash(rev - exp);
+              setBaseBurn(exp);
+            }
+          }).catch(() => {});
+        }
         setIsLoading(false);
       });
-  }, []);
+  }, [transactions]);
 
   useEffect(() => {
     if (baseBurn === null) return;

@@ -23,14 +23,22 @@ class TransactionPayload(BaseModel):
     branch_id: Optional[str] = None
 
 
-def _check_txn_permission(current_user: dict):
+def _check_txn_permission(current_user: dict, write: bool = False):
     if current_user.get("is_sub_user"):
         perms = current_user.get("permissions") or []
-        if "transactions" not in perms:
-            raise HTTPException(
-                status_code=403,
-                detail="Access denied. Your assigned role does not have permission to view or manage the ledger."
-            )
+        if write:
+            if "transactions" not in perms:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access denied. Your assigned role does not have permission to modify the ledger."
+                )
+        else:
+            # Allow reading transactions for ledger, dashboard, analytics, and forecast
+            if not any(p in perms for p in ["transactions", "dashboard", "analytics", "forecast"]):
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access denied. Your assigned role does not have permission to view the ledger."
+                )
 
 
 @router.get("/me", response_model=List[Dict[str, Any]])
@@ -38,7 +46,7 @@ async def get_user_transactions(
     branch_id: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    _check_txn_permission(current_user)
+    _check_txn_permission(current_user, write=False)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
     
@@ -49,7 +57,10 @@ async def get_user_transactions(
 
     txns = await AxisDataStore.get_transactions(owner_id)
     if target_branch:
-        txns = [t for t in txns if t.get("branch_id") == target_branch]
+        doc = await get_business_doc(owner_id)
+        branches = doc.get("branches", [])
+        is_main_or_only = len(branches) <= 1 or (branches and (next((b for b in branches if b.get("is_main")), branches[0]).get("id") == target_branch))
+        txns = [t for t in txns if t.get("branch_id") == target_branch or (is_main_or_only and not t.get("branch_id"))]
     return txns
 
 
@@ -58,7 +69,7 @@ async def create_transaction(
     payload: TransactionPayload,
     current_user: dict = Depends(get_current_user)
 ):
-    _check_txn_permission(current_user)
+    _check_txn_permission(current_user, write=True)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
     data = payload.model_dump()
@@ -106,7 +117,7 @@ async def delete_transaction(
     txn_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    _check_txn_permission(current_user)
+    _check_txn_permission(current_user, write=True)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
 
@@ -138,7 +149,7 @@ async def import_transactions_csv(
     Import transactions from a CSV file.
     Expected columns: counterparty, type, category, accountType, date, status, amount, notes
     """
-    _check_txn_permission(current_user)
+    _check_txn_permission(current_user, write=True)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
     

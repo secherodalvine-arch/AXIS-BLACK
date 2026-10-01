@@ -19,10 +19,10 @@ async def get_dashboard_data(
     is_sub_user = bool(current_user.get("is_sub_user"))
     if is_sub_user:
         perms = current_user.get("permissions") or []
-        if "dashboard" not in perms:
+        if not any(p in perms for p in ["dashboard", "forecast", "analytics"]):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. Your assigned role does not have permission to view the dashboard."
+                detail="Access denied. Your assigned role does not have permission to view the dashboard metrics."
             )
 
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")

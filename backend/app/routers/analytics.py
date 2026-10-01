@@ -24,7 +24,7 @@ async def get_celestial_analytics(
     is_sub_user = bool(current_user.get("is_sub_user"))
     if is_sub_user:
         perms = current_user.get("permissions") or []
-        if "analytics" not in perms:
+        if not any(p in perms for p in ["analytics", "dashboard", "forecast"]):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied. Your assigned role does not have permission to view analytics."
@@ -41,7 +41,11 @@ async def get_celestial_analytics(
 
     # Filter txns if a specific branch is selected
     if target_branch:
-        txns = [t for t in all_txns if t.get("branch_id") == target_branch]
+        from app.routers.business import get_business_doc
+        biz_doc = await get_business_doc(user_id)
+        branches = biz_doc.get("branches", [])
+        is_main_or_only = len(branches) <= 1 or (branches and (next((b for b in branches if b.get("is_main")), branches[0]).get("id") == target_branch))
+        txns = [t for t in all_txns if t.get("branch_id") == target_branch or (is_main_or_only and not t.get("branch_id"))]
     else:
         txns = all_txns
 
@@ -176,7 +180,7 @@ async def run_runway_simulation(
     """
     if current_user.get("is_sub_user"):
         perms = current_user.get("permissions") or []
-        if "forecast" not in perms and "analytics" not in perms:
+        if not any(p in perms for p in ["forecast", "analytics", "dashboard"]):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied. Your assigned role does not have permission for the runway simulator."
@@ -185,7 +189,12 @@ async def run_runway_simulation(
     user_id = current_user.get("owner_id") if current_user.get("is_sub_user") else current_user.get("user_id", "default_user")
     txns = await AxisDataStore.get_transactions(user_id)
     if current_user.get("is_sub_user") and current_user.get("branch_id"):
-        txns = [t for t in txns if t.get("branch_id") == current_user.get("branch_id")]
+        target_b = current_user.get("branch_id")
+        from app.routers.business import get_business_doc
+        biz_doc = await get_business_doc(user_id)
+        branches = biz_doc.get("branches", [])
+        is_main_or_only = len(branches) <= 1 or (branches and (next((b for b in branches if b.get("is_main")), branches[0]).get("id") == target_b))
+        txns = [t for t in txns if t.get("branch_id") == target_b or (is_main_or_only and not t.get("branch_id"))]
 
     real_cash = sum(t.get("amount", 0) for t in txns)
     cash = max(0.0, real_cash) + payload.new_funding

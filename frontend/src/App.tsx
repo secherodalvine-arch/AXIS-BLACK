@@ -988,7 +988,7 @@ export const App: React.FC = () => {
                 <ActivitiesPage userRole={user?.role} isOwner={!user?.is_sub_user} />
               )}
               {currentTab === 'forecast' && (!user?.is_sub_user || user?.permissions?.includes('forecast')) && (
-                <ForecastPage currency={currency} />
+                <ForecastPage currency={currency} transactions={transactions} />
               )}
               {currentTab === 'settings' && (
                 <SettingsPage 
