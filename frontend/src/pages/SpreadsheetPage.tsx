@@ -178,6 +178,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     ];
   });
   const [historySearch, setHistorySearch] = useState('');
+  const [selectedHistoryIds, setSelectedHistoryIds] = useState<Set<string>>(new Set());
 
   // ── Sync State ──
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('synced');
@@ -191,6 +192,10 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState<string>('');
   const [formulaBarValue, setFormulaBarValue] = useState<string>('');
+
+  // ── Undo / Redo Stacks ──
+  const [undoStack, setUndoStack] = useState<{ tabId: string; rows: any[]; columns: ColumnDef[] }[]>([]);
+  const [redoStack, setRedoStack] = useState<{ tabId: string; rows: any[]; columns: ColumnDef[] }[]>([]);
 
   // ── Context Menu State ──
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; rowIdx: number; colKey: string } | null>(null);
@@ -340,6 +345,65 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
       } catch {}
       return updated;
     });
+  };
+
+  const filteredHistory = useMemo(() => {
+    return historyItems.filter(h => 
+      !historySearch.trim() || h.title.toLowerCase().includes(historySearch.toLowerCase())
+    );
+  }, [historyItems, historySearch]);
+
+  const toggleSelectAllHistory = () => {
+    if (selectedHistoryIds.size === filteredHistory.length && filteredHistory.length > 0) {
+      setSelectedHistoryIds(new Set());
+    } else {
+      setSelectedHistoryIds(new Set(filteredHistory.map(h => h.id)));
+    }
+  };
+
+  const toggleSelectHistoryItem = (id: string) => {
+    setSelectedHistoryIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const deleteSelectedHistory = () => {
+    if (selectedHistoryIds.size === 0) return;
+    setHistoryItems(prev => {
+      const updated = prev.filter(h => !selectedHistoryIds.has(h.id));
+      try {
+        localStorage.setItem('axis_sheets_history', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    setSelectedHistoryIds(new Set());
+  };
+
+  const deleteSingleHistoryItem = (id: string) => {
+    setHistoryItems(prev => {
+      const updated = prev.filter(h => h.id !== id);
+      try {
+        localStorage.setItem('axis_sheets_history', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    setSelectedHistoryIds(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  };
+
+  const clearAllHistory = () => {
+    if (!window.confirm('Are you sure you want to clear all workbook history?')) return;
+    setHistoryItems([]);
+    setSelectedHistoryIds(new Set());
+    try {
+      localStorage.removeItem('axis_sheets_history');
+    } catch {}
   };
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -765,19 +829,22 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   const updateCellValue = (rowIdx: number, colKey: string, newValue: any) => {
     if (!currentTab) return;
 
-    const updatedRows = activeRows.map((r, idx) => {
-      if (idx === rowIdx) {
-        const copy = { ...r, [colKey]: newValue };
-        // Auto populate date if user enters any ledger field and date is empty
-        if (currentTab.saveTarget === 'ledger' && !copy.date) {
-          copy.date = new Date().toISOString().split('T')[0];
-        }
-        return copy;
+    setOpenTabs(prev => prev.map(t => {
+      if (t.id === currentTab.id) {
+        const updatedRows = t.rows.map((r, idx) => {
+          if (idx === rowIdx) {
+            const copy = { ...r, [colKey]: newValue };
+            if (t.saveTarget === 'ledger' && !copy.date) {
+              copy.date = new Date().toISOString().split('T')[0];
+            }
+            return copy;
+          }
+          return r;
+        });
+        return { ...t, rows: updatedRows };
       }
-      return r;
-    });
-
-    setOpenTabs(prev => prev.map(t => t.id === currentTab.id ? { ...t, rows: updatedRows } : t));
+      return t;
+    }));
     setDirtyTabs(prev => ({ ...prev, [currentTab.id]: true }));
   };
 
@@ -877,10 +944,119 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     }
   };
 
+  // ── Undo / Redo Mechanism ──
+  const pushUndoState = () => {
+    if (!currentTab) return;
+    setUndoStack(prev => [...prev.slice(-30), {
+      tabId: currentTab.id,
+      rows: JSON.parse(JSON.stringify(currentTab.rows)),
+      columns: JSON.parse(JSON.stringify(currentTab.columns))
+    }]);
+    setRedoStack([]);
+  };
+
+  const handleUndo = () => {
+    if (undoStack.length === 0 || !currentTab) return;
+    const last = undoStack[undoStack.length - 1];
+    setRedoStack(prev => [...prev, {
+      tabId: currentTab.id,
+      rows: JSON.parse(JSON.stringify(currentTab.rows)),
+      columns: JSON.parse(JSON.stringify(currentTab.columns))
+    }]);
+    setUndoStack(prev => prev.slice(0, -1));
+    setOpenTabs(prev => prev.map(t => t.id === last.tabId ? { ...t, rows: last.rows, columns: last.columns } : t));
+    setDirtyTabs(prev => ({ ...prev, [last.tabId]: true }));
+  };
+
+  const handleRedo = () => {
+    if (redoStack.length === 0 || !currentTab) return;
+    const next = redoStack[redoStack.length - 1];
+    setUndoStack(prev => [...prev, {
+      tabId: currentTab.id,
+      rows: JSON.parse(JSON.stringify(currentTab.rows)),
+      columns: JSON.parse(JSON.stringify(currentTab.columns))
+    }]);
+    setRedoStack(prev => prev.slice(0, -1));
+    setOpenTabs(prev => prev.map(t => t.id === next.tabId ? { ...t, rows: next.rows, columns: next.columns } : t));
+    setDirtyTabs(prev => ({ ...prev, [next.tabId]: true }));
+  };
+
+  // ── Clipboard Operations (Copy, Cut, Paste) ──
+  const handleCopySelection = () => {
+    if (!selectedCell) return;
+    let textToCopy = '';
+    if (selectionRange) {
+      const minR = Math.min(selectionRange.startRow, selectionRange.endRow);
+      const maxR = Math.max(selectionRange.startRow, selectionRange.endRow);
+      const minC = Math.min(selectionRange.startColIdx, selectionRange.endColIdx);
+      const maxC = Math.max(selectionRange.startColIdx, selectionRange.endColIdx);
+      const lines: string[] = [];
+      for (let r = minR; r <= maxR; r++) {
+        const rowVals: string[] = [];
+        for (let c = minC; c <= maxC; c++) {
+          const colKey = activeColumns[c]?.key;
+          rowVals.push(String(activeRows[r]?.[colKey] ?? ''));
+        }
+        lines.push(rowVals.join('\t'));
+      }
+      textToCopy = lines.join('\n');
+    } else {
+      textToCopy = String(activeRows[selectedCell.rowIdx]?.[selectedCell.colKey] ?? '');
+    }
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(textToCopy).catch(() => {});
+    }
+  };
+
+  const handleCutSelection = () => {
+    handleCopySelection();
+    pushUndoState();
+    clearSelectedCells();
+  };
+
+  const handlePasteSelection = async () => {
+    if (!selectedCell || !currentTab) return;
+    try {
+      const clipText = await navigator.clipboard.readText();
+      if (!clipText) return;
+      pushUndoState();
+
+      const lines = clipText.split(/\r?\n/).filter(line => line.length > 0);
+      if (lines.length === 1 && !lines[0].includes('\t')) {
+        updateCellValue(selectedCell.rowIdx, selectedCell.colKey, lines[0]);
+        setFormulaBarValue(lines[0]);
+        setEditValue(lines[0]);
+      } else {
+        const startR = selectedCell.rowIdx;
+        const startC = activeColumns.findIndex(c => c.key === selectedCell.colKey);
+        const updated = [...activeRows];
+
+        lines.forEach((line, rOffset) => {
+          const targetR = startR + rOffset;
+          if (targetR < updated.length) {
+            const vals = line.split('\t');
+            vals.forEach((val, cOffset) => {
+              const targetC = startC + cOffset;
+              if (targetC < activeColumns.length) {
+                const colKey = activeColumns[targetC].key;
+                updated[targetR] = { ...updated[targetR], [colKey]: val.trim() };
+              }
+            });
+          }
+        });
+
+        setOpenTabs(prev => prev.map(t => t.id === currentTab.id ? { ...t, rows: updated } : t));
+        setDirtyTabs(prev => ({ ...prev, [currentTab.id]: true }));
+      }
+    } catch {}
+  };
+
   // ── Cell Selection & Navigation ──
   const handleSelectCell = (rowIdx: number, colKey: string) => {
     if (selectedCell?.rowIdx === rowIdx && selectedCell?.colKey === colKey && isEditing) return;
-    if (isEditing) commitEdit();
+    if (isEditing && selectedCell) {
+      updateCellValue(selectedCell.rowIdx, selectedCell.colKey, editValue);
+    }
 
     setSelectedCell({ rowIdx, colKey });
     const colIdx = activeColumns.findIndex(c => c.key === colKey);
@@ -894,11 +1070,19 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   };
 
   const handleCellMouseDown = (rowIdx: number, colKey: string) => {
+    if (isEditing && selectedCell && (selectedCell.rowIdx !== rowIdx || selectedCell.colKey !== colKey)) {
+      updateCellValue(selectedCell.rowIdx, selectedCell.colKey, editValue);
+    }
     const colIdx = activeColumns.findIndex(c => c.key === colKey);
     setSelectedCell({ rowIdx, colKey });
     setSelectionRange({ startRow: rowIdx, startColIdx: colIdx, endRow: rowIdx, endColIdx: colIdx });
     setIsMouseDownSelecting(true);
     setIsEditing(false);
+
+    const row = activeRows[rowIdx];
+    if (row) {
+      setFormulaBarValue(String(row[colKey] ?? ''));
+    }
   };
 
   const handleCellMouseEnter = (rowIdx: number, colKey: string) => {
@@ -922,7 +1106,9 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
 
     setSelectedCell({ rowIdx, colKey });
     const row = activeRows[rowIdx];
-    setEditValue(String(row ? (row[colKey] ?? '') : ''));
+    const initialVal = String(row ? (row[colKey] ?? '') : '');
+    setEditValue(initialVal);
+    setFormulaBarValue(initialVal);
     setIsEditing(true);
 
     setTimeout(() => {
@@ -932,39 +1118,90 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   };
 
   const commitEdit = () => {
-    if (!selectedCell || !isEditing) return;
+    if (!selectedCell) return;
     const { rowIdx, colKey } = selectedCell;
-    const row = activeRows[rowIdx];
-    if (!row) return;
-
-    if (String(row[colKey] ?? '') !== editValue) {
-      updateCellValue(rowIdx, colKey, editValue);
-    }
+    updateCellValue(rowIdx, colKey, editValue);
     setIsEditing(false);
   };
 
   const cancelEdit = () => {
+    if (selectedCell) {
+      const row = activeRows[selectedCell.rowIdx];
+      const orig = String(row ? (row[selectedCell.colKey] ?? '') : '');
+      setEditValue(orig);
+      setFormulaBarValue(orig);
+    }
     setIsEditing(false);
   };
 
   // ── Keyboard Shortcuts ──
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Save (Ctrl+S)
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
       e.preventDefault();
       handleSaveWorkbook();
       return;
     }
 
+    // Undo (Ctrl+Z) / Redo (Ctrl+Y or Ctrl+Shift+Z)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) handleRedo();
+      else handleUndo();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+      e.preventDefault();
+      handleRedo();
+      return;
+    }
+
+    // Select All (Ctrl+A)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a' && !isEditing) {
+      e.preventDefault();
+      setSelectionRange({
+        startRow: 0,
+        startColIdx: 0,
+        endRow: activeRows.length - 1,
+        endColIdx: activeColumns.length - 1
+      });
+      return;
+    }
+
+    // Copy (Ctrl+C)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && !isEditing) {
+      e.preventDefault();
+      handleCopySelection();
+      return;
+    }
+
+    // Cut (Ctrl+X)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x' && !isEditing) {
+      e.preventDefault();
+      handleCutSelection();
+      return;
+    }
+
+    // Paste (Ctrl+V)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v' && !isEditing) {
+      e.preventDefault();
+      handlePasteSelection();
+      return;
+    }
+
+    // Bold (Ctrl+B)
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
       e.preventDefault();
       toggleStyle('bold');
       return;
     }
+    // Italic (Ctrl+I)
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') {
       e.preventDefault();
       toggleStyle('italic');
       return;
     }
+    // Underline (Ctrl+U)
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'u') {
       e.preventDefault();
       toggleStyle('underline');
@@ -995,6 +1232,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
       return;
     }
 
+    // Multi-cell Shift+Arrow Range Selection
     if (e.shiftKey && ['ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft'].includes(e.key)) {
       e.preventDefault();
       setSelectionRange(prev => {
@@ -1010,6 +1248,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
       return;
     }
 
+    // Arrow Navigation
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (rowIdx < activeRows.length - 1) handleSelectCell(rowIdx + 1, colKey);
@@ -1027,13 +1266,22 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
       handleDoubleClickCell(rowIdx, colKey);
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
+      pushUndoState();
       clearSelectedCells();
     } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const col = activeColumns[colIdx];
       if (col && !col.readOnly && col.type !== 'select') {
         setIsEditing(true);
         setEditValue(e.key);
-        setTimeout(() => cellInputRef.current?.focus(), 30);
+        setFormulaBarValue(e.key);
+        updateCellValue(rowIdx, colKey, e.key);
+        setTimeout(() => {
+          if (cellInputRef.current) {
+            cellInputRef.current.focus();
+            cellInputRef.current.selectionStart = cellInputRef.current.value.length;
+            cellInputRef.current.selectionEnd = cellInputRef.current.value.length;
+          }
+        }, 30);
       }
     }
   };
@@ -1108,6 +1356,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   // ── Row & Column Insertion & Deletion ──
   const handleInsertRowAt = (position: 'above' | 'below' | 'top' | 'bottom') => {
     if (!currentTab) return;
+    pushUndoState();
     const activeIdx = selectedCell ? selectedCell.rowIdx : 0;
     let insertIndex = 0;
 
@@ -1140,6 +1389,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     if (!row) return;
 
     if (!window.confirm(`Delete row ${rowIdx + 1}?`)) return;
+    pushUndoState();
 
     try {
       if (currentTab.saveTarget === 'ledger' && row.id && liveLedger.some(t => t.id === row.id)) {
@@ -1158,6 +1408,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
 
   const handleInsertColumnAt = (position: 'left' | 'right' | 'end') => {
     if (!currentTab) return;
+    pushUndoState();
     const activeIdx = selectedCell ? activeColumns.findIndex(c => c.key === selectedCell.colKey) : 0;
     let insertIndex = activeColumns.length;
 
@@ -1188,6 +1439,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     if (activeColumns.length <= 1) return;
 
     if (!window.confirm(`Delete column ${colKey}?`)) return;
+    pushUndoState();
 
     const updatedCols = activeColumns.filter(c => c.key !== colKey).map((c, idx) => ({ ...c, letter: getColumnLetter(idx) }));
     setOpenTabs(prev => prev.map(t => t.id === currentTab.id ? { ...t, columns: updatedCols } : t));
@@ -1315,11 +1567,6 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
 
   const activeCellId = selectedCell && currentTab ? `${currentTab.id}_${selectedCell.rowIdx}_${selectedCell.colKey}` : '';
   const currentFormat = cellStyles[activeCellId] || {};
-
-  // Filtered History
-  const filteredHistory = historyItems.filter(h => 
-    !historySearch.trim() || h.title.toLowerCase().includes(historySearch.toLowerCase())
-  );
 
   // ══════════════════════════════════════════════════════════════════════════
   // VIEW 1: SPREADSHEET HUB (Workbooks Home)
@@ -1500,17 +1747,40 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                 <div className="sheet-section-title-left">
                   <i className="fa-solid fa-clock-rotate-left"></i>
                   <span>Recent Workbooks &amp; History</span>
+                  {historyItems.length > 0 && (
+                    <span className="sheet-section-badge">{historyItems.length}</span>
+                  )}
                 </div>
               </div>
 
-              <div className="sheet-history-search">
-                <i className="fa-solid fa-magnifying-glass"></i>
-                <input
-                  type="text"
-                  placeholder="Search workbooks history..."
-                  value={historySearch}
-                  onChange={e => setHistorySearch(e.target.value)}
-                />
+              <div className="sheet-history-actions">
+                {selectedHistoryIds.size > 0 && (
+                  <button 
+                    className="sheet-history-btn danger" 
+                    onClick={deleteSelectedHistory}
+                    title="Delete selected workbooks from history"
+                  >
+                    <i className="fa-solid fa-trash-can"></i> Delete Selected ({selectedHistoryIds.size})
+                  </button>
+                )}
+                {historyItems.length > 0 && (
+                  <button 
+                    className="sheet-history-btn" 
+                    onClick={clearAllHistory}
+                    title="Clear all history entries"
+                  >
+                    <i className="fa-solid fa-broom"></i> Clear All
+                  </button>
+                )}
+                <div className="sheet-history-search">
+                  <i className="fa-solid fa-magnifying-glass"></i>
+                  <input
+                    type="text"
+                    placeholder="Search workbooks history..."
+                    value={historySearch}
+                    onChange={e => setHistorySearch(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
 
@@ -1518,6 +1788,15 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
               <table className="sheet-history-table">
                 <thead>
                   <tr>
+                    <th style={{ width: '40px', textAlign: 'center' }}>
+                      <input 
+                        type="checkbox" 
+                        className="sheet-history-checkbox"
+                        checked={filteredHistory.length > 0 && selectedHistoryIds.size === filteredHistory.length}
+                        onChange={toggleSelectAllHistory}
+                        title="Select All History"
+                      />
+                    </th>
                     <th>Workbook Name</th>
                     <th>Type / Source</th>
                     <th>Period</th>
@@ -1529,6 +1808,14 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                 <tbody>
                   {filteredHistory.map(item => (
                     <tr key={item.id}>
+                      <td style={{ textAlign: 'center' }}>
+                        <input 
+                          type="checkbox" 
+                          className="sheet-history-checkbox"
+                          checked={selectedHistoryIds.has(item.id)}
+                          onChange={() => toggleSelectHistoryItem(item.id)}
+                        />
+                      </td>
                       <td>
                         <div 
                           className="history-item-title"
@@ -1558,20 +1845,40 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                         {item.lastModified}
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        <button
-                          className="sheet-back-btn"
-                          onClick={() => {
-                            if (item.sheetType === 'inventory') openEditInventoryRecords(item.month || 'ALL');
-                            else if (item.sheetType === 'ledger') openEditLedgerRecords(item.month || 'ALL');
-                            else if (item.sheetType === 'custom') openScratchpadWorkbook();
-                            else openBlankWorkbook();
-                          }}
-                        >
-                          <i className="fa-solid fa-arrow-up-right-from-square"></i> Open
-                        </button>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <button
+                            className="sheet-back-btn"
+                            onClick={() => {
+                              if (item.sheetType === 'inventory') openEditInventoryRecords(item.month || 'ALL');
+                              else if (item.sheetType === 'ledger') openEditLedgerRecords(item.month || 'ALL');
+                              else if (item.sheetType === 'custom') openScratchpadWorkbook();
+                              else openBlankWorkbook();
+                            }}
+                            title="Open Workbook"
+                          >
+                            <i className="fa-solid fa-arrow-up-right-from-square"></i> Open
+                          </button>
+                          <button
+                            className="sheet-history-del-btn"
+                            onClick={() => deleteSingleHistoryItem(item.id)}
+                            title="Remove from history"
+                          >
+                            <i className="fa-solid fa-trash-can"></i>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
+                  {filteredHistory.length === 0 && (
+                    <tr>
+                      <td colSpan={7}>
+                        <div className="sheet-history-empty">
+                          <i className="fa-solid fa-folder-open"></i>
+                          <div>No recent workbooks found.</div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1688,7 +1995,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
 
         {/* ── 2. Pro Spreadsheet Feature Ribbon / Toolbar ── */}
         <div className="spreadsheet-pro-toolbar">
-          {/* Explicit Save Button */}
+          {/* Explicit Save & History Undo / Redo */}
           <div className="tool-group">
             <button 
               className={`tool-btn save-btn ${isCurrentTabDirty ? 'dirty' : ''}`}
@@ -1697,6 +2004,37 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
             >
               <i className="fa-solid fa-floppy-disk"></i>
               <span>{isCurrentTabDirty ? 'Save *' : 'Save'}</span>
+            </button>
+            <button 
+              className="tool-btn" 
+              onClick={handleUndo} 
+              title="Undo (Ctrl+Z)"
+              disabled={undoStack.length === 0}
+              style={{ opacity: undoStack.length === 0 ? 0.4 : 1 }}
+            >
+              <i className="fa-solid fa-rotate-left"></i>
+            </button>
+            <button 
+              className="tool-btn" 
+              onClick={handleRedo} 
+              title="Redo (Ctrl+Y)"
+              disabled={redoStack.length === 0}
+              style={{ opacity: redoStack.length === 0 ? 0.4 : 1 }}
+            >
+              <i className="fa-solid fa-rotate-right"></i>
+            </button>
+          </div>
+
+          {/* Clipboard Group */}
+          <div className="tool-group">
+            <button className="tool-btn" onClick={handleCutSelection} title="Cut Selection (Ctrl+X)">
+              <i className="fa-solid fa-scissors"></i>
+            </button>
+            <button className="tool-btn" onClick={handleCopySelection} title="Copy Selection (Ctrl+C)">
+              <i className="fa-solid fa-copy"></i>
+            </button>
+            <button className="tool-btn" onClick={handlePasteSelection} title="Paste from Clipboard (Ctrl+V)">
+              <i className="fa-solid fa-paste"></i>
             </button>
           </div>
 
@@ -1781,28 +2119,28 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
             </button>
           </div>
 
-          {/* Row Placement Dropdown */}
+          {/* Row Placement Dropdown & Delete Row */}
           <div className="tool-group">
             <div className="tool-dropdown">
               <button 
                 className="tool-btn primary" 
-                onClick={(e) => { e.stopPropagation(); setOpenInsertRowMenu(!openInsertRowMenu); }}
+                onClick={(e) => { e.stopPropagation(); setOpenInsertColMenu(false); setOpenInsertRowMenu(!openInsertRowMenu); }}
                 title="Insert Row Options"
               >
-                <i className="fa-solid fa-plus"></i> Row <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.65rem', marginLeft: '4px' }}></i>
+                <i className="fa-solid fa-circle-plus"></i> Row <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.65rem', marginLeft: '4px' }}></i>
               </button>
               {openInsertRowMenu && (
                 <div className="tool-dropdown-menu" onClick={e => e.stopPropagation()}>
-                  <div className="tool-dropdown-item" onClick={() => handleInsertRowAt('above')}>
+                  <div className="tool-dropdown-item" onClick={() => { handleInsertRowAt('above'); setOpenInsertRowMenu(false); }}>
                     <i className="fa-solid fa-arrow-up"></i> Insert Row Above
                   </div>
-                  <div className="tool-dropdown-item" onClick={() => handleInsertRowAt('below')}>
+                  <div className="tool-dropdown-item" onClick={() => { handleInsertRowAt('below'); setOpenInsertRowMenu(false); }}>
                     <i className="fa-solid fa-arrow-down"></i> Insert Row Below
                   </div>
-                  <div className="tool-dropdown-item" onClick={() => handleInsertRowAt('top')}>
+                  <div className="tool-dropdown-item" onClick={() => { handleInsertRowAt('top'); setOpenInsertRowMenu(false); }}>
                     <i className="fa-solid fa-angles-up"></i> Insert Row at Top
                   </div>
-                  <div className="tool-dropdown-item" onClick={() => handleInsertRowAt('bottom')}>
+                  <div className="tool-dropdown-item" onClick={() => { handleInsertRowAt('bottom'); setOpenInsertRowMenu(false); }}>
                     <i className="fa-solid fa-angles-down"></i> Insert Row at Bottom
                   </div>
                 </div>
@@ -1819,20 +2157,20 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
             <div className="tool-dropdown">
               <button 
                 className="tool-btn" 
-                onClick={(e) => { e.stopPropagation(); setOpenInsertColMenu(!openInsertColMenu); }}
+                onClick={(e) => { e.stopPropagation(); setOpenInsertRowMenu(false); setOpenInsertColMenu(!openInsertColMenu); }}
                 title="Insert Column Options"
               >
-                <i className="fa-solid fa-plus"></i> Col <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.65rem', marginLeft: '4px' }}></i>
+                <i className="fa-solid fa-circle-plus"></i> Col <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.65rem', marginLeft: '4px' }}></i>
               </button>
               {openInsertColMenu && (
                 <div className="tool-dropdown-menu" onClick={e => e.stopPropagation()}>
-                  <div className="tool-dropdown-item" onClick={() => handleInsertColumnAt('left')}>
+                  <div className="tool-dropdown-item" onClick={() => { handleInsertColumnAt('left'); setOpenInsertColMenu(false); }}>
                     <i className="fa-solid fa-arrow-left"></i> Insert Column Left
                   </div>
-                  <div className="tool-dropdown-item" onClick={() => handleInsertColumnAt('right')}>
+                  <div className="tool-dropdown-item" onClick={() => { handleInsertColumnAt('right'); setOpenInsertColMenu(false); }}>
                     <i className="fa-solid fa-arrow-right"></i> Insert Column Right
                   </div>
-                  <div className="tool-dropdown-item" onClick={() => handleInsertColumnAt('end')}>
+                  <div className="tool-dropdown-item" onClick={() => { handleInsertColumnAt('end'); setOpenInsertColMenu(false); }}>
                     <i className="fa-solid fa-angles-right"></i> Insert Column at End
                   </div>
                 </div>
@@ -1894,10 +2232,12 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
               className="formula-input"
               value={formulaBarValue}
               onChange={e => {
-                setFormulaBarValue(e.target.value);
+                const val = e.target.value;
+                setFormulaBarValue(val);
                 if (selectedCell) {
-                  setEditValue(e.target.value);
+                  setEditValue(val);
                   setIsEditing(true);
+                  updateCellValue(selectedCell.rowIdx, selectedCell.colKey, val);
                 }
               }}
               onKeyDown={e => {
@@ -1926,6 +2266,8 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                       key={col.key} 
                       className={`grid-col-header ${isSelectedCol ? 'selected-col' : ''}`}
                       style={{ width: `${currentWidth}px`, minWidth: `${currentWidth}px`, maxWidth: `${currentWidth}px` }}
+                      onClick={() => handleSelectCell(selectedCell?.rowIdx ?? 0, col.key)}
+                      onContextMenu={(e) => handleContextMenu(e, selectedCell?.rowIdx ?? 0, col.key)}
                     >
                       <span>{col.letter}</span>
                       {/* Column Resize Handle */}
@@ -1946,7 +2288,12 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                     #
                   </th>
                   {activeColumns.map(col => (
-                    <th key={col.key} className="grid-field-header-cell">
+                    <th 
+                      key={col.key} 
+                      className="grid-field-header-cell"
+                      onClick={() => handleSelectCell(selectedCell?.rowIdx ?? 0, col.key)}
+                      onContextMenu={(e) => handleContextMenu(e, selectedCell?.rowIdx ?? 0, col.key)}
+                    >
                       <i className="fa-solid fa-tag"></i>
                       <span>{col.label}</span>
                     </th>
@@ -1972,12 +2319,13 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                     <td 
                       className={`grid-row-header ${isSelectedRow ? 'selected-row' : ''}`}
                       onClick={() => handleSelectCell(rowIdx, activeColumns[0]?.key || 'col_A')}
+                      onContextMenu={(e) => handleContextMenu(e, rowIdx, activeColumns[0]?.key || 'col_A')}
                     >
                       <span>{rowIdx + 1}</span>
                       {/* Row Resize Handle */}
                       <div 
                         className="row-resize-handle" 
-                        onMouseDown={(e) => startRowResize(e, rowIdx)}
+                        onMouseDown={(e) => startRowResize(e, rowIdx)} 
                         title="Drag to resize row height"
                       />
                     </td>
@@ -2047,8 +2395,32 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                               step={col.type === 'currency' ? '0.01' : 'any'}
                               className="cell-inline-input"
                               value={editValue}
-                              onChange={e => setEditValue(e.target.value)}
+                              onChange={e => {
+                                const val = e.target.value;
+                                setEditValue(val);
+                                setFormulaBarValue(val);
+                                updateCellValue(rowIdx, col.key, val);
+                              }}
                               onBlur={commitEdit}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  commitEdit();
+                                  if (rowIdx < activeRows.length - 1) handleSelectCell(rowIdx + 1, col.key);
+                                } else if (e.key === 'Tab') {
+                                  e.preventDefault();
+                                  commitEdit();
+                                  const cIdx = activeColumns.findIndex(c => c.key === col.key);
+                                  if (e.shiftKey) {
+                                    if (cIdx > 0) handleSelectCell(rowIdx, activeColumns[cIdx - 1].key);
+                                  } else {
+                                    if (cIdx < activeColumns.length - 1) handleSelectCell(rowIdx, activeColumns[cIdx + 1].key);
+                                  }
+                                } else if (e.key === 'Escape') {
+                                  e.preventDefault();
+                                  cancelEdit();
+                                }
+                              }}
                             />
                           ) : (
                             <span>{formatCellValue(cellVal, col, row)}</span>
@@ -2067,29 +2439,20 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
         {contextMenu && (
           <div 
             className="sheet-context-menu" 
-            style={{ top: contextMenu.y, left: contextMenu.x }}
+            style={{ top: contextMenu.y, left: contextMenu.x, zIndex: 99999 }}
             onClick={e => e.stopPropagation()}
           >
-            <div className="sheet-context-item" onClick={() => {
-              if (selectedCell) {
-                const val = activeRows[selectedCell.rowIdx]?.[selectedCell.colKey] ?? '';
-                navigator.clipboard.writeText(String(val));
-              }
-              setContextMenu(null);
-            }}>
+            <div className="sheet-context-item" onClick={() => { handleCutSelection(); setContextMenu(null); }}>
+              <span><i className="fa-solid fa-scissors" style={{ marginRight: '8px' }}></i> Cut</span>
+              <span style={{ opacity: 0.6, fontSize: '0.72rem' }}>Ctrl+X</span>
+            </div>
+
+            <div className="sheet-context-item" onClick={() => { handleCopySelection(); setContextMenu(null); }}>
               <span><i className="fa-solid fa-copy" style={{ marginRight: '8px' }}></i> Copy</span>
               <span style={{ opacity: 0.6, fontSize: '0.72rem' }}>Ctrl+C</span>
             </div>
 
-            <div className="sheet-context-item" onClick={async () => {
-              try {
-                const text = await navigator.clipboard.readText();
-                if (selectedCell && text) {
-                  updateCellValue(selectedCell.rowIdx, selectedCell.colKey, text);
-                }
-              } catch {}
-              setContextMenu(null);
-            }}>
+            <div className="sheet-context-item" onClick={async () => { await handlePasteSelection(); setContextMenu(null); }}>
               <span><i className="fa-solid fa-paste" style={{ marginRight: '8px' }}></i> Paste</span>
               <span style={{ opacity: 0.6, fontSize: '0.72rem' }}>Ctrl+V</span>
             </div>
@@ -2116,6 +2479,17 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
             </div>
             <div className="sheet-context-item danger" onClick={() => { handleDeleteActiveColumn(); setContextMenu(null); }}>
               <span><i className="fa-solid fa-trash" style={{ marginRight: '8px' }}></i> Delete Column</span>
+            </div>
+
+            <div className="sheet-context-divider"></div>
+
+            <div className="sheet-context-item" onClick={() => { toggleStyle('bold'); setContextMenu(null); }}>
+              <span><i className="fa-solid fa-bold" style={{ marginRight: '8px' }}></i> Bold</span>
+              <span style={{ opacity: 0.6, fontSize: '0.72rem' }}>Ctrl+B</span>
+            </div>
+            <div className="sheet-context-item" onClick={() => { toggleStyle('italic'); setContextMenu(null); }}>
+              <span><i className="fa-solid fa-italic" style={{ marginRight: '8px' }}></i> Italic</span>
+              <span style={{ opacity: 0.6, fontSize: '0.72rem' }}>Ctrl+I</span>
             </div>
             <div className="sheet-context-item" onClick={() => { clearSelectedCells(); setContextMenu(null); }}>
               <span><i className="fa-solid fa-eraser" style={{ marginRight: '8px' }}></i> Clear Cell</span>
