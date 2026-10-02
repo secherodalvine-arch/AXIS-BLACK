@@ -149,39 +149,67 @@ class AdminPlatformAgent:
         device_breakdown = {"Desktop": 0, "Mobile": 0, "Tablet": 0}
         top_pages: Dict[str, int] = {}
 
+        admin_exclusion = {
+            "page": {"$not": {"$regex": r"^/admin", "$options": "i"}},
+            "user_name": {"$nin": ["Axis Administrator", "superadmin", "Admin", "admin"]},
+            "user_email": {"$not": {"$regex": r"(admin@|superadmin)", "$options": "i"}},
+            "user_id": {"$not": {"$regex": r"^admin-", "$options": "i"}}
+        }
+        hp_filter = {
+            "$or": [
+                {"event": {"$in": ["homepage_visit", "cta_click"]}},
+                {"page": {"$in": ["/", "/home", "", "/landing", "/features", "/pricing", "/security", "/contact"]}},
+                {"page": {"$regex": r"^/(home|features|pricing|security|contact|landing)?(\?.*)?$", "$options": "i"}}
+            ]
+        }
+
         if db_manager.is_connected and db_manager.db is not None:
             try:
-                total_traffic_events = await db_manager.db.traffic_events.count_documents({})
-                homepage_views = await db_manager.db.traffic_events.count_documents({"$or": [{"page": "/"}, {"page": "/home"}]})
-                unique_visitors = len(await db_manager.db.traffic_events.distinct("visitor_id"))
+                total_traffic_events = await db_manager.db.traffic_events.count_documents(admin_exclusion)
+                homepage_views = await db_manager.db.traffic_events.count_documents({"$and": [admin_exclusion, hp_filter]})
+                unique_visitors = len(await db_manager.db.traffic_events.distinct("visitor_id", admin_exclusion))
                 
                 # Device breakdown
                 for d in ["Desktop", "Mobile", "Tablet"]:
-                    cnt = await db_manager.db.traffic_events.count_documents({"device_type": d})
+                    cnt = await db_manager.db.traffic_events.count_documents({**admin_exclusion, "device_type": d})
                     device_breakdown[d] = cnt
 
                 # Top pages pipeline
                 pipeline = [
+                    {"$match": admin_exclusion},
                     {"$group": {"_id": "$page", "count": {"$sum": 1}}},
                     {"$sort": {"count": -1}},
                     {"$limit": 6}
                 ]
                 top_p_docs = await db_manager.db.traffic_events.aggregate(pipeline).to_list(6)
                 for tp in top_p_docs:
-                    if tp.get("_id"):
+                    if tp.get("_id") and not str(tp["_id"]).startswith("/admin"):
                         top_pages[tp["_id"]] = tp["count"]
             except Exception as e:
                 logger.error(f"Error loading traffic for Admin Agent: {e}")
         else:
-            t_events = db_manager.memory_store.get("traffic_events", [])
+            t_events = [
+                t for t in db_manager.memory_store.get("traffic_events", [])
+                if not (
+                    str(t.get("page", "")).startswith("/admin")
+                    or "admin" in str(t.get("user_email", "")).lower()
+                    or "admin" in str(t.get("user_name", "")).lower()
+                    or str(t.get("user_id", "")).startswith("admin-")
+                )
+            ]
             total_traffic_events = len(t_events)
-            homepage_views = len([t for t in t_events if t.get("page") in ("/", "/home")])
+            homepage_views = len([
+                t for t in t_events
+                if t.get("event") in ("homepage_visit", "cta_click")
+                or t.get("page") in ("/", "/home", "", "/landing", "/features", "/pricing", "/security", "/contact")
+            ])
             unique_visitors = len(set(t.get("visitor_id") for t in t_events if t.get("visitor_id")))
             for t in t_events:
                 dt = t.get("device_type", "Desktop")
                 device_breakdown[dt] = device_breakdown.get(dt, 0) + 1
                 p = t.get("page", "/")
-                top_pages[p] = top_pages.get(p, 0) + 1
+                if not p.startswith("/admin"):
+                    top_pages[p] = top_pages.get(p, 0) + 1
 
         # ── 5. Operational Errors & System Health ──
         recent_errors_count = 0

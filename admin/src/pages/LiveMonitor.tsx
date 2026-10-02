@@ -72,6 +72,12 @@ export function LiveMonitor() {
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === 'traffic_event') {
+          const email = (msg.user_email || '').toLowerCase();
+          const name = (msg.user_name || '').toLowerCase();
+          const page = (msg.page || '').toLowerCase();
+          if (page.startsWith('/admin') || email.includes('admin') || name.includes('admin')) {
+            return;
+          }
           setIncomingEvents((prev) => [msg, ...prev].slice(0, 30));
           fetchSessions();
         }
@@ -98,6 +104,23 @@ export function LiveMonitor() {
     };
   }, [admin?.id, token, fetchSessions]);
 
+  // Strictly filter out any admin accounts or admin platform navigation
+  const userSessions = sessions.filter(s => {
+    const email = (s.user_email || '').toLowerCase();
+    const name = (s.user_name || '').toLowerCase();
+    const page = (s.current_page || s.page || '').toLowerCase();
+    const uid = (s.user_id || '').toLowerCase();
+    const ident = (s.identifier || '').toLowerCase();
+    return (
+      !page.startsWith('/admin') &&
+      !page.startsWith('/api/admin') &&
+      !email.includes('admin') &&
+      !name.includes('admin') &&
+      !uid.startsWith('admin-') &&
+      !ident.includes('admin')
+    );
+  });
+
   return (
     <div className="space-y-6 animate-fade">
       {/* Header */}
@@ -112,6 +135,10 @@ export function LiveMonitor() {
         </div>
 
         <div className="flex items-center gap-3">
+          <span className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+            <Shield size={12} /> User End Sessions Only
+          </span>
+
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-navy-900 border border-white/10 text-xs">
             <span className={`w-2 h-2 rounded-full ${
               wsStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : wsStatus === 'connecting' ? 'bg-amber-400' : 'bg-slate-500'
@@ -136,7 +163,7 @@ export function LiveMonitor() {
         <div className="p-4 rounded-2xl bg-navy-900 border border-emerald-500/20 shadow-lg flex items-center justify-between">
           <div>
             <div className="text-xs font-semibold text-slate-400">Active Live Sessions</div>
-            <div className="text-3xl font-extrabold text-white mt-1">{sessions.length}</div>
+            <div className="text-3xl font-extrabold text-white mt-1">{userSessions.length}</div>
             <div className="text-[10px] text-emerald-400 mt-0.5">Online within 15 mins</div>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
@@ -148,7 +175,7 @@ export function LiveMonitor() {
           <div>
             <div className="text-xs font-semibold text-slate-400">Desktop Visitors</div>
             <div className="text-3xl font-extrabold text-cyan-400 mt-1">
-              {sessions.filter(s => (s.device_type || '').toLowerCase() === 'desktop').length}
+              {userSessions.filter(s => (s.device_type || '').toLowerCase() === 'desktop').length}
             </div>
             <div className="text-[10px] text-slate-500 mt-0.5">Desktops / Laptops</div>
           </div>
@@ -161,7 +188,7 @@ export function LiveMonitor() {
           <div>
             <div className="text-xs font-semibold text-slate-400">Mobile &amp; Tablets</div>
             <div className="text-3xl font-extrabold text-lilac-400 mt-1">
-              {sessions.filter(s => (s.device_type || '').toLowerCase() !== 'desktop').length}
+              {userSessions.filter(s => (s.device_type || '').toLowerCase() !== 'desktop').length}
             </div>
             <div className="text-[10px] text-slate-500 mt-0.5">Smartphones / Handhelds</div>
           </div>
@@ -175,7 +202,7 @@ export function LiveMonitor() {
       <div className="rounded-2xl bg-navy-900 border border-white/8 shadow-xl overflow-hidden">
         <div className="p-4 border-b border-white/8 flex items-center justify-between">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            <Activity size={16} className="text-cyan-400" /> Active Connected Clients ({sessions.length})
+            <Activity size={16} className="text-cyan-400" /> Active Connected Clients ({userSessions.length})
           </h3>
           <span className="text-[11px] text-slate-500">Auto-synced</span>
         </div>
@@ -193,14 +220,14 @@ export function LiveMonitor() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {sessions.length === 0 ? (
+              {userSessions.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-500">
                     No active sessions recorded right now. Navigate the user app to see real-time updates!
                   </td>
                 </tr>
               ) : (
-                sessions.map((s, idx) => (
+                userSessions.map((s, idx) => (
                   <tr key={s.identifier || idx} className="hover:bg-white/2 transition-colors">
                     <td className="py-3.5 px-4">
                       <div className="font-semibold text-white flex items-center gap-2">

@@ -125,6 +125,7 @@ app.include_router(storage.router)
 app.include_router(business.router)
 app.include_router(spreadsheet.router)
 app.include_router(admin.router)
+app.include_router(admin.compat_router)
 app.include_router(payments.router)
 app.include_router(payments.admin_payments_router)
 

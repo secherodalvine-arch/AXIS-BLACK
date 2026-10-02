@@ -27,6 +27,14 @@ export interface DeviceDetails {
 }
 
 let cachedIpGeo: { ip?: string; city?: string; country?: string; location?: string; lat?: number; lon?: number } | null = null;
+if (typeof window !== 'undefined') {
+  try {
+    const raw = sessionStorage.getItem('axis_geo_cache') || localStorage.getItem('axis_geo_cache');
+    if (raw) {
+      cachedIpGeo = JSON.parse(raw);
+    }
+  } catch {}
+}
 let isResolvingGeo = false;
 
 /**
@@ -179,11 +187,33 @@ export async function resolveClientGeoAsync(): Promise<DeviceDetails> {
           lat: data.latitude,
           lon: data.longitude,
         };
+        try {
+          sessionStorage.setItem('axis_geo_cache', JSON.stringify(cachedIpGeo));
+          localStorage.setItem('axis_geo_cache', JSON.stringify(cachedIpGeo));
+        } catch {}
         return { ...details, ...cachedIpGeo };
       }
     }
   } catch {
-    // Silently fall back to browser or backend geo resolution
+    // Secondary fallback for public IP
+    try {
+      const ipResp = await fetch('https://api.ipify.org?format=json');
+      if (ipResp.ok) {
+        const ipData = await ipResp.json();
+        if (ipData && ipData.ip) {
+          cachedIpGeo = {
+            ip: ipData.ip,
+            city: '',
+            country: '',
+            location: '',
+          };
+          try {
+            sessionStorage.setItem('axis_geo_cache', JSON.stringify(cachedIpGeo));
+          } catch {}
+          return { ...details, ...cachedIpGeo };
+        }
+      }
+    } catch {}
   } finally {
     isResolvingGeo = false;
   }

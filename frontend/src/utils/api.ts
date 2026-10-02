@@ -1,6 +1,26 @@
 import { Currency } from '../types';
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const resolveApiBase = (): string => {
+  const metaEnv = (import.meta as any).env || {};
+  let base: string = metaEnv.VITE_API_BASE_URL || metaEnv.VITE_API_URL || '';
+  if (!base) {
+    if (typeof window !== 'undefined' && window.location.origin) {
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (isLocalhost && window.location.port !== '8000') {
+        return 'http://localhost:8000/api';
+      }
+      return `${window.location.origin}/api`;
+    }
+    return 'http://localhost:8000/api';
+  }
+  base = base.trim().replace(/\/+$/, '');
+  if (!base.endsWith('/api')) {
+    base = `${base}/api`;
+  }
+  return base;
+};
+
+const API_BASE_URL = resolveApiBase();
 
 export interface UserProfile {
   user_id: string;

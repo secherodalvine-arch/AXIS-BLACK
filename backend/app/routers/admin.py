@@ -207,8 +207,71 @@ async def ensure_default_admin():
                 }
                 db_manager.save_memory_store()
                 logger.info(f"Initialized local memory root admin from backend .env: {default_email}")
+        # Purge any admin traffic accidentally recorded in telemetry collections
+        await purge_admin_traffic()
     except Exception as e:
         logger.warning(f"Could not bootstrap default admin: {e}")
+
+# ── User Platform Traffic Isolation Helpers (Strictly Exclude Admin Platform) ──
+def get_user_traffic_mongo_filter() -> Dict[str, Any]:
+    """MongoDB query filter that excludes administrator accounts, admin emails, and admin routes."""
+    return {
+        "page": {"$not": {"$regex": r"^/admin", "$options": "i"}},
+        "current_page": {"$not": {"$regex": r"^/admin", "$options": "i"}},
+        "user_name": {"$nin": ["Axis Administrator", "superadmin", "Admin", "admin"]},
+        "user_email": {"$not": {"$regex": r"(admin@|superadmin)", "$options": "i"}},
+        "user_id": {"$not": {"$regex": r"^admin-", "$options": "i"}},
+        "identifier": {"$not": {"$regex": r"admin", "$options": "i"}}
+    }
+
+def is_admin_session_dict(s: Dict[str, Any]) -> bool:
+    """Returns True if a session/event dictionary represents admin platform traffic."""
+    p = str(s.get("page") or s.get("current_page") or "").lower()
+    email = str(s.get("user_email") or "").lower()
+    name = str(s.get("user_name") or "").lower()
+    uid = str(s.get("user_id") or "").lower()
+    ident = str(s.get("identifier") or "").lower()
+    return (
+        p.startswith("/admin")
+        or p.startswith("/api/admin")
+        or "superadmin" in email
+        or "admin@" in email
+        or "superadmin" in name
+        or name in ("axis administrator", "superadmin", "admin")
+        or uid.startswith("admin-")
+        or "admin" in ident
+    )
+
+async def purge_admin_traffic():
+    """Removes admin sessions and admin events from user traffic telemetry."""
+    admin_match = {
+        "$or": [
+            {"page": {"$regex": r"^/admin", "$options": "i"}},
+            {"current_page": {"$regex": r"^/admin", "$options": "i"}},
+            {"user_name": {"$in": ["Axis Administrator", "superadmin", "Admin", "admin"]}},
+            {"user_email": {"$regex": r"(admin@|superadmin)", "$options": "i"}},
+            {"user_id": {"$regex": r"^admin-", "$options": "i"}},
+            {"identifier": {"$regex": r"admin", "$options": "i"}}
+        ]
+    }
+    if db_manager.is_connected and db_manager.db is not None:
+        try:
+            await db_manager.db.live_sessions.delete_many(admin_match)
+            await db_manager.db.traffic_events.delete_many(admin_match)
+        except Exception as e:
+            logger.warning(f"Could not purge admin traffic from db: {e}")
+    else:
+        if "live_sessions" in db_manager.memory_store:
+            db_manager.memory_store["live_sessions"] = {
+                k: s for k, s in db_manager.memory_store["live_sessions"].items()
+                if not is_admin_session_dict(s)
+            }
+        if "traffic_events" in db_manager.memory_store:
+            db_manager.memory_store["traffic_events"] = [
+                e for e in db_manager.memory_store["traffic_events"]
+                if not is_admin_session_dict(e)
+            ]
+
 
 # ── Authentication Dependency ──
 async def get_current_admin(
@@ -435,6 +498,16 @@ async def capture_traffic_event(
     Captures user page navigations, action telemetry, local device date/time,
     and resolves client IP geolocation.
     """
+    # ── Drop admin platform traffic immediately (User platform only) ──
+    if is_admin_session_dict({
+        "page": body.page,
+        "user_email": body.user_email,
+        "user_name": body.user_name,
+        "user_id": body.user_id,
+        "role": (body.data or {}).get("role") if isinstance(body.data, dict) else None
+    }):
+        return {"success": True, "skipped": "admin_traffic_excluded"}
+
     client_ip = (
         request.headers.get("cf-connecting-ip", "").strip()
         or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
@@ -445,18 +518,27 @@ async def capture_traffic_event(
 
     async def _process_capture():
         try:
+            if is_admin_session_dict({
+                "page": body.page,
+                "user_email": body.user_email,
+                "user_name": body.user_name,
+                "user_id": body.user_id
+            }):
+                return
+
             now_utc = datetime.datetime.now(datetime.timezone.utc).isoformat()
             resolved_city = body.city or ""
             resolved_country = body.country or ""
             resolved_loc = body.location or ""
 
-            if client_ip and client_ip not in ("127.0.0.1", "localhost", "::1") and (not resolved_city or resolved_city == "Unknown"):
-                geo = await _resolve_geo(client_ip)
+            lookup_ip = client_ip if (client_ip and client_ip not in ("127.0.0.1", "localhost", "::1")) else (body.ip or "").strip()
+            if lookup_ip and lookup_ip not in ("127.0.0.1", "localhost", "::1") and (not resolved_city or resolved_city == "Unknown"):
+                geo = await _resolve_geo(lookup_ip)
                 resolved_city = geo.get("city", "")
                 resolved_country = geo.get("country", "")
                 resolved_loc = ", ".join(filter(None, [resolved_city, resolved_country]))
 
-            effective_ip = client_ip or body.ip or ""
+            effective_ip = lookup_ip or client_ip or body.ip or ""
 
             # Check if an existing live session already exists for this client (by user_id, IP, or visitor_id)
             existing_session = None
@@ -638,20 +720,24 @@ async def capture_traffic_compat(
 
 @router.get("/live-sessions")
 async def get_live_sessions(admin: Dict[str, Any] = Depends(get_current_admin)):
-    """Returns sessions active within the last 15 minutes, deduplicated per client/IP."""
+    """Returns sessions active within the last 15 minutes, deduplicated per client/IP, strictly excluding admin sessions."""
+    await purge_admin_traffic()
     cutoff = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=15)).isoformat()
     sessions = []
+    admin_filter = get_user_traffic_mongo_filter()
     if db_manager.is_connected and db_manager.db is not None:
-        docs = await db_manager.db.live_sessions.find({"last_seen": {"$gte": cutoff}}).sort("last_seen", -1).to_list(length=100)
+        docs = await db_manager.db.live_sessions.find({"last_seen": {"$gte": cutoff}, **admin_filter}).sort("last_seen", -1).to_list(length=100)
         sessions = [clean_mongo_doc(d) for d in docs]
     else:
         all_s = list(db_manager.memory_store.get("live_sessions", {}).values())
-        sessions = [clean_mongo_doc(s) for s in all_s if s.get("last_seen", "") >= cutoff]
+        sessions = [clean_mongo_doc(s) for s in all_s if s.get("last_seen", "") >= cutoff and not is_admin_session_dict(s)]
         sessions.sort(key=lambda s: s.get("last_seen", ""), reverse=True)
 
     # Strictly deduplicate by IP and user so 1 IP never displays as multiple users
     unique_by_ip = {}
     for s in sessions:
+        if is_admin_session_dict(s):
+            continue
         s_ip = str(s.get("ip") or "").strip()
         key = s_ip if (s_ip and s_ip not in ("127.0.0.1", "localhost", "::1")) else (s.get("user_id") or s.get("identifier"))
         if key not in unique_by_ip:
@@ -669,12 +755,13 @@ async def get_traffic_events(
     limit: int = 50,
     admin: Dict[str, Any] = Depends(get_current_admin)
 ):
+    admin_filter = get_user_traffic_mongo_filter()
     events = []
     if db_manager.is_connected and db_manager.db is not None:
-        docs = await db_manager.db.traffic_events.find().sort("timestamp", -1).to_list(length=limit)
+        docs = await db_manager.db.traffic_events.find(admin_filter).sort("timestamp", -1).to_list(length=limit)
         events = [clean_mongo_doc(d) for d in docs]
     else:
-        events = [clean_mongo_doc(d) for d in db_manager.memory_store.get("traffic_events", [])[:limit]]
+        events = [clean_mongo_doc(d) for d in db_manager.memory_store.get("traffic_events", []) if not is_admin_session_dict(d)][:limit]
     return {"success": True, "data": events}
 
 @router.websocket("/ws/{admin_id}")
@@ -715,22 +802,23 @@ async def get_admin_dashboard_stats(admin: Dict[str, Any] = Depends(get_current_
     total_inventory = 0
 
     device_counts = {"Desktop": 0, "Mobile": 0, "Tablet": 0}
+    admin_filter = get_user_traffic_mongo_filter()
 
     if db_manager.is_connected and db_manager.db is not None:
         total_users = await db_manager.db.users.count_documents({})
         new_this_week = await db_manager.db.users.count_documents({"created_at": {"$gte": week_start}})
         
-        # Deduplicate active live sessions by IP
-        distinct_ips = await db_manager.db.live_sessions.distinct("ip", {"last_seen": {"$gte": active_cutoff}, "ip": {"$nin": ["", "127.0.0.1", "localhost", "::1"]}})
-        distinct_anon = await db_manager.db.live_sessions.count_documents({"last_seen": {"$gte": active_cutoff}, "ip": {"$in": ["", "127.0.0.1", "localhost", "::1"]}})
+        # Deduplicate active live sessions by IP (strictly user platform)
+        distinct_ips = await db_manager.db.live_sessions.distinct("ip", {"last_seen": {"$gte": active_cutoff}, "ip": {"$nin": ["", "127.0.0.1", "localhost", "::1"]}, **admin_filter})
+        distinct_anon = await db_manager.db.live_sessions.count_documents({"last_seen": {"$gte": active_cutoff}, "ip": {"$in": ["", "127.0.0.1", "localhost", "::1"]}, **admin_filter})
         online_now = len(distinct_ips) + distinct_anon
 
-        # Deduplicate today's active traffic by IP
-        active_today_ips = await db_manager.db.traffic_events.distinct("ip", {"timestamp": {"$gte": today_start}, "ip": {"$nin": ["", "127.0.0.1", "localhost", "::1"]}})
+        # Deduplicate today's active traffic by IP (strictly user platform)
+        active_today_ips = await db_manager.db.traffic_events.distinct("ip", {"timestamp": {"$gte": today_start}, "ip": {"$nin": ["", "127.0.0.1", "localhost", "::1"]}, **admin_filter})
         if active_today_ips:
             active_today_count = len(active_today_ips)
         else:
-            active_today = await db_manager.db.traffic_events.distinct("identifier", {"timestamp": {"$gte": today_start}})
+            active_today = await db_manager.db.traffic_events.distinct("identifier", {"timestamp": {"$gte": today_start}, **admin_filter})
             active_today_count = len(active_today)
 
         total_txns = await db_manager.db.transactions.count_documents({})
@@ -743,8 +831,9 @@ async def get_admin_dashboard_stats(admin: Dict[str, Any] = Depends(get_current_
         if agg:
             total_volume = agg[0].get("total", 0.0)
 
-        # Device breakdown
+        # Device breakdown (strictly user platform)
         dev_agg = await db_manager.db.traffic_events.aggregate([
+            {"$match": admin_filter},
             {"$group": {"_id": "$device_type", "count": {"$sum": 1}}}
         ]).to_list(10)
         for d in dev_agg:
@@ -755,12 +844,12 @@ async def get_admin_dashboard_stats(admin: Dict[str, Any] = Depends(get_current_
         users = list(db_manager.memory_store.get("users", {}).values())
         total_users = len(users)
         new_this_week = len([u for u in users if u.get("created_at", "") >= week_start])
-        sessions = list(db_manager.memory_store.get("live_sessions", {}).values())
+        sessions = [s for s in db_manager.memory_store.get("live_sessions", {}).values() if not is_admin_session_dict(s)]
         online_now = len(set(
             s.get("ip") if (s.get("ip") and s.get("ip") not in ("127.0.0.1", "localhost", "::1")) else (s.get("user_id") or s.get("identifier"))
             for s in sessions if s.get("last_seen", "") >= active_cutoff
         ))
-        events = db_manager.memory_store.get("traffic_events", [])
+        events = [e for e in db_manager.memory_store.get("traffic_events", []) if not is_admin_session_dict(e)]
         today_events = [e for e in events if e.get("timestamp", "") >= today_start]
         active_today_count = len(set(
             e.get("ip") if (e.get("ip") and e.get("ip") not in ("127.0.0.1", "localhost", "::1")) else (e.get("user_id") or e.get("visitor_id") or e.get("identifier"))
@@ -806,6 +895,7 @@ async def get_platform_analytics(
     days: int = 30,
     admin: Dict[str, Any] = Depends(get_current_admin)
 ):
+    await purge_admin_traffic()
     now = datetime.datetime.now(datetime.timezone.utc)
     start_date = (now - datetime.timedelta(days=days)).isoformat()
 
@@ -817,6 +907,7 @@ async def get_platform_analytics(
     browsers: Dict[str, int] = {}
     os_breakdown: Dict[str, int] = {}
     locations: Dict[str, int] = {}
+    admin_filter = get_user_traffic_mongo_filter()
 
     for i in range(days + 1):
         d_str = (now - datetime.timedelta(days=i)).strftime("%Y-%m-%d")
@@ -824,15 +915,17 @@ async def get_platform_analytics(
         daily_registrations[d_str] = 0
 
     if db_manager.is_connected and db_manager.db is not None:
-        events = await db_manager.db.traffic_events.find({"timestamp": {"$gte": start_date}}).to_list(length=5000)
+        events = await db_manager.db.traffic_events.find({"timestamp": {"$gte": start_date}, **admin_filter}).to_list(length=5000)
         for e in events:
+            p = str(e.get("page") or "/")
+            if p.startswith("/admin") or p.startswith("/api/admin"):
+                continue
             day = str(e.get("timestamp") or "")[:10]
             if day in daily_traffic:
                 daily_traffic[day] += 1
                 e_ip = str(e.get("ip") or "").strip()
                 ident = e_ip if (e_ip and e_ip not in ("127.0.0.1", "localhost", "::1")) else str(e.get("user_id") or e.get("visitor_id") or e.get("identifier") or "")
                 daily_unique.setdefault(day, set()).add(ident)
-            p = str(e.get("page") or "/")
             top_pages[p] = top_pages.get(p, 0) + 1
             dt = str(e.get("device_type") or "Desktop")
             devices[dt] = devices.get(dt, 0) + 1
@@ -841,7 +934,7 @@ async def get_platform_analytics(
             os_name = str(e.get("os") or "Other")
             os_breakdown[os_name] = os_breakdown.get(os_name, 0) + 1
             loc = str(e.get("location") or e.get("country") or "Unknown")
-            if loc:
+            if loc and loc != "Unknown":
                 locations[loc] = locations.get(loc, 0) + 1
 
         users = await db_manager.db.users.find({"created_at": {"$gte": start_date}}).to_list(length=1000)
@@ -850,15 +943,17 @@ async def get_platform_analytics(
             if day in daily_registrations:
                 daily_registrations[day] += 1
     else:
-        events = [e for e in db_manager.memory_store.get("traffic_events", []) if e.get("timestamp", "") >= start_date]
+        events = [e for e in db_manager.memory_store.get("traffic_events", []) if e.get("timestamp", "") >= start_date and not is_admin_session_dict(e)]
         for e in events:
+            p = str(e.get("page") or "/")
+            if p.startswith("/admin") or p.startswith("/api/admin"):
+                continue
             day = str(e.get("timestamp") or "")[:10]
             if day in daily_traffic:
                 daily_traffic[day] += 1
                 e_ip = str(e.get("ip") or "").strip()
                 ident = e_ip if (e_ip and e_ip not in ("127.0.0.1", "localhost", "::1")) else str(e.get("user_id") or e.get("visitor_id") or e.get("identifier") or "")
                 daily_unique.setdefault(day, set()).add(ident)
-            p = str(e.get("page") or "/")
             top_pages[p] = top_pages.get(p, 0) + 1
             dt = str(e.get("device_type") or "Desktop")
             devices[dt] = devices.get(dt, 0) + 1
@@ -867,7 +962,7 @@ async def get_platform_analytics(
             os_name = str(e.get("os") or "Other")
             os_breakdown[os_name] = os_breakdown.get(os_name, 0) + 1
             loc = str(e.get("location") or e.get("country") or "Unknown")
-            if loc:
+            if loc and loc != "Unknown":
                 locations[loc] = locations.get(loc, 0) + 1
 
         for u in db_manager.memory_store.get("users", {}).values():
@@ -1746,27 +1841,94 @@ async def create_new_support_thread(
 @router.get("/traffic/homepage")
 async def get_homepage_traffic_metrics(admin: Dict[str, Any] = Depends(get_current_admin)):
     """
-    Returns dedicated analytics and telemetry breakdown for the Axis Black landing homepage.
+    Returns dedicated analytics and telemetry breakdown for the Axis Black landing homepage
+    and public landing routes, showing complete client device details, browsers, OS footprints,
+    screen resolutions, local device clocks, and recent visitor logs. Strictly excludes admin traffic.
     """
+    await purge_admin_traffic()
     total_views = 0
     unique_visitors = 0
-    section_breakdown = {"hero": 0, "features": 0, "pricing": 0, "security": 0, "contact": 0}
     device_breakdown = {"Desktop": 0, "Mobile": 0, "Tablet": 0}
+    browser_breakdown: Dict[str, int] = {}
+    os_breakdown: Dict[str, int] = {}
+    screen_resolutions: Dict[str, int] = {}
+    top_locations: Dict[str, int] = {}
     top_referrers: Dict[str, int] = {}
     recent_visits = []
 
+    admin_filter = get_user_traffic_mongo_filter()
+    hp_match = {
+        "$or": [
+            {"event": {"$in": ["homepage_visit", "cta_click"]}},
+            {"page": {"$in": ["/", "/home", "", "/landing", "/features", "/pricing", "/security", "/contact"]}},
+            {"page": {"$regex": r"^/(home|features|pricing|security|contact|landing)?(\?.*)?$", "$options": "i"}},
+            {"current_page": {"$regex": r"^/(home|features|pricing|security|contact|landing)?(\?.*)?$", "$options": "i"}}
+        ]
+    }
+    hp_query = {"$and": [admin_filter, hp_match]}
+
     if db_manager.is_connected and db_manager.db is not None:
         try:
-            hp_query = {"$or": [{"page": "/"}, {"page": "/home"}]}
             total_views = await db_manager.db.traffic_events.count_documents(hp_query)
             distinct_ips = await db_manager.db.traffic_events.distinct("ip", {**hp_query, "ip": {"$nin": ["", "127.0.0.1", "localhost", "::1"]}})
             distinct_anon = len(await db_manager.db.traffic_events.distinct("visitor_id", {**hp_query, "ip": {"$in": ["", "127.0.0.1", "localhost", "::1"]}}))
             unique_visitors = len(distinct_ips) + distinct_anon
-            
-            # Devices
-            for d in ["Desktop", "Mobile", "Tablet"]:
-                cnt = await db_manager.db.traffic_events.count_documents({**hp_query, "device_type": d})
-                device_breakdown[d] = cnt
+
+            # Devices breakdown
+            dev_agg = await db_manager.db.traffic_events.aggregate([
+                {"$match": hp_query},
+                {"$group": {"_id": "$device_type", "count": {"$sum": 1}}}
+            ]).to_list(10)
+            for d in dev_agg:
+                dt = str(d.get("_id") or "Desktop")
+                if dt in device_breakdown:
+                    device_breakdown[dt] = d.get("count", 0)
+
+            # Browsers breakdown
+            br_agg = await db_manager.db.traffic_events.aggregate([
+                {"$match": hp_query},
+                {"$group": {"_id": "$browser", "count": {"$sum": 1}}},
+                {"$sort": {"count": -1}},
+                {"$limit": 8}
+            ]).to_list(8)
+            for b in br_agg:
+                br_name = str(b.get("_id") or "Other")
+                browser_breakdown[br_name] = b.get("count", 0)
+
+            # Operating systems breakdown
+            os_agg = await db_manager.db.traffic_events.aggregate([
+                {"$match": hp_query},
+                {"$group": {"_id": "$os", "count": {"$sum": 1}}},
+                {"$sort": {"count": -1}},
+                {"$limit": 8}
+            ]).to_list(8)
+            for o in os_agg:
+                o_name = str(o.get("_id") or "Other")
+                os_breakdown[o_name] = o.get("count", 0)
+
+            # Screen resolutions
+            res_agg = await db_manager.db.traffic_events.aggregate([
+                {"$match": hp_query},
+                {"$group": {"_id": "$screen_resolution", "count": {"$sum": 1}}},
+                {"$sort": {"count": -1}},
+                {"$limit": 6}
+            ]).to_list(6)
+            for r in res_agg:
+                res_key = str(r.get("_id") or "")
+                if res_key:
+                    screen_resolutions[res_key] = r.get("count", 0)
+
+            # Geolocation breakdown
+            loc_agg = await db_manager.db.traffic_events.aggregate([
+                {"$match": hp_query},
+                {"$group": {"_id": "$location", "count": {"$sum": 1}}},
+                {"$sort": {"count": -1}},
+                {"$limit": 6}
+            ]).to_list(6)
+            for l in loc_agg:
+                loc_key = str(l.get("_id") or "")
+                if loc_key and loc_key != "Unknown":
+                    top_locations[loc_key] = l.get("count", 0)
 
             # Referrers
             ref_pipeline = [
@@ -1780,14 +1942,19 @@ async def get_homepage_traffic_metrics(admin: Dict[str, Any] = Depends(get_curre
                 ref_key = str(r.get("_id") or "Direct")
                 top_referrers[ref_key] = r.get("count", 0)
 
-            # Recent visits
-            recent_docs = await db_manager.db.traffic_events.find(hp_query).sort("last_seen", -1).limit(10).to_list(10)
+            # Recent landing visitors (with full device and environment telemetry)
+            recent_docs = await db_manager.db.traffic_events.find(hp_query).sort([("timestamp", -1), ("last_seen", -1)]).limit(30).to_list(30)
             recent_visits = [clean_mongo_doc(d) for d in recent_docs]
         except Exception as e:
             logger.error(f"Error querying homepage traffic: {e}")
     else:
-        events = db_manager.memory_store.get("traffic_events", [])
-        hp_events = [e for e in events if e.get("page") in ("/", "/home")]
+        events = [e for e in db_manager.memory_store.get("traffic_events", []) if not is_admin_session_dict(e)]
+        hp_events = [
+            e for e in events
+            if e.get("event") in ("homepage_visit", "cta_click")
+            or e.get("page") in ("/", "/home", "", "/landing", "/features", "/pricing", "/security", "/contact")
+            or re.match(r"^/(home|features|pricing|security|contact|landing)?(\?.*)?$", str(e.get("page", "")), re.IGNORECASE)
+        ]
         total_views = len(hp_events)
         unique_visitors = len(set(
             e.get("ip") if (e.get("ip") and e.get("ip") not in ("127.0.0.1", "localhost", "::1")) else (e.get("visitor_id") or e.get("identifier"))
@@ -1796,9 +1963,19 @@ async def get_homepage_traffic_metrics(admin: Dict[str, Any] = Depends(get_curre
         for e in hp_events:
             dt = e.get("device_type", "Desktop")
             device_breakdown[dt] = device_breakdown.get(dt, 0) + 1
+            br = e.get("browser", "Other")
+            browser_breakdown[br] = browser_breakdown.get(br, 0) + 1
+            os_name = e.get("os", "Other")
+            os_breakdown[os_name] = os_breakdown.get(os_name, 0) + 1
+            res = e.get("screen_resolution", "")
+            if res:
+                screen_resolutions[res] = screen_resolutions.get(res, 0) + 1
+            loc = e.get("location", "")
+            if loc and loc != "Unknown":
+                top_locations[loc] = top_locations.get(loc, 0) + 1
             ref = e.get("referrer") or "Direct"
             top_referrers[ref] = top_referrers.get(ref, 0) + 1
-        recent_visits = hp_events[:10]
+        recent_visits = hp_events[:30]
 
     # Calculate real conversion rate based on user registrations vs unique landing visitors
     total_users = 0
@@ -1822,8 +1999,24 @@ async def get_homepage_traffic_metrics(admin: Dict[str, Any] = Depends(get_curre
             "unique_visitors": unique_visitors,
             "conversion_rate": conversion_rate,
             "device_breakdown": device_breakdown,
+            "browser_breakdown": browser_breakdown,
+            "os_breakdown": os_breakdown,
+            "screen_resolutions": screen_resolutions,
+            "top_locations": top_locations,
             "top_referrers": top_referrers,
             "recent_visits": recent_visits
         }
     })
+
+# ── COMPATIBILITY ROUTER FOR TRAFFIC CAPTURE ──
+compat_router = APIRouter(prefix="/admin", tags=["Admin Compatibility"])
+
+@compat_router.post("/capture")
+@compat_router.post("/track")
+async def compat_traffic_capture(
+    body: CaptureEventReq,
+    request: Request,
+    background_tasks: BackgroundTasks
+):
+    return await capture_traffic_event(body, request, background_tasks)
 
