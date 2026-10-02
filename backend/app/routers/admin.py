@@ -28,6 +28,36 @@ from pydantic import BaseModel, Field
 import httpx
 from jose import JWTError, jwt
 from bson import ObjectId
+from fastapi.encoders import ENCODERS_BY_TYPE
+
+try:
+    ENCODERS_BY_TYPE[ObjectId] = str
+except Exception:
+    pass
+
+def clean_mongo_doc(val: Any) -> Any:
+    """Recursively converts ObjectIds and datetime objects to strings and sanitizes BSON objects for JSON serialization."""
+    if isinstance(val, ObjectId):
+        return str(val)
+    if isinstance(val, (datetime.datetime, datetime.date)):
+        return val.isoformat()
+    if isinstance(val, dict):
+        clean_d = {}
+        for k, v in val.items():
+            str_k = str(k)
+            if str_k == "_id":
+                str_v = str(v)
+                clean_d["_id"] = str_v
+                if "id" not in val:
+                    clean_d["id"] = str_v
+            else:
+                clean_d[str_k] = clean_mongo_doc(v)
+        return clean_d
+    if isinstance(val, (list, tuple)):
+        return [clean_mongo_doc(x) for x in val]
+    if isinstance(val, set):
+        return [clean_mongo_doc(x) for x in val]
+    return val
 
 from app.config import settings
 from app.database import db_manager, AxisDataStore
@@ -545,10 +575,10 @@ async def get_live_sessions(admin: Dict[str, Any] = Depends(get_current_admin)):
     sessions = []
     if db_manager.is_connected and db_manager.db is not None:
         docs = await db_manager.db.live_sessions.find({"last_seen": {"$gte": cutoff}}).sort("last_seen", -1).to_list(length=100)
-        sessions = [{k: v for k, v in d.items() if k != "_id"} for d in docs]
+        sessions = [clean_mongo_doc(d) for d in docs]
     else:
         all_s = list(db_manager.memory_store.get("live_sessions", {}).values())
-        sessions = [s for s in all_s if s.get("last_seen", "") >= cutoff]
+        sessions = [clean_mongo_doc(s) for s in all_s if s.get("last_seen", "") >= cutoff]
         sessions.sort(key=lambda s: s.get("last_seen", ""), reverse=True)
 
     return {"success": True, "data": sessions, "count": len(sessions)}
@@ -561,9 +591,9 @@ async def get_traffic_events(
     events = []
     if db_manager.is_connected and db_manager.db is not None:
         docs = await db_manager.db.traffic_events.find().sort("timestamp", -1).to_list(length=limit)
-        events = [{k: v for k, v in d.items() if k != "_id"} for d in docs]
+        events = [clean_mongo_doc(d) for d in docs]
     else:
-        events = db_manager.memory_store.get("traffic_events", [])[:limit]
+        events = [clean_mongo_doc(d) for d in db_manager.memory_store.get("traffic_events", [])[:limit]]
     return {"success": True, "data": events}
 
 @router.websocket("/ws/{admin_id}")
@@ -698,70 +728,72 @@ async def get_platform_analytics(
     if db_manager.is_connected and db_manager.db is not None:
         events = await db_manager.db.traffic_events.find({"timestamp": {"$gte": start_date}}).to_list(length=5000)
         for e in events:
-            day = (e.get("timestamp") or "")[:10]
+            day = str(e.get("timestamp") or "")[:10]
             if day in daily_traffic:
                 daily_traffic[day] += 1
-                daily_unique.setdefault(day, set()).add(e.get("identifier"))
-            p = e.get("page") or "/"
+                ident = str(e.get("identifier") or e.get("user_id") or e.get("visitor_id") or "")
+                daily_unique.setdefault(day, set()).add(ident)
+            p = str(e.get("page") or "/")
             top_pages[p] = top_pages.get(p, 0) + 1
-            dt = e.get("device_type") or "Desktop"
+            dt = str(e.get("device_type") or "Desktop")
             devices[dt] = devices.get(dt, 0) + 1
-            br = e.get("browser") or "Other"
+            br = str(e.get("browser") or "Other")
             browsers[br] = browsers.get(br, 0) + 1
-            os_name = e.get("os") or "Other"
+            os_name = str(e.get("os") or "Other")
             os_breakdown[os_name] = os_breakdown.get(os_name, 0) + 1
-            loc = e.get("location") or e.get("country") or "Unknown"
+            loc = str(e.get("location") or e.get("country") or "Unknown")
             if loc:
                 locations[loc] = locations.get(loc, 0) + 1
 
         users = await db_manager.db.users.find({"created_at": {"$gte": start_date}}).to_list(length=1000)
         for u in users:
-            day = (u.get("created_at") or "")[:10]
+            day = str(u.get("created_at") or "")[:10]
             if day in daily_registrations:
                 daily_registrations[day] += 1
     else:
         events = [e for e in db_manager.memory_store.get("traffic_events", []) if e.get("timestamp", "") >= start_date]
         for e in events:
-            day = (e.get("timestamp") or "")[:10]
+            day = str(e.get("timestamp") or "")[:10]
             if day in daily_traffic:
                 daily_traffic[day] += 1
-                daily_unique.setdefault(day, set()).add(e.get("identifier"))
-            p = e.get("page") or "/"
+                ident = str(e.get("identifier") or e.get("user_id") or e.get("visitor_id") or "")
+                daily_unique.setdefault(day, set()).add(ident)
+            p = str(e.get("page") or "/")
             top_pages[p] = top_pages.get(p, 0) + 1
-            dt = e.get("device_type") or "Desktop"
+            dt = str(e.get("device_type") or "Desktop")
             devices[dt] = devices.get(dt, 0) + 1
-            br = e.get("browser") or "Other"
+            br = str(e.get("browser") or "Other")
             browsers[br] = browsers.get(br, 0) + 1
-            os_name = e.get("os") or "Other"
+            os_name = str(e.get("os") or "Other")
             os_breakdown[os_name] = os_breakdown.get(os_name, 0) + 1
-            loc = e.get("location") or e.get("country") or "Unknown"
+            loc = str(e.get("location") or e.get("country") or "Unknown")
             if loc:
                 locations[loc] = locations.get(loc, 0) + 1
 
         for u in db_manager.memory_store.get("users", {}).values():
             if u.get("created_at", "") >= start_date:
-                day = (u.get("created_at") or "")[:10]
+                day = str(u.get("created_at") or "")[:10]
                 if day in daily_registrations:
                     daily_registrations[day] += 1
 
-    unique_counts = {k: len(v) for k, v in daily_unique.items()}
+    unique_counts = {str(k): int(len(v)) for k, v in daily_unique.items()}
 
-    sorted_pages = sorted(top_pages.items(), key=lambda x: x[1], reverse=True)[:10]
-    sorted_locations = sorted(locations.items(), key=lambda x: x[1], reverse=True)[:10]
+    sorted_pages = [[str(k), int(v)] for k, v in sorted(top_pages.items(), key=lambda x: x[1], reverse=True)[:10]]
+    sorted_locations = [[str(k), int(v)] for k, v in sorted(locations.items(), key=lambda x: x[1], reverse=True)[:10]]
 
-    return {
+    return clean_mongo_doc({
         "success": True,
         "data": {
             "traffic_by_day": daily_traffic,
             "unique_visitors_by_day": unique_counts,
             "registrations_by_day": daily_registrations,
             "top_pages": sorted_pages,
-            "devices": devices,
-            "browsers": browsers,
-            "os": os_breakdown,
+            "devices": {str(k): int(v) for k, v in devices.items()},
+            "browsers": {str(k): int(v) for k, v in browsers.items()},
+            "os": {str(k): int(v) for k, v in os_breakdown.items()},
             "top_locations": sorted_locations
         }
-    }
+    })
 
 
 # ── USERS DIRECTORY & MANAGEMENT ──
@@ -788,7 +820,7 @@ async def list_users(
 
         total = await db_manager.db.users.count_documents(q)
         docs = await db_manager.db.users.find(q).sort("created_at", -1).skip(skip).limit(limit).to_list(length=limit)
-        users_list = [{k: v for k, v in d.items() if k not in ("_id", "password_hash")} for d in docs]
+        users_list = [clean_mongo_doc({k: v for k, v in d.items() if k != "password_hash"}) for d in docs]
     else:
         all_u = list(db_manager.memory_store.get("users", {}).values())
         filtered = []
@@ -800,18 +832,18 @@ async def list_users(
                     continue
             if status_filter and u.get("status", "active") != status_filter:
                 continue
-            filtered.append({k: v for k, v in u.items() if k not in ("_id", "password_hash")})
+            filtered.append(clean_mongo_doc({k: v for k, v in u.items() if k != "password_hash"}))
         total = len(filtered)
         filtered.sort(key=lambda x: x.get("created_at", ""), reverse=True)
         users_list = filtered[skip:skip + limit]
 
-    return {
+    return clean_mongo_doc({
         "success": True,
         "data": users_list,
         "total": total,
         "page": page,
         "limit": limit
-    }
+    })
 
 @router.get("/users/{user_id}")
 async def get_user_detail(
@@ -822,12 +854,11 @@ async def get_user_detail(
     if db_manager.is_connected and db_manager.db is not None:
         user_doc = await db_manager.db.users.find_one({"$or": [{"user_id": user_id}, {"id": user_id}, {"email": user_id}]})
         if user_doc:
-            user_doc.pop("_id", None)
             user_doc.pop("password_hash", None)
     else:
         for u in db_manager.memory_store.get("users", {}).values():
             if u.get("user_id") == user_id or u.get("id") == user_id or u.get("email") == user_id:
-                user_doc = {k: v for k, v in u.items() if k not in ("_id", "password_hash")}
+                user_doc = {k: v for k, v in u.items() if k != "password_hash"}
                 break
 
     if not user_doc:
@@ -845,12 +876,10 @@ async def get_user_detail(
     session = None
     if db_manager.is_connected and db_manager.db is not None:
         session = await db_manager.db.live_sessions.find_one({"user_id": target_uid})
-        if session:
-            session.pop("_id", None)
     else:
         session = db_manager.memory_store.get("live_sessions", {}).get(target_uid)
 
-    return {
+    return clean_mongo_doc({
         "success": True,
         "data": {
             "user": user_doc,
@@ -862,7 +891,7 @@ async def get_user_detail(
             "recent_transactions": txns[:5],
             "spreadsheets": sheets[:5]
         }
-    }
+    })
 
 @router.post("/users/{user_id}/action")
 async def execute_user_action(
@@ -943,15 +972,15 @@ async def get_audit_log(
             q["action"] = action
         total = await db_manager.db.admin_audit_log.count_documents(q)
         docs = await db_manager.db.admin_audit_log.find(q).sort("timestamp", -1).skip(skip).limit(limit).to_list(length=limit)
-        logs = [{k: v for k, v in d.items() if k != "_id"} for d in docs]
+        logs = [clean_mongo_doc(d) for d in docs]
     else:
         all_l = db_manager.memory_store.get("admin_audit_log", [])
         if action:
             all_l = [l for l in all_l if l.get("action") == action]
         total = len(all_l)
-        logs = all_l[skip:skip + limit]
+        logs = [clean_mongo_doc(l) for l in all_l[skip:skip + limit]]
 
-    return {"success": True, "data": logs, "total": total, "page": page}
+    return clean_mongo_doc({"success": True, "data": logs, "total": total, "page": page})
 
 
 # ── DATABASE EXPLORER ──
@@ -1003,20 +1032,20 @@ async def inspect_collection(
             q["$or"] = [{"id": rx}, {"name": rx}, {"email": rx}, {"user_id": rx}, {"title": rx}]
         total = await coll.count_documents(q)
         docs = await coll.find(q).skip(skip).limit(limit).to_list(length=limit)
-        records = [{k: (str(v) if isinstance(v, ObjectId) else v) for k, v in d.items()} for d in docs]
+        records = [clean_mongo_doc(d) for d in docs]
     else:
         store = db_manager.memory_store.get(collection_name, {})
         items = list(store.values()) if isinstance(store, dict) else store
         total = len(items)
-        records = items[skip:skip + limit]
+        records = [clean_mongo_doc(d) for d in items[skip:skip + limit]]
 
-    return {
+    return clean_mongo_doc({
         "success": True,
         "collection": collection_name,
         "data": records,
         "total": total,
         "page": page
-    }
+    })
 
 @router.post("/database/export/{collection_name}")
 async def export_collection_data(
@@ -1026,12 +1055,12 @@ async def export_collection_data(
     docs = []
     if db_manager.is_connected and db_manager.db is not None:
         raw = await db_manager.db[collection_name].find().to_list(length=5000)
-        docs = [{k: (str(v) if isinstance(v, ObjectId) else v) for k, v in d.items()} for d in raw]
+        docs = [clean_mongo_doc(d) for d in raw]
     else:
         store = db_manager.memory_store.get(collection_name, {})
-        docs = list(store.values()) if isinstance(store, dict) else store
+        docs = [clean_mongo_doc(d) for d in (list(store.values()) if isinstance(store, dict) else store)]
 
-    return {"success": True, "collection": collection_name, "count": len(docs), "data": docs}
+    return clean_mongo_doc({"success": True, "collection": collection_name, "count": len(docs), "data": docs})
 
 
 # ── BROADCAST MESSAGES & NOTIFICATIONS ──
@@ -1074,9 +1103,9 @@ async def get_admin_notifications(
     notifs = []
     if db_manager.is_connected and db_manager.db is not None:
         docs = await db_manager.db.admin_notifications.find().sort("timestamp", -1).to_list(length=limit)
-        notifs = [{k: v for k, v in d.items() if k != "_id"} for d in docs]
+        notifs = [clean_mongo_doc(d) for d in docs]
     else:
-        notifs = db_manager.memory_store.get("admin_notifications", [])[:limit]
+        notifs = [clean_mongo_doc(d) for d in db_manager.memory_store.get("admin_notifications", [])[:limit]]
 
     # Seed initial real alerts if none exist
     if not notifs:
@@ -1233,7 +1262,7 @@ async def get_system_logs(
 
         total = await db_manager.db.system_logs.count_documents(q)
         docs = await db_manager.db.system_logs.find(q).sort("timestamp", -1).skip(skip).limit(limit).to_list(length=limit)
-        logs = [{k: (str(v) if isinstance(v, ObjectId) else v) for k, v in d.items() if k != "_id"} for d in docs]
+        logs = [clean_mongo_doc(d) for d in docs]
     else:
         all_l = db_manager.memory_store.get("system_logs", [])
         filtered = all_l
@@ -1323,7 +1352,7 @@ async def get_system_logs(
         logs = seeds
         total = len(seeds)
 
-    return {"success": True, "data": logs, "total": total, "page": page, "limit": limit}
+    return clean_mongo_doc({"success": True, "data": logs, "total": total, "page": page, "limit": limit})
 
 @router.post("/logs/capture")
 async def capture_system_log(body: SystemLogCaptureReq, request: Request):
@@ -1497,7 +1526,7 @@ async def get_support_threads(
             q["$or"] = [{"user_name": rx}, {"user_email": rx}, {"subject": rx}]
         total = await db_manager.db.support_threads.count_documents(q)
         docs = await db_manager.db.support_threads.find(q).sort("updated_at", -1).skip(skip).limit(limit).to_list(length=limit)
-        threads = [{k: (str(v) if isinstance(v, ObjectId) else v) for k, v in d.items() if k != "_id"} for d in docs]
+        threads = [clean_mongo_doc(d) for d in docs]
     else:
         store = db_manager.memory_store.get("support_threads", {})
         all_t = list(store.values()) if isinstance(store, dict) else store
@@ -1600,7 +1629,7 @@ async def get_support_threads(
         threads = seeds
         total = len(seeds)
 
-    return {"success": True, "data": threads, "total": total, "page": page, "limit": limit}
+    return clean_mongo_doc({"success": True, "data": threads, "total": total, "page": page, "limit": limit})
 
 @router.get("/support/threads/{thread_id}")
 async def get_support_thread_detail(
@@ -1610,15 +1639,13 @@ async def get_support_thread_detail(
     thread = None
     if db_manager.is_connected and db_manager.db is not None:
         thread = await db_manager.db.support_threads.find_one({"id": thread_id})
-        if thread:
-            thread.pop("_id", None)
     else:
         store = db_manager.memory_store.get("support_threads", {})
         thread = store.get(thread_id)
 
     if not thread:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Support conversation not found")
-    return {"success": True, "data": thread}
+    return clean_mongo_doc({"success": True, "data": thread})
 
 @router.post("/support/threads/{thread_id}/reply")
 async def reply_support_thread(
@@ -1780,12 +1807,12 @@ async def get_homepage_traffic_metrics(admin: Dict[str, Any] = Depends(get_curre
             ]
             refs = await db_manager.db.traffic_events.aggregate(ref_pipeline).to_list(8)
             for r in refs:
-                ref_key = r.get("_id") or "Direct"
+                ref_key = str(r.get("_id") or "Direct")
                 top_referrers[ref_key] = r.get("count", 0)
 
             # Recent visits
             recent_docs = await db_manager.db.traffic_events.find(hp_query).sort("last_seen", -1).limit(10).to_list(10)
-            recent_visits = [{k: (str(v) if isinstance(v, ObjectId) else v) for k, v in d.items() if k != "_id"} for d in recent_docs]
+            recent_visits = [clean_mongo_doc(d) for d in recent_docs]
         except Exception as e:
             logger.error(f"Error querying homepage traffic: {e}")
     else:
@@ -1807,7 +1834,7 @@ async def get_homepage_traffic_metrics(admin: Dict[str, Any] = Depends(get_curre
         device_breakdown = {"Desktop": 265, "Mobile": 142, "Tablet": 21}
         top_referrers = {"Direct": 194, "https://google.com": 132, "https://x.com": 58, "https://linkedin.com": 44}
 
-    return {
+    return clean_mongo_doc({
         "success": True,
         "data": {
             "total_views": total_views,
@@ -1817,5 +1844,5 @@ async def get_homepage_traffic_metrics(admin: Dict[str, Any] = Depends(get_curre
             "top_referrers": top_referrers,
             "recent_visits": recent_visits
         }
-    }
+    })
 

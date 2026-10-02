@@ -8,6 +8,13 @@ from typing import Dict, Any, List, Optional
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.config import settings
 
+try:
+    from bson import ObjectId
+    from fastapi.encoders import ENCODERS_BY_TYPE
+    ENCODERS_BY_TYPE[ObjectId] = str
+except Exception:
+    pass
+
 logger = logging.getLogger("axis_black.database")
 
 # ── MongoDB Manager ──

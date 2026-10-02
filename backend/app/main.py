@@ -6,6 +6,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 
+# ── Register BSON ObjectId Encoder for FastAPI / Starlette ──
+try:
+    from bson import ObjectId
+    from fastapi.encoders import ENCODERS_BY_TYPE
+    ENCODERS_BY_TYPE[ObjectId] = str
+except Exception:
+    pass
+
 from app.config import settings
 from app.database import connect_to_mongo, close_mongo_connection
 from app.routers import user, dashboard, transactions, voice, auth, storage, inventory, analytics, agent, support, business, spreadsheet, admin, payments
@@ -25,6 +33,7 @@ app = FastAPI(
     description="Axis Black Financial Intelligence Agent Platform",
     lifespan=lifespan
 )
+
 
 # CORS configuration
 default_origins = [
