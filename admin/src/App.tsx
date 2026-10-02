@@ -57,13 +57,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   const theme = useAdminStore((s) => s.admin?.theme || 'dark');
 
+  // Apply theme on mount and whenever admin's theme preference changes
   useEffect(() => {
-    if (theme === 'light') {
-      document.documentElement.classList.remove('dark');
-    } else {
+    const t = theme === 'light' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+    // Keep .dark class in sync for any Tailwind dark: utilities still used
+    if (t === 'dark') {
       document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
     }
   }, [theme]);
+
 
   return (
     <BrowserRouter>

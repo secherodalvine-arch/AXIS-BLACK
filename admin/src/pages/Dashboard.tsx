@@ -92,7 +92,7 @@ export function Dashboard() {
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         {/* Total Users */}
         <Link to="/users" className="p-4 rounded-2xl bg-navy-900 border border-white/8 hover:border-cyan-500/40 transition-all group block shadow-lg">
           <div className="flex items-center justify-between mb-2">
@@ -157,19 +157,6 @@ export function Dashboard() {
           <div className="text-xs text-slate-400 font-medium">Inventory SKUs</div>
           <div className="text-[10px] text-slate-500 mt-1 font-mono">Tracked in Catalog</div>
         </Link>
-
-        {/* System Health */}
-        <div className="p-4 rounded-2xl bg-navy-900 border border-white/8 block shadow-lg">
-          <div className="flex items-center justify-between mb-2">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-              <ShieldCheck size={16} />
-            </div>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold">100%</span>
-          </div>
-          <div className="text-2xl font-extrabold text-white">Optimal</div>
-          <div className="text-xs text-slate-400 font-medium">System Telemetry</div>
-          <div className="text-[10px] text-slate-500 mt-1 font-mono">FastAPI + MongoDB</div>
-        </div>
       </div>
 
       {/* Main Charts Row */}

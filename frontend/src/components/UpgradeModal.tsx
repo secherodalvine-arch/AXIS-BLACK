@@ -5,6 +5,7 @@ interface UpgradeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onNavigateToBilling: () => void;
+  isSubUser?: boolean;
   reason?: string;
   featureName?: string;
   currency?: string;
@@ -14,6 +15,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   isOpen,
   onClose,
   onNavigateToBilling,
+  isSubUser = false,
   reason,
   featureName,
   currency = 'KES'
@@ -113,10 +115,12 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
             </div>
             <div>
               <div style={{ fontSize: '0.75rem', fontWeight: 800, letterSpacing: '1.5px', color: '#d97706', textTransform: 'uppercase' }}>
-                Axis Subscription
+                {isSubUser ? 'Team Account' : 'Axis Subscription'}
               </div>
               <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: textMain, margin: '2px 0 0' }}>
-                {featureName ? `Unlock ${featureName}` : 'Upgrade Your Package'}
+                {isSubUser
+                  ? 'Feature Requires Upgrade'
+                  : featureName ? `Unlock ${featureName}` : 'Upgrade Your Package'}
               </h3>
             </div>
           </div>
@@ -159,9 +163,31 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
           </div>
         )}
 
-        <p style={{ color: textMuted, fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '22px' }}>
-          Take your business operations and financial intelligence to the next level with full capacity, team access, and priority support.
-        </p>
+        {isSubUser ? (
+          <div style={{
+            padding: '14px 18px',
+            borderRadius: '12px',
+            background: isLight ? 'rgba(124, 58, 237, 0.08)' : 'rgba(167, 139, 250, 0.10)',
+            border: isLight ? '1px solid rgba(124, 58, 237, 0.3)' : '1px solid rgba(167, 139, 250, 0.3)',
+            color: isLight ? '#5b21b6' : '#c4b5fd',
+            fontSize: '0.9rem',
+            lineHeight: 1.6,
+            marginBottom: '22px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px'
+          }}>
+            <i className="fa-solid fa-users" style={{ marginTop: '2px', fontSize: '1.1rem', flexShrink: 0 }} />
+            <span>
+              You are signed in as a <strong>team member</strong>. Feature access is determined by your business owner's subscription plan.
+              Ask your <strong>account owner</strong> to upgrade your workspace plan — features will automatically activate for your account.
+            </span>
+          </div>
+        ) : (
+          <p style={{ color: textMuted, fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '22px' }}>
+            Take your business operations and financial intelligence to the next level with full capacity, team access, and priority support.
+          </p>
+        )}
 
         {/* Package Highlights Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '24px' }}>
@@ -271,29 +297,47 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
           >
             Later
           </button>
-          <button
-            onClick={() => {
-              onClose();
-              onNavigateToBilling();
-            }}
-            style={{
-              padding: '11px 24px',
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, #00d4ff, #0099ff)',
-              border: 'none',
-              color: '#040d1a',
-              fontSize: '0.88rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              boxShadow: '0 4px 18px rgba(0, 212, 255, 0.4)'
-            }}
-          >
-            <span>Upgrade Workspace</span>
-            <i className="fa-solid fa-arrow-right"></i>
-          </button>
+          {isSubUser ? (
+            <button
+              onClick={onClose}
+              style={{
+                padding: '11px 24px',
+                borderRadius: '10px',
+                background: isLight ? 'rgba(124,58,237,0.12)' : 'rgba(167,139,250,0.15)',
+                border: isLight ? '1px solid rgba(124,58,237,0.4)' : '1px solid rgba(167,139,250,0.4)',
+                color: isLight ? '#5b21b6' : '#c4b5fd',
+                fontSize: '0.88rem',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              Got it
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                onClose();
+                onNavigateToBilling();
+              }}
+              style={{
+                padding: '11px 24px',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, #00d4ff, #0099ff)',
+                border: 'none',
+                color: '#040d1a',
+                fontSize: '0.88rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 18px rgba(0, 212, 255, 0.4)'
+              }}
+            >
+              <span>Upgrade Workspace</span>
+              <i className="fa-solid fa-arrow-right" />
+            </button>
+          )}
         </div>
       </div>
     </div>

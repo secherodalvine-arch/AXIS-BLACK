@@ -6,10 +6,16 @@ import {
   Database, Bot, MessageSquare, Settings, LogOut, Bell,
   Menu, X, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight,
   Clock, ShieldAlert, Sparkles, CreditCard, Shield, ExternalLink,
-  Trash2, Check, RefreshCw
+  Trash2, Check, RefreshCw, Mail, MailOpen, AlertTriangle, Info,
+  AlertCircle
 } from 'lucide-react';
 import api from '@/api/client';
-import { fmtDateTime, userTimeZone } from '@/utils/formatDate';
+import {
+  fmtDateTime,
+  formatNotificationTime,
+  formatNotificationDetailTime,
+  userTimeZone
+} from '@/utils/formatDate';
 
 const NAV_ITEMS = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard, section: 'CORE' },
@@ -29,17 +35,26 @@ interface AdminNotificationItem {
   id: string;
   title: string;
   message: string;
-  type?: 'success' | 'warning' | 'info' | 'support';
+  type?: 'success' | 'warning' | 'info' | 'support' | 'critical' | 'error';
   timestamp?: string;
   read?: boolean;
   link?: string;
 }
 
-function AdminNotifDrawer({ onClose, onUpdateCount }: { onClose: () => void; onUpdateCount: (c: number) => void }) {
+function AdminNotifDrawer({
+  onClose,
+  onUpdateCount
+}: {
+  onClose: () => void;
+  onUpdateCount: (c: number) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
   const { toast } = useToastStore();
   const [notifs, setNotifs] = useState<AdminNotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [selectedNotif, setSelectedNotif] = useState<AdminNotificationItem | null>(null);
 
   const fetchNotifs = () => {
     setLoading(true);
@@ -60,23 +75,32 @@ function AdminNotifDrawer({ onClose, onUpdateCount }: { onClose: () => void; onU
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      if (ref.current && !ref.current.contains(e.target as Node) && !selectedNotif) {
         onClose();
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
+  }, [onClose, selectedNotif]);
 
-  const handleMarkRead = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleToggleRead = async (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     try {
-      await api.post(`/admin-notifications/${id}/read`);
-      setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-      onUpdateCount(notifs.filter(n => n.id !== id && !n.read).length);
+      const res = await api.post(`/admin-notifications/${id}/toggle-read`);
+      const newRead = res.data?.read ?? true;
+      setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: newRead } : n));
+      const updated = notifs.map(n => n.id === id ? { ...n, read: newRead } : n);
+      onUpdateCount(updated.filter(n => !n.read).length);
     } catch {
-      // optimistic
-      setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+      // optimistic fallback
+      setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: !n.read } : n));
+    }
+  };
+
+  const handleOpenDetail = (n: AdminNotificationItem) => {
+    setSelectedNotif(n);
+    if (!n.read) {
+      handleToggleRead(n.id);
     }
   };
 
@@ -92,17 +116,24 @@ function AdminNotifDrawer({ onClose, onUpdateCount }: { onClose: () => void; onU
     }
   };
 
-  const handleDeleteNotif = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeleteNotif = async (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     try {
       await api.delete(`/admin-notifications/${id}`);
       const updated = notifs.filter(n => n.id !== id);
       setNotifs(updated);
       onUpdateCount(updated.filter(n => !n.read).length);
+      if (selectedNotif?.id === id) {
+        setSelectedNotif(null);
+      }
+      toast({ type: 'info', message: 'Notification removed' });
     } catch {
       const updated = notifs.filter(n => n.id !== id);
       setNotifs(updated);
       onUpdateCount(updated.filter(n => !n.read).length);
+      if (selectedNotif?.id === id) {
+        setSelectedNotif(null);
+      }
     }
   };
 
@@ -111,117 +142,268 @@ function AdminNotifDrawer({ onClose, onUpdateCount }: { onClose: () => void; onU
       await api.delete('/admin-notifications');
       setNotifs([]);
       onUpdateCount(0);
+      setSelectedNotif(null);
       toast({ type: 'info', message: 'All administrator alerts cleared' });
     } catch {
       setNotifs([]);
       onUpdateCount(0);
+      setSelectedNotif(null);
     }
   };
 
+  const unreadCount = notifs.filter(n => !n.read).length;
+  const filteredNotifs = filter === 'unread' ? notifs.filter(n => !n.read) : notifs;
+
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-fade">
-      <div ref={ref} className="w-96 max-w-full h-full bg-navy-900 border-l border-white/10 p-5 flex flex-col shadow-2xl">
-        <div className="flex items-center justify-between pb-4 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <Bell size={18} className="text-cyan-400" />
-            <h3 className="font-bold text-white text-base">Admin Notifications</h3>
-            {notifs.filter(n => !n.read).length > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300">
-                {notifs.filter(n => !n.read).length} new
-              </span>
+    <>
+      <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-fade">
+        <div ref={ref} className="w-96 max-w-full h-full bg-navy-900 border-l border-white/10 p-5 flex flex-col shadow-2xl">
+          {/* Header Bar */}
+          <div className="flex items-center justify-between pb-4 border-b border-white/10">
+            <div className="flex items-center gap-2">
+              <Bell size={18} className="text-cyan-400" />
+              <h3 className="font-bold text-white text-base">Admin Notifications</h3>
+              {unreadCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                  {unreadCount} UNREAD
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={fetchNotifs}
+                title="Refresh alerts"
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+              >
+                <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+              </button>
+              <button
+                onClick={onClose}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Action strip: Mark read / Clear all */}
+          <div className="flex items-center justify-between py-2 border-b border-white/5 text-[11px]">
+            <div className="flex items-center gap-3">
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAllRead}
+                  className="text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <Check size={12} /> Mark read
+                </button>
+              )}
+            </div>
+            {notifs.length > 0 && (
+              <button
+                onClick={handleClearAll}
+                className="text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <Trash2 size={12} /> Clear all
+              </button>
             )}
           </div>
-          <div className="flex items-center gap-1">
+
+          {/* Filter Tabs (All / Unread) - Matching user platform */}
+          <div className="flex gap-1.5 p-1 rounded-xl bg-navy-950 border border-white/5 my-3">
             <button
-              onClick={fetchNotifs}
-              title="Refresh"
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors"
+              onClick={() => setFilter('all')}
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                filter === 'all'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
             >
-              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+              All ({notifs.length})
             </button>
-            <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-white rounded-lg">
-              <X size={18} />
+            <button
+              onClick={() => setFilter('unread')}
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                filter === 'unread'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Unread ({unreadCount})
             </button>
           </div>
-        </div>
 
-        {notifs.length > 0 && (
-          <div className="flex items-center justify-between py-2 border-b border-white/5 text-[11px]">
-            <button
-              onClick={handleMarkAllRead}
-              className="text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1 transition-colors"
-            >
-              <Check size={12} /> Mark all read
-            </button>
-            <button
-              onClick={handleClearAll}
-              className="text-slate-500 hover:text-rose-400 flex items-center gap-1 transition-colors"
-            >
-              <Trash2 size={12} /> Clear all
-            </button>
-          </div>
-        )}
+          {/* Notifications List */}
+          <div className="flex-1 overflow-y-auto space-y-2.5 pr-0.5">
+            {loading && notifs.length === 0 ? (
+              <div className="text-center py-16 text-slate-500 text-xs flex flex-col items-center gap-2">
+                <RefreshCw size={22} className="animate-spin text-cyan-400 mb-1" />
+                <span>Loading live telemetry alerts...</span>
+              </div>
+            ) : filteredNotifs.length === 0 ? (
+              <div className="text-center py-16 text-slate-500 text-xs flex flex-col items-center gap-2">
+                <Bell size={28} className="text-slate-600 mb-1" />
+                <span>No {filter === 'unread' ? 'unread' : ''} administrator alerts</span>
+                <span className="text-[10px] text-slate-600">Platform operational and all systems healthy</span>
+              </div>
+            ) : (
+              filteredNotifs.map((n) => {
+                const isWarning = n.type === 'warning' || n.type === 'critical' || n.type === 'error';
+                const isSuccess = n.type === 'success';
+                const isSupport = n.type === 'support';
 
-        <div className="flex-1 overflow-y-auto py-3 space-y-2.5">
-          {loading ? (
-            <div className="text-center py-12 text-slate-500 text-xs">Loading live telemetry alerts...</div>
-          ) : notifs.length === 0 ? (
-            <div className="text-center py-16 text-slate-500 text-xs flex flex-col items-center gap-2">
-              <Bell size={28} className="text-slate-600 mb-1" />
-              <span>No new administrator alerts</span>
-              <span className="text-[10px] text-slate-600">Platform operational and all systems healthy</span>
-            </div>
-          ) : (
-            notifs.map((n) => {
-              const isWarning = n.type === 'warning';
-              const isSuccess = n.type === 'success';
-              const isSupport = n.type === 'support';
-              return (
-                <div
-                  key={n.id}
-                  className={`p-3.5 rounded-xl border transition-all ${
-                    n.read
-                      ? 'bg-white/2 border-white/5 opacity-70 hover:opacity-100'
-                      : 'bg-white/6 border-cyan-500/30 shadow-sm'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 flex-1">
-                      <span className={`w-2 h-2 rounded-full shrink-0 ${
-                        isWarning ? 'bg-rose-400 animate-pulse' : isSuccess ? 'bg-cyan-400' : isSupport ? 'bg-amber-400' : 'bg-lilac-400'
-                      }`} />
-                      <div className="text-xs font-semibold text-white leading-tight">{n.title}</div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {!n.read && (
-                        <button
-                          onClick={(e) => handleMarkRead(n.id, e)}
-                          title="Mark read"
-                          className="p-1 text-cyan-400 hover:text-cyan-300"
-                        >
-                          <Check size={12} />
-                        </button>
-                      )}
-                      <button
-                        onClick={(e) => handleDeleteNotif(n.id, e)}
-                        title="Delete"
-                        className="p-1 text-slate-500 hover:text-rose-400"
+                return (
+                  <div
+                    key={n.id}
+                    onClick={() => handleOpenDetail(n)}
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer group ${
+                      n.read
+                        ? 'bg-white/2 border-white/5 opacity-70 hover:opacity-100 hover:border-white/15'
+                        : 'bg-white/6 border-cyan-500/30 shadow-sm hover:border-cyan-500/60'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${
+                          isWarning
+                            ? 'bg-rose-400 animate-pulse'
+                            : isSuccess
+                            ? 'bg-cyan-400'
+                            : isSupport
+                            ? 'bg-amber-400'
+                            : 'bg-lilac-400'
+                        }`} />
+                        <div className="text-xs font-bold text-white truncate leading-tight">
+                          {n.title}
+                        </div>
+                      </div>
+
+                      {/* Quick Actions (Mark Read/Unread & Delete) */}
+                      <div
+                        className="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <Trash2 size={12} />
-                      </button>
+                        <button
+                          onClick={(e) => handleToggleRead(n.id, e)}
+                          title={n.read ? 'Mark as unread' : 'Mark as read'}
+                          className="p-1 text-slate-400 hover:text-cyan-300 rounded cursor-pointer transition-colors"
+                        >
+                          {n.read ? <MailOpen size={13} /> : <Mail size={13} className="text-cyan-400" />}
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteNotif(n.id, e)}
+                          title="Delete notification"
+                          className="p-1 text-slate-500 hover:text-rose-400 rounded cursor-pointer transition-colors"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-300 mt-1.5 leading-relaxed line-clamp-2 pl-4">
+                      {n.message}
+                    </p>
+
+                    <div className="flex items-center justify-between text-[10px] text-slate-500 mt-2 pl-4 font-mono">
+                      <span>{formatNotificationTime(n.timestamp)}</span>
+                      <span className="text-cyan-400 group-hover:underline text-[9px] font-sans">
+                        Click to view details &rarr;
+                      </span>
                     </div>
                   </div>
-                  <div className="text-xs text-slate-300 mt-1.5 leading-relaxed pl-4">{n.message}</div>
-                  <div className="text-[10px] text-slate-500 mt-2 pl-4 font-mono">
-                    {fmtDateTime(n.timestamp)}
-                  </div>
-                </div>
-              );
-            })
-          )}
+                );
+              })
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* NOTIFICATION DETAIL MODAL (Matching user platform) */}
+      {selectedNotif && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade"
+          onClick={() => setSelectedNotif(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl bg-navy-900 border border-cyan-500/40 shadow-2xl p-6 flex flex-col gap-4 text-xs"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
+                  selectedNotif.type === 'warning' || selectedNotif.type === 'critical' || selectedNotif.type === 'error'
+                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                    : selectedNotif.type === 'success'
+                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+                    : selectedNotif.type === 'support'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                    : 'bg-lilac-500/20 text-lilac-300 border-lilac-500/30'
+                }`}>
+                  {selectedNotif.type?.toUpperCase() || 'INFO'}
+                </span>
+                <span className="text-[11px] font-mono text-slate-400">
+                  {formatNotificationDetailTime(selectedNotif.timestamp)}
+                </span>
+              </div>
+              <button
+                onClick={() => setSelectedNotif(null)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="space-y-3">
+              <h3 className="text-base font-bold text-white leading-snug">
+                {selectedNotif.title}
+              </h3>
+
+              <div className="p-4 rounded-xl bg-white/3 border border-white/8 text-slate-200 leading-relaxed whitespace-pre-wrap font-sans text-xs">
+                {selectedNotif.message}
+              </div>
+
+              {selectedNotif.link && (
+                <div className="pt-1">
+                  <button
+                    onClick={() => {
+                      const link = selectedNotif.link!;
+                      setSelectedNotif(null);
+                      onClose();
+                      navigate(link);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-semibold hover:bg-cyan-500/30 transition-colors"
+                  >
+                    <ExternalLink size={13} />
+                    <span>Navigate to {selectedNotif.link}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-between pt-3 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => handleDeleteNotif(selectedNotif.id)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-semibold border border-rose-500/20 transition-colors cursor-pointer"
+              >
+                <Trash2 size={14} />
+                <span>Delete</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedNotif(null)}
+                className="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-bold transition-all shadow-md shadow-cyan-500/20 cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -311,6 +493,7 @@ export function AdminLayout() {
   const displayName = admin?.name || 'Administrator';
   const displayRole = admin?.role || 'Superadmin';
   const initial = (displayName.charAt(0) || 'A').toUpperCase();
+  const avatarImage = admin?.avatar_url || admin?.avatarUrl;
 
   return (
     <div className="min-h-screen bg-navy-950 flex flex-col md:flex-row text-slate-100">
@@ -350,7 +533,7 @@ export function AdminLayout() {
           <button
             onClick={toggleCollapse}
             title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-            className="hidden md:flex p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors shrink-0"
+            className="hidden md:flex p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors shrink-0 cursor-pointer"
           >
             {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>
@@ -394,7 +577,7 @@ export function AdminLayout() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-2 text-slate-400 hover:text-white rounded-lg bg-white/5"
+              className="md:hidden p-2 text-slate-400 hover:text-white rounded-lg bg-white/5 cursor-pointer"
               aria-label="Open sidebar"
             >
               <Menu size={18} />
@@ -417,7 +600,7 @@ export function AdminLayout() {
             <button
               onClick={() => setShowNotifs(true)}
               title="Admin Alerts & Telemetry Notifications"
-              className="relative p-2 text-slate-400 hover:text-white rounded-xl bg-white/5 border border-white/8 hover:border-cyan-500/30 transition-colors"
+              className="relative p-2 text-slate-400 hover:text-white rounded-xl bg-white/5 border border-white/8 hover:border-cyan-500/30 transition-colors cursor-pointer"
             >
               <Bell size={18} />
               {unreadNotifCount > 0 && (
@@ -427,20 +610,28 @@ export function AdminLayout() {
               )}
             </button>
 
-            {/* Profile Dropdown Menu (Styled like user platform) */}
+            {/* Profile Dropdown Menu */}
             <div className="relative" ref={profileMenuRef}>
               <button
                 onClick={() => setShowProfileMenu(prev => !prev)}
                 className="flex items-center gap-2.5 p-1.5 sm:px-3 sm:py-1.5 rounded-2xl bg-white/5 hover:bg-white/8 border border-white/10 hover:border-cyan-500/30 transition-all cursor-pointer"
               >
-                {/* Avatar Initials Circle */}
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 to-lilac-500 text-black font-extrabold text-xs flex items-center justify-center shadow-md shadow-cyan-500/20 shrink-0">
-                  {initial}
-                </div>
+                {/* Profile Picture / Avatar */}
+                {avatarImage ? (
+                  <img
+                    src={avatarImage}
+                    alt={displayName}
+                    className="w-8 h-8 rounded-full object-cover border border-cyan-400 shrink-0 shadow-md shadow-cyan-500/20"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 to-lilac-500 text-black font-extrabold text-xs flex items-center justify-center shadow-md shadow-cyan-500/20 shrink-0">
+                    {initial}
+                  </div>
+                )}
 
                 {/* Name & Role Text */}
                 <div className="hidden sm:flex flex-col text-left">
-                  <span className="text-xs font-bold text-white leading-tight truncate max-w-[110px]">
+                  <span className="text-xs font-bold text-white leading-tight truncate max-w-[120px]">
                     {displayName}
                   </span>
                   <span className="text-[10px] font-medium text-slate-400 leading-tight">
@@ -453,13 +644,26 @@ export function AdminLayout() {
 
               {/* Profile Dropdown Content */}
               {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-navy-900 border border-white/12 shadow-2xl p-2 z-50 animate-fade">
-                  {/* Identity Summary Header */}
-                  <div className="px-3 py-2.5 border-b border-white/8 mb-1">
-                    <div className="text-xs font-bold text-white truncate">{displayName}</div>
-                    <div className="text-[11px] text-slate-400 font-mono truncate">{admin?.email || 'admin@axisblack.internal'}</div>
-                    <div className="inline-block mt-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-cyan-500/20 text-cyan-300">
-                      {displayRole}
+                <div className="absolute right-0 mt-2 w-60 rounded-2xl bg-navy-900 border border-white/12 shadow-2xl p-2.5 z-50 animate-fade">
+                  {/* Identity Summary Header with Avatar */}
+                  <div className="p-2 border-b border-white/8 mb-1.5 flex items-center gap-3">
+                    {avatarImage ? (
+                      <img
+                        src={avatarImage}
+                        alt={displayName}
+                        className="w-10 h-10 rounded-full object-cover border border-cyan-400 shrink-0 shadow-md shadow-cyan-500/20"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-lilac-500 text-black font-extrabold text-sm flex items-center justify-center shrink-0">
+                        {initial}
+                      </div>
+                    )}
+                    <div className="overflow-hidden">
+                      <div className="text-xs font-bold text-white truncate">{displayName}</div>
+                      <div className="text-[11px] text-slate-400 font-mono truncate">{admin?.email || 'admin@axisblack.internal'}</div>
+                      <div className="inline-block mt-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-cyan-500/20 text-cyan-300">
+                        {displayRole}
+                      </div>
                     </div>
                   </div>
 
@@ -496,7 +700,7 @@ export function AdminLayout() {
                   {/* Sign Out Action */}
                   <button
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:bg-rose-500/10 transition-colors text-left"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:bg-rose-500/10 transition-colors text-left cursor-pointer"
                   >
                     <LogOut size={15} />
                     <span>Sign Out</span>

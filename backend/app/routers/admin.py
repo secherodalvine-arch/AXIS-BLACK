@@ -268,6 +268,8 @@ class AdminProfileReq(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     theme: Optional[str] = None
+    accent_color: Optional[str] = None
+    avatar_url: Optional[str] = None
     current_password: Optional[str] = None
     new_password: Optional[str] = None
 
@@ -336,6 +338,8 @@ async def admin_login(body: AdminLoginReq):
             "email": admin["email"],
             "role": admin.get("role", "admin"),
             "theme": admin.get("theme", "dark"),
+            "accent_color": admin.get("accent_color", "cyan"),
+            "avatar_url": admin.get("avatar_url", ""),
             "phone": admin.get("phone")
         }
     }
@@ -368,6 +372,8 @@ async def admin_register(body: AdminRegisterReq):
         "role": "admin",
         "status": "active",
         "theme": "dark",
+        "accent_color": "cyan",
+        "avatar_url": "",
         "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
     }
 
@@ -388,7 +394,9 @@ async def admin_register(body: AdminRegisterReq):
             "name": doc["name"],
             "email": email,
             "role": "admin",
-            "theme": "dark"
+            "theme": "dark",
+            "accent_color": "cyan",
+            "avatar_url": ""
         }
     }
 
@@ -402,6 +410,8 @@ async def admin_me(admin: Dict[str, Any] = Depends(get_current_admin)):
             "email": admin["email"],
             "role": admin.get("role", "admin"),
             "theme": admin.get("theme", "dark"),
+            "accent_color": admin.get("accent_color", "cyan"),
+            "avatar_url": admin.get("avatar_url", ""),
             "phone": admin.get("phone")
         }
     }
@@ -418,6 +428,10 @@ async def update_admin_profile(
         updates["phone"] = body.phone.strip()
     if body.theme is not None:
         updates["theme"] = body.theme
+    if body.accent_color is not None:
+        updates["accent_color"] = body.accent_color
+    if body.avatar_url is not None:
+        updates["avatar_url"] = body.avatar_url
 
     if body.new_password:
         if not body.current_password or not verify_password(body.current_password, admin.get("password_hash", "")):
@@ -432,7 +446,37 @@ async def update_admin_profile(
                 db_manager.memory_store["admins"][admin["email"]].update(updates)
                 db_manager.save_memory_store()
 
-    return {"success": True, "message": "Admin profile updated"}
+    return {
+        "success": True,
+        "message": "Admin profile updated",
+        "admin": {
+            "id": admin["id"],
+            "name": updates.get("name", admin.get("name", "Admin")),
+            "email": admin["email"],
+            "role": admin.get("role", "admin"),
+            "theme": updates.get("theme", admin.get("theme", "dark")),
+            "accent_color": updates.get("accent_color", admin.get("accent_color", "cyan")),
+            "avatar_url": updates.get("avatar_url", admin.get("avatar_url", "")),
+            "phone": updates.get("phone", admin.get("phone"))
+        }
+    }
+
+class AdminAvatarReq(BaseModel):
+    avatar_url: str
+
+@router.post("/auth/avatar")
+async def update_admin_avatar(
+    body: AdminAvatarReq,
+    admin: Dict[str, Any] = Depends(get_current_admin)
+):
+    updates = {"avatar_url": body.avatar_url}
+    if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.admins.update_one({"id": admin["id"]}, {"$set": updates})
+    else:
+        if admin["email"] in db_manager.memory_store.get("admins", {}):
+            db_manager.memory_store["admins"][admin["email"]].update(updates)
+            db_manager.save_memory_store()
+    return {"success": True, "avatar_url": body.avatar_url}
 
 
 # ── CAPTURE & TELEMETRY (Called by user frontend) ──
@@ -738,7 +782,7 @@ async def get_admin_dashboard_stats(admin: Dict[str, Any] = Depends(get_current_
     now = datetime.datetime.now(datetime.timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
     week_start = (now - datetime.timedelta(days=7)).isoformat()
-    active_cutoff = (now - datetime.timedelta(minutes=5)).isoformat()
+    active_cutoff = (now - datetime.timedelta(minutes=15)).isoformat()
 
     total_users = 0
     active_today = 0
@@ -1141,8 +1185,9 @@ async def get_audit_log(
 async def get_database_overview(admin: Dict[str, Any] = Depends(get_current_admin)):
     collections = [
         "users", "businesses", "transactions", "inventory",
-        "spreadsheets", "activities", "traffic_events", "live_sessions",
-        "admins", "admin_audit_log", "notifications"
+        "spreadsheets", "payments", "activities", "traffic_events", "live_sessions",
+        "admins", "admin_audit_log", "admin_notifications", "notifications",
+        "system_logs", "support_threads", "agent_sessions"
     ]
     overview = []
     if db_manager.is_connected and db_manager.db is not None:
@@ -1328,6 +1373,29 @@ async def mark_admin_notification_read(
                 break
         db_manager.save_memory_store()
     return {"success": True, "message": "Notification marked as read"}
+
+@router.post("/admin-notifications/{notif_id}/toggle-read")
+async def toggle_admin_notification_read(
+    notif_id: str,
+    admin: Dict[str, Any] = Depends(get_current_admin)
+):
+    new_state = True
+    if db_manager.is_connected and db_manager.db is not None:
+        existing = await db_manager.db.admin_notifications.find_one({"$or": [{"id": notif_id}, {"_id": notif_id}]})
+        if existing:
+            new_state = not existing.get("read", False)
+            await db_manager.db.admin_notifications.update_one(
+                {"$or": [{"id": notif_id}, {"_id": notif_id}]},
+                {"$set": {"read": new_state}}
+            )
+    else:
+        for n in db_manager.memory_store.get("admin_notifications", []):
+            if n.get("id") == notif_id or str(n.get("_id", "")) == notif_id:
+                n["read"] = not n.get("read", False)
+                new_state = n["read"]
+                break
+        db_manager.save_memory_store()
+    return {"success": True, "read": new_state}
 
 @router.post("/admin-notifications/read-all")
 async def mark_all_admin_notifications_read(admin: Dict[str, Any] = Depends(get_current_admin)):

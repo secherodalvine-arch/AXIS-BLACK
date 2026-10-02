@@ -7,6 +7,9 @@ export interface AdminUser {
   email: string;
   role: string;
   theme?: string;
+  accent_color?: string;
+  accentColor?: string;
+  avatar_url?: string;
   avatarUrl?: string;
   phone?: string;
 }

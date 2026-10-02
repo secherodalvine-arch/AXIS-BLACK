@@ -989,7 +989,8 @@ export const App: React.FC = () => {
                 const isOwner = !user?.is_sub_user;
                 const perms = user?.permissions || [];
                 const canAccessTab = (t: NavTab) => {
-                  if (t === 'settings' || t === 'billing') return true;
+                  if (t === 'settings') return true;
+                  if (t === 'billing') return isOwner; // Team members cannot access billing — owner manages it
                   if (isOwner) return true;
                   if (t === 'business') return false; // Strictly owner only
                   if (t === 'spreadsheet') return isOwner || perms.includes('transactions') || perms.includes('inventory') || perms.includes('dashboard') || perms.includes('analytics');
@@ -1093,7 +1094,7 @@ export const App: React.FC = () => {
               {currentTab === 'forecast' && (!user?.is_sub_user || user?.permissions?.includes('forecast')) && (
                 <ForecastPage currency={currency} transactions={transactions} />
               )}
-              {currentTab === 'billing' && (
+              {currentTab === 'billing' && !user?.is_sub_user && (
                 <BillingPage
                   user={user}
                   currency={currency}
@@ -1147,9 +1148,10 @@ export const App: React.FC = () => {
       <UpgradeModal
         isOpen={isUpgradeModalOpen}
         onClose={() => setIsUpgradeModalOpen(false)}
+        isSubUser={user?.is_sub_user || false}
         onNavigateToBilling={() => {
           setIsUpgradeModalOpen(false);
-          setCurrentTab('billing');
+          if (!user?.is_sub_user) setCurrentTab('billing');
         }}
         reason={upgradeModalReason}
         featureName={upgradeModalFeature}

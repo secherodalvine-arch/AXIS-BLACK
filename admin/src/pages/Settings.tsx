@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
-  Settings as SettingsIcon, Shield, Lock, User, Phone,
-  Sun, Moon, Save, CheckCircle2, AlertCircle, Info, Clock,
-  Palette, Bell, Monitor, Key, Sparkles, Check
+  Settings as SettingsIcon, Lock, User, Sun, Moon,
+  Save, CheckCircle2, AlertCircle, Clock, Palette,
+  Bell, Key, Check, Camera, Image, Trash2, Upload, Monitor
 } from 'lucide-react';
 import { useAdminStore, useToastStore } from '@/store';
 import api from '@/api/client';
@@ -19,8 +19,10 @@ export function Settings() {
   // Profile state
   const [name, setName] = useState(admin?.name || '');
   const [phone, setPhone] = useState(admin?.phone || '');
-  const [theme, setTheme] = useState(admin?.theme || 'dark');
-  const [accentColor, setAccentColor] = useState('cyan');
+  const [avatarUrl, setAvatarUrl] = useState(admin?.avatar_url || admin?.avatarUrl || '');
+  const [theme, setTheme] = useState<'dark' | 'light'>(admin?.theme || 'dark');
+  const [showAvatarUrlInput, setShowAvatarUrlInput] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Password state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -49,11 +51,53 @@ export function Settings() {
 
   const strength = getPasswordStrength(newPassword);
 
-  const applyThemeToDOM = (selectedTheme: string) => {
-    if (selectedTheme === 'light') {
+  const applyThemeToDOM = (t: string) => {
+    document.documentElement.setAttribute('data-theme', t);
+    if (t === 'light') {
       document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light-theme');
     } else {
       document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light-theme');
+    }
+  };
+
+  // Handle Photo File Upload
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast({ type: 'error', message: 'Please select a valid image file (PNG, JPG, WebP)' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ type: 'error', message: 'Image size must be less than 5MB' });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const dataUrl = event.target?.result as string;
+      setAvatarUrl(dataUrl);
+      try {
+        await api.post('/auth/avatar', { avatar_url: dataUrl });
+        updateAdmin({ avatar_url: dataUrl, avatarUrl: dataUrl });
+        toast({ type: 'success', message: 'Profile avatar updated successfully' });
+      } catch {
+        updateAdmin({ avatar_url: dataUrl, avatarUrl: dataUrl });
+        toast({ type: 'info', message: 'Avatar loaded. Click Save Profile to persist.' });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveAvatar = async () => {
+    setAvatarUrl('');
+    try {
+      await api.post('/auth/avatar', { avatar_url: '' });
+      updateAdmin({ avatar_url: '', avatarUrl: '' });
+      toast({ type: 'info', message: 'Avatar reset to default initials' });
+    } catch {
+      updateAdmin({ avatar_url: '', avatarUrl: '' });
     }
   };
 
@@ -66,7 +110,6 @@ export function Settings() {
       setError('New passwords do not match');
       return;
     }
-
     if (newPassword && newPassword.length < 6) {
       setError('Password must be at least 6 characters long');
       return;
@@ -74,15 +117,19 @@ export function Settings() {
 
     setSaving(true);
     try {
-      await api.put('/auth/profile', {
+      const payload: any = {
         name: name.trim(),
         phone: phone.trim(),
         theme,
-        current_password: currentPassword || undefined,
-        new_password: newPassword || undefined,
-      });
+        avatar_url: avatarUrl,
+      };
+      if (newPassword) {
+        payload.current_password = currentPassword;
+        payload.new_password = newPassword;
+      }
 
-      updateAdmin({ name: name.trim(), phone: phone.trim(), theme });
+      await api.put('/auth/profile', payload);
+      updateAdmin({ name: name.trim(), phone: phone.trim(), theme, avatar_url: avatarUrl, avatarUrl });
       applyThemeToDOM(theme);
 
       setSuccessMsg('Settings updated successfully');
@@ -99,149 +146,183 @@ export function Settings() {
     }
   };
 
-  const handleQuickThemeSelect = (selectedTheme: 'dark' | 'light') => {
-    setTheme(selectedTheme);
-    updateAdmin({ theme: selectedTheme });
-    applyThemeToDOM(selectedTheme);
-    toast({ type: 'info', message: `Theme changed to ${selectedTheme === 'dark' ? 'Dark Space' : 'Daylight Executive'}` });
+  const handleQuickThemeSelect = async (t: 'dark' | 'light') => {
+    setTheme(t);
+    updateAdmin({ theme: t });
+    applyThemeToDOM(t);
+    try { await api.put('/auth/profile', { theme: t }); } catch {}
+    toast({ type: 'info', message: `Theme set to ${t === 'dark' ? 'Dark' : 'Light'}` });
   };
+
+  const displayName = name || admin?.name || 'Administrator';
+  const displayRole = admin?.role || 'Superadmin';
+  const initial = (displayName.charAt(0) || 'A').toUpperCase();
+
+  const inputCls = 'w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-subtle)] focus:outline-none focus:border-cyan-400 transition-colors';
 
   return (
     <div className="space-y-6 animate-fade max-w-5xl mx-auto">
       {/* Title */}
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)] flex items-center gap-2.5">
           <SettingsIcon size={24} className="text-cyan-400" /> Platform &amp; Administrator Settings
         </h1>
-        <p className="text-xs text-slate-400 mt-1">
-          Manage administrator profile credentials, visual interface themes, system security, and alert triggers
+        <p className="text-xs text-[var(--text-muted)] mt-1">
+          Manage administrator profile, theme, security, and alert triggers
         </p>
       </div>
 
-      {/* Tabs Header (Structured like user platform) */}
-      <div className="flex border-b border-white/8 overflow-x-auto gap-2">
-        <button
-          onClick={() => setActiveTab('profile')}
-          className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold border-b-2 transition-all shrink-0 ${
-            activeTab === 'profile'
-              ? 'border-cyan-400 text-cyan-400'
-              : 'border-transparent text-slate-400 hover:text-white'
-          }`}
-        >
-          <User size={15} />
-          <span>Profile &amp; Identity</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('theme')}
-          className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold border-b-2 transition-all shrink-0 ${
-            activeTab === 'theme'
-              ? 'border-cyan-400 text-cyan-400'
-              : 'border-transparent text-slate-400 hover:text-white'
-          }`}
-        >
-          <Palette size={15} />
-          <span>Appearance &amp; Theme</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('security')}
-          className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold border-b-2 transition-all shrink-0 ${
-            activeTab === 'security'
-              ? 'border-cyan-400 text-cyan-400'
-              : 'border-transparent text-slate-400 hover:text-white'
-          }`}
-        >
-          <Lock size={15} />
-          <span>Security &amp; Password</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('alerts')}
-          className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold border-b-2 transition-all shrink-0 ${
-            activeTab === 'alerts'
-              ? 'border-cyan-400 text-cyan-400'
-              : 'border-transparent text-slate-400 hover:text-white'
-          }`}
-        >
-          <Bell size={15} />
-          <span>Alerts &amp; Preferences</span>
-        </button>
+      {/* Tabs */}
+      <div className="flex border-b border-[var(--border)] overflow-x-auto gap-2">
+        {([
+          { id: 'profile', icon: User, label: 'Profile' },
+          { id: 'theme',   icon: Palette, label: 'Appearance' },
+          { id: 'security',icon: Lock,    label: 'Security' },
+          { id: 'alerts',  icon: Bell,    label: 'Alerts' },
+        ] as { id: SettingsTab; icon: any; label: string }[]).map(({ id, icon: Icon, label }) => (
+          <button
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold border-b-2 transition-all shrink-0 ${
+              activeTab === id
+                ? 'border-cyan-400 text-cyan-400'
+                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            <Icon size={15} />
+            <span>{label}</span>
+          </button>
+        ))}
       </div>
 
+      {/* Global feedback banners */}
       {error && (
-        <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2">
-          <AlertCircle size={16} />
-          <span>{error}</span>
+        <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
+          <AlertCircle size={16} /><span>{error}</span>
         </div>
       )}
-
       {successMsg && (
-        <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
-          <CheckCircle2 size={16} />
-          <span>{successMsg}</span>
+        <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2">
+          <CheckCircle2 size={16} /><span>{successMsg}</span>
         </div>
       )}
 
-      {/* TAB 1: Profile & Identity */}
+      {/* ── TAB: Profile ────────────────────────────────────────────────────── */}
       {activeTab === 'profile' && (
         <form onSubmit={handleSaveProfile} className="space-y-6">
-          <div className="p-6 rounded-2xl bg-navy-900 border border-white/8 shadow-xl space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5">
+          <div className="p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-6">
+
+            {/* Avatar Section */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 pb-5 border-b border-[var(--border)]">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-cyan-500 to-lilac-500 text-black font-extrabold text-2xl flex items-center justify-center shadow-lg shadow-cyan-500/20 shrink-0">
-                  {(name.charAt(0) || 'A').toUpperCase()}
+                <div className="relative group shrink-0">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt={displayName}
+                      className="w-20 h-20 rounded-2xl object-cover border-2 border-cyan-400 shadow-xl shadow-cyan-500/20"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-cyan-500 to-violet-500 text-black font-extrabold text-2xl flex items-center justify-center shadow-xl shadow-cyan-500/20">
+                      {initial}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Change Avatar"
+                    className="absolute -bottom-1.5 -right-1.5 p-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black shadow-lg transition-transform hover:scale-105 cursor-pointer"
+                  >
+                    <Camera size={14} />
+                  </button>
                 </div>
+
                 <div>
-                  <h3 className="text-base font-bold text-white">{name || 'Administrator'}</h3>
-                  <div className="text-xs text-slate-400 font-mono mt-0.5">{admin?.email || 'admin@axisblack.internal'}</div>
-                  <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                    {admin?.role || 'Superadmin'}
-                  </span>
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">{displayName}</h3>
+                  <div className="text-xs text-[var(--text-muted)] font-mono mt-0.5">{admin?.email || 'admin@axisblack.internal'}</div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                      {displayRole}
+                    </span>
+                  </div>
                 </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3.5 py-2 rounded-xl bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-primary)] text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer hover:border-cyan-400"
+                >
+                  <Upload size={14} className="text-cyan-400" /><span>Upload Photo</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAvatarUrlInput(p => !p)}
+                  className="px-3 py-2 rounded-xl bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-muted)] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer hover:text-[var(--text-primary)]"
+                >
+                  <Image size={14} /><span>URL</span>
+                </button>
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAvatar}
+                    className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs transition-colors cursor-pointer"
+                    title="Remove Photo"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </div>
             </div>
 
+            {/* Avatar URL Input */}
+            {showAvatarUrlInput && (
+              <div className="p-3.5 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border)] space-y-2 animate-fade">
+                <label className="block text-xs font-semibold text-[var(--text-muted)]">Avatar Image URL</label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={avatarUrl}
+                    onChange={(e) => setAvatarUrl(e.target.value)}
+                    placeholder="https://example.com/avatar.jpg"
+                    className={inputCls + ' font-mono'}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { updateAdmin({ avatar_url: avatarUrl, avatarUrl }); setShowAvatarUrlInput(false); toast({ type: 'success', message: 'Avatar image URL applied' }); }}
+                    className="px-4 py-2 rounded-xl bg-cyan-500 text-black font-bold text-xs shrink-0"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Form Fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Admin Display Name</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Axis Executive Operator"
-                  className="w-full bg-navy-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-400 transition-colors"
-                />
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Display Name</label>
+                <input type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Administrator" className={inputCls} />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Primary Email Address</label>
-                <input
-                  type="email"
-                  disabled
-                  value={admin?.email || ''}
-                  className="w-full bg-navy-950/60 border border-white/5 rounded-xl px-3.5 py-2.5 text-xs text-slate-400 cursor-not-allowed font-mono"
-                />
-                <span className="text-[10px] text-slate-500 mt-1 block">Configured via backend master authentication env.</span>
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Email Address</label>
+                <input type="email" disabled value={admin?.email || ''} className={inputCls + ' opacity-60 cursor-not-allowed'} />
+                <span className="text-[10px] text-[var(--text-subtle)] mt-1 block">Configured via backend env — cannot be changed here.</span>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Emergency Mobile / Phone</label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+254 769 231 760"
-                  className="w-full bg-navy-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-400 transition-colors"
-                />
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Phone Number</label>
+                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+254 700 000 000" className={inputCls} />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Local System Timezone</label>
-                <div className="w-full bg-navy-950/60 border border-white/5 rounded-xl px-3.5 py-2.5 text-xs text-cyan-300 font-mono flex items-center justify-between">
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Local Timezone</label>
+                <div className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-xs text-cyan-400 font-mono flex items-center justify-between">
                   <span>{userTimeZone}</span>
-                  <Clock size={14} className="text-slate-500" />
+                  <Clock size={14} className="text-[var(--text-subtle)]" />
                 </div>
               </div>
             </div>
@@ -250,171 +331,98 @@ export function Settings() {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-lilac-500 hover:opacity-95 text-black font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-50"
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-500 hover:opacity-95 text-black font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-lg disabled:opacity-50"
               >
-                {saving ? (
-                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <Save size={14} />
-                    <span>Save Profile</span>
-                  </>
-                )}
+                {saving ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" /> : <><Save size={14} /><span>Save Profile</span></>}
               </button>
             </div>
           </div>
         </form>
       )}
 
-      {/* TAB 2: Appearance & Theme */}
+      {/* ── TAB: Appearance ─────────────────────────────────────────────────── */}
       {activeTab === 'theme' && (
-        <div className="p-6 rounded-2xl bg-navy-900 border border-white/8 shadow-xl space-y-6">
+        <div className="p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-5">
           <div>
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Palette size={16} className="text-cyan-400" /> Interface Theme &amp; Styling
+            <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+              <Palette size={16} className="text-cyan-400" /> Theme
             </h3>
-            <p className="text-xs text-slate-400 mt-1">
-              Select your preferred visual environment for the Axis Black Administrator Console
+            <p className="text-xs text-[var(--text-muted)] mt-1">
+              Select your preferred appearance for pages, modals, menus, and text.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Dark Theme Card */}
-            <div
-              onClick={() => handleQuickThemeSelect('dark')}
-              className={`p-5 rounded-2xl border cursor-pointer transition-all ${
-                theme === 'dark'
-                  ? 'bg-cyan-500/10 border-cyan-500/50 shadow-lg shadow-cyan-500/10'
-                  : 'bg-navy-950/60 border-white/8 hover:border-white/20'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-navy-900 text-cyan-400 flex items-center justify-center border border-white/10">
-                    <Moon size={16} />
-                  </div>
-                  <span className="font-bold text-sm text-white">Dark Space (Midnight Navy)</span>
-                </div>
-                {theme === 'dark' && (
-                  <span className="w-5 h-5 rounded-full bg-cyan-400 text-black flex items-center justify-center text-xs font-bold">
-                    <Check size={12} />
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-400">
-                High-contrast deep space palette with cyan &amp; lilac accents. Optimized for low-light trading desks and extended monitoring sessions.
-              </p>
-            </div>
-
-            {/* Light Theme Card */}
-            <div
-              onClick={() => handleQuickThemeSelect('light')}
-              className={`p-5 rounded-2xl border cursor-pointer transition-all ${
-                theme === 'light'
-                  ? 'bg-cyan-500/10 border-cyan-500/50 shadow-lg shadow-cyan-500/10'
-                  : 'bg-navy-950/60 border-white/8 hover:border-white/20'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-white text-amber-500 flex items-center justify-center border border-slate-200">
-                    <Sun size={16} />
-                  </div>
-                  <span className="font-bold text-sm text-white">Daylight Executive</span>
-                </div>
-                {theme === 'light' && (
-                  <span className="w-5 h-5 rounded-full bg-cyan-400 text-black flex items-center justify-center text-xs font-bold">
-                    <Check size={12} />
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-400">
-                Crisp, modern high-contrast daytime interface with slate cards, dark typography, and luminous borders.
-              </p>
-            </div>
-          </div>
-
-          {/* Accent Color Palette */}
-          <div className="pt-4 border-t border-white/5 space-y-3">
-            <label className="block text-xs font-semibold text-slate-300">Brand Highlight Accent</label>
-            <div className="flex items-center gap-3">
-              {[
-                { key: 'cyan', label: 'Cyan Pulse', hex: '#00d4ff' },
-                { key: 'lilac', label: 'Lilac Royale', hex: '#cebdff' },
-                { key: 'gold', label: 'Imperial Gold', hex: '#e8c97a' },
-              ].map((acc) => (
+          {/* Theme selector — 2 options matching frontend */}
+          <div className="grid grid-cols-2 gap-3">
+            {([
+              { key: 'light', icon: Sun,  iconColor: 'text-amber-400', label: 'Light' },
+              { key: 'dark',  icon: Moon, iconColor: 'text-violet-400', label: 'Dark'  },
+            ] as { key: 'dark' | 'light'; icon: any; iconColor: string; label: string }[]).map(({ key, icon: Icon, iconColor, label }) => {
+              const isActive = theme === key;
+              return (
                 <button
-                  key={acc.key}
+                  key={key}
                   type="button"
-                  onClick={() => setAccentColor(acc.key)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
-                    accentColor === acc.key
-                      ? 'border-white/40 bg-white/10 text-white'
-                      : 'border-white/5 text-slate-400 hover:text-white'
+                  onClick={() => handleQuickThemeSelect(key)}
+                  className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all text-left ${
+                    isActive
+                      ? 'border-cyan-400 bg-cyan-500/10 shadow-md shadow-cyan-500/10'
+                      : 'border-[var(--border)] bg-[var(--bg-subtle)] hover:border-[var(--text-subtle)]'
                   }`}
                 >
-                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: acc.hex }} />
-                  <span>{acc.label}</span>
+                  <div className="flex items-center gap-3">
+                    <Icon size={18} className={iconColor} />
+                    <span className="font-semibold text-sm text-[var(--text-primary)]">{label}</span>
+                  </div>
+                  {isActive && (
+                    <span className="w-5 h-5 rounded-full bg-cyan-400 text-black flex items-center justify-center shrink-0">
+                      <Check size={12} />
+                    </span>
+                  )}
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
+
+          <p className="text-[11px] text-[var(--text-subtle)] pt-1">
+            Current: <span className="font-semibold text-cyan-400 capitalize">{theme}</span>
+          </p>
         </div>
       )}
 
-      {/* TAB 3: Security & Password */}
+      {/* ── TAB: Security ───────────────────────────────────────────────────── */}
       {activeTab === 'security' && (
         <form onSubmit={handleSaveProfile} className="space-y-6">
-          <div className="p-6 rounded-2xl bg-navy-900 border border-white/8 shadow-xl space-y-6">
+          <div className="p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-6">
             <div>
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Lock size={16} className="text-amber-400" /> Change Security Password
+              <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                <Lock size={16} className="text-amber-400" /> Change Password
               </h3>
-              <p className="text-xs text-slate-400 mt-1">
-                Ensure administrator access is protected with an enterprise-grade argon2id cryptographic hash
-              </p>
+              <p className="text-xs text-[var(--text-muted)] mt-1">Protect administrator access with a strong, secure password.</p>
             </div>
 
             <div className="space-y-4 max-w-xl">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Current Administrator Password</label>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="w-full bg-navy-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-400 transition-colors"
-                />
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Current Password</label>
+                <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="••••••••••••" className={inputCls} />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">New Security Password</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Minimum 8 characters with numbers & capital letter"
-                  className="w-full bg-navy-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-400 transition-colors"
-                />
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">New Password</label>
+                <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min. 8 chars, include numbers & capitals" className={inputCls} />
                 {newPassword && (
                   <div className="mt-2 space-y-1">
-                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-1.5 w-full bg-[var(--border)] rounded-full overflow-hidden">
                       <div className={`h-full ${strength.color} transition-all`} style={{ width: strength.width }} />
                     </div>
-                    <span className="text-[10px] text-slate-400">{strength.label}</span>
+                    <span className="text-[10px] text-[var(--text-muted)]">{strength.label}</span>
                   </div>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Confirm New Password</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm matching password"
-                  className="w-full bg-navy-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-400 transition-colors"
-                />
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Confirm New Password</label>
+                <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm matching password" className={inputCls} />
               </div>
 
               <div className="pt-2">
@@ -423,67 +431,49 @@ export function Settings() {
                   disabled={saving || !newPassword}
                   className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 hover:opacity-95 text-black font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all disabled:opacity-40"
                 >
-                  {saving ? (
-                    <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Key size={14} />
-                      <span>Update Password</span>
-                    </>
-                  )}
+                  {saving ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" /> : <><Key size={14} /><span>Update Password</span></>}
                 </button>
-              </div>
-            </div>
-
-            {/* Session Audit Spec */}
-            <div className="pt-4 border-t border-white/5 space-y-2 text-xs text-slate-400">
-              <div className="flex items-center gap-2 text-white font-semibold">
-                <Shield size={14} className="text-emerald-400" /> Active Session Token Policies
-              </div>
-              <div className="p-3.5 rounded-xl bg-white/2 border border-white/5 font-mono text-[11px] space-y-1">
-                <div>JWT Algorithm: HS256 with 72-hour sliding window</div>
-                <div>Session Security: HTTP-only bearer transmission with CORS strict origin enforcement</div>
               </div>
             </div>
           </div>
         </form>
       )}
 
-      {/* TAB 4: Alerts & Preferences */}
+      {/* ── TAB: Alerts ─────────────────────────────────────────────────────── */}
       {activeTab === 'alerts' && (
-        <div className="p-6 rounded-2xl bg-navy-900 border border-white/8 shadow-xl space-y-6">
+        <div className="p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-[var(--shadow-card)] space-y-5">
           <div>
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Bell size={16} className="text-cyan-400" /> Real-Time Telemetry &amp; Notification Triggers
+            <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+              <Bell size={16} className="text-cyan-400" /> Notification Triggers
             </h3>
-            <p className="text-xs text-slate-400 mt-1">
-              Configure which administrative events dispatch alerts to your notification drawer and emergency channels
+            <p className="text-xs text-[var(--text-muted)] mt-1">
+              Configure which events dispatch alerts to your notification drawer.
             </p>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {[
-              { key: 'criticalErrors', title: 'Critical System Exceptions', desc: 'Alert when a 500 error or API rate limit occurs on backend, payment gateway, or Gemini AI' },
-              { key: 'highPayments', title: 'High-Value Payments & Upgrades', desc: 'Notify immediately when an account upgrades to Starter ($29) or Pro ($99) Tier' },
-              { key: 'newUsers', title: 'New Organization Registrations', desc: 'Receive real-time notice when a new business registers on the platform' },
-              { key: 'emailAlerts', title: 'Emergency Email Forwarding', desc: 'Forward critical priority system errors to your configured administrator email' },
-              { key: 'dailyDigest', title: 'Daily Platform Telemetry Digest', desc: 'Receive a daily 18:00 UTC debrief of total traffic, ARR, and active users' }
+              { key: 'criticalErrors', title: 'Critical System Errors',      desc: 'Alert on 500 errors, API limits, and payment gateway issues' },
+              { key: 'highPayments',  title: 'New Subscriptions & Upgrades', desc: 'Notify when an account upgrades to Starter or Pro tier' },
+              { key: 'newUsers',      title: 'New User Registrations',        desc: 'Real-time notice when a new user registers on the platform' },
+              { key: 'emailAlerts',  title: 'Email Forwarding',              desc: 'Forward critical errors to your administrator email address' },
+              { key: 'dailyDigest',  title: 'Daily Digest',                  desc: 'Daily summary of traffic, revenue, and active user metrics' },
             ].map((pref) => {
               const checked = (alerts as any)[pref.key];
               return (
                 <div
                   key={pref.key}
                   onClick={() => setAlerts(prev => ({ ...prev, [pref.key]: !checked }))}
-                  className="p-4 rounded-xl bg-white/2 border border-white/5 hover:border-white/10 flex items-center justify-between gap-4 cursor-pointer transition-colors"
+                  className="p-4 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border)] hover:border-[var(--text-subtle)] flex items-center justify-between gap-4 cursor-pointer transition-colors"
                 >
                   <div>
-                    <div className="text-xs font-bold text-white">{pref.title}</div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">{pref.desc}</div>
+                    <div className="text-xs font-bold text-[var(--text-primary)]">{pref.title}</div>
+                    <div className="text-[11px] text-[var(--text-muted)] mt-0.5">{pref.desc}</div>
                   </div>
-                  <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${
-                    checked ? 'bg-cyan-500 border-cyan-400 text-black' : 'border-white/20 bg-transparent'
+                  <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all shrink-0 ${
+                    checked ? 'bg-cyan-500 border-cyan-400 text-black' : 'border-[var(--border)] bg-transparent'
                   }`}>
-                    {checked && <Check size={13} className="font-extrabold" />}
+                    {checked && <Check size={13} />}
                   </div>
                 </div>
               );
@@ -492,11 +482,10 @@ export function Settings() {
 
           <div className="flex justify-end pt-2">
             <button
-              onClick={() => toast({ type: 'success', message: 'Alert notification preferences saved' })}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-lilac-500 hover:opacity-95 text-black font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-lg shadow-cyan-500/20"
+              onClick={() => toast({ type: 'success', message: 'Preferences saved' })}
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-500 hover:opacity-95 text-black font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-lg"
             >
-              <Save size={14} />
-              <span>Save Notification Preferences</span>
+              <Save size={14} /><span>Save Preferences</span>
             </button>
           </div>
         </div>

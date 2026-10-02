@@ -74,6 +74,8 @@ export function fmtRelative(input: string | number | Date | null | undefined): s
   const d = toUtcDate(input);
   if (!d) return '—';
   const diffMs = Date.now() - d.getTime();
+  if (diffMs <= 0) return 'just now';
+
   const diffSec = Math.floor(diffMs / 1000);
   const diffMin = Math.floor(diffMs / 60000);
   const diffHrs = Math.floor(diffMs / 3600000);
@@ -86,4 +88,40 @@ export function fmtRelative(input: string | number | Date | null | undefined): s
   if (diffDays < 7) return `${diffDays}d ago`;
 
   return fmtDate(d);
+}
+
+/**
+ * Compact relative label for notification drawer (matches user platform).
+ */
+export function formatNotificationTime(input?: string | number | Date | null): string {
+  const d = toUtcDate(input);
+  if (!d) return '';
+  const now = Date.now();
+  const diff = now - d.getTime();
+  if (diff < 60000) return 'Just now';
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return fmtDate(d);
+}
+
+/**
+ * Full detailed date & time for notification modal dialog (matches user platform).
+ */
+export function formatNotificationDetailTime(input?: string | number | Date | null): string {
+  const d = toUtcDate(input);
+  if (!d) return '—';
+  return d.toLocaleString(undefined, {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZone: userTimeZone,
+  });
 }
