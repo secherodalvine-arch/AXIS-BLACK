@@ -121,21 +121,21 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
           padding: '14px 16px',
           marginTop: '14px',
           marginBottom: '10px',
-          background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(239, 68, 68, 0.12))',
-          border: '1px solid rgba(245, 158, 11, 0.5)',
+          background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(239, 68, 68, 0.08))',
+          border: '1px solid rgba(245, 158, 11, 0.45)',
           display: 'flex',
           alignItems: 'flex-start',
           justifyContent: 'space-between',
           gap: '12px',
-          boxShadow: '0 4px 16px rgba(245, 158, 11, 0.12)'
+          boxShadow: '0 4px 16px rgba(245, 158, 11, 0.10)'
         }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
             <div style={{
               width: '32px',
               height: '32px',
               borderRadius: '8px',
-              background: 'rgba(245, 158, 11, 0.25)',
-              color: '#fbbf24',
+              background: 'rgba(245, 158, 11, 0.22)',
+              color: '#d97706',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -143,13 +143,13 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
               flexShrink: 0,
               marginTop: '1px'
             }}>
-              <i className="fa-solid fa-crown"></i>
+              <i className="fa-solid fa-crown" style={{ color: '#f59e0b' }}></i>
             </div>
             <div>
-              <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '3px' }}>
-                Subscription Gateway
+              <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '3px' }}>
+                Subscription Required
               </div>
-              <div style={{ fontSize: '0.88rem', color: '#f3f4f6', lineHeight: 1.5, fontWeight: 600 }}>
+              <div style={{ fontSize: '0.88rem', color: 'var(--text-main, #0f172a)', lineHeight: 1.5, fontWeight: 600 }}>
                 {modalError.message}
               </div>
               {onOpenUpgrade && (
@@ -185,7 +185,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#9ca3af',
+              color: 'var(--text-muted, #64748b)',
               fontSize: '1.2rem',
               cursor: 'pointer',
               padding: '0 4px',

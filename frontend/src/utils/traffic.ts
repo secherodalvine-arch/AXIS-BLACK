@@ -34,21 +34,33 @@ export interface CapturePayload {
   referrer?: string;
 }
 
+let memoryVisitorId = '';
+
 /**
  * Returns or generates a persistent visitor ID for anonymous traffic recording.
+ * Preserves the exact same visitor token across navigations, auth pages, and tab switches.
  */
 export function getOrCreateVisitorId(): string {
   try {
     let vid = localStorage.getItem('axis_visitor_id');
     if (!vid) {
-      vid = 'v_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
-      localStorage.setItem('axis_visitor_id', vid);
+      vid = memoryVisitorId || ('v_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36));
+      try {
+        localStorage.setItem('axis_visitor_id', vid);
+      } catch {}
     }
+    memoryVisitorId = vid;
     return vid;
   } catch {
-    return 'v_anon';
+    if (!memoryVisitorId) {
+      memoryVisitorId = 'v_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+    }
+    return memoryVisitorId;
   }
 }
+
+let lastCapturedKey = '';
+let lastCapturedTimestamp = 0;
 
 /**
  * Sends a telemetry / traffic capture event to the backend Admin API.
@@ -57,6 +69,18 @@ export const captureEvent = async (payload: Partial<CapturePayload>) => {
   try {
     const user = getStoredUser();
     const visitorId = getOrCreateVisitorId();
+    const now = Date.now();
+    const currentPage = payload.page || (typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/');
+    const currentEvent = payload.event || 'page_view';
+    const dedupKey = `${currentEvent}:${currentPage}:${user?.user_id || user?.id || visitorId}`;
+
+    // Suppress identical rapid duplicate navigation bursts within 800ms
+    if (dedupKey === lastCapturedKey && now - lastCapturedTimestamp < 800) {
+      return;
+    }
+    lastCapturedKey = dedupKey;
+    lastCapturedTimestamp = now;
+
     const deviceDetails: DeviceDetails = getDeviceDetails();
 
     const fullPayload: CapturePayload = {

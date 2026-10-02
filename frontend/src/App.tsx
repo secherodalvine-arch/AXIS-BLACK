@@ -172,6 +172,7 @@ export const App: React.FC = () => {
   const lastCapturedPage = React.useRef<string>('');
 
   useEffect(() => {
+    if (viewState === 'home') return; // HomePage.tsx explicitly manages landing page and section telemetry
     if (activePage === lastCapturedPage.current) return;
     lastCapturedPage.current = activePage;
 

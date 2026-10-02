@@ -649,10 +649,10 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                     <i className="fa-solid fa-crown"></i>
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '2px' }}>
+                    <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '2px' }}>
                       Subscription Requirement
                     </div>
-                    <div style={{ fontSize: '0.86rem', color: '#f3f4f6', lineHeight: 1.5, fontWeight: 600 }}>
+                    <div style={{ fontSize: '0.86rem', color: 'var(--text-main, #0f172a)', lineHeight: 1.5, fontWeight: 600 }}>
                       {createError}
                     </div>
                     {onOpenUpgrade && (

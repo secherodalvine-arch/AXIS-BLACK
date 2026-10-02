@@ -660,36 +660,6 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               )}
 
-              {/* Admin Console Action */}
-              <a
-                href="http://localhost:5174"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  background: 'rgba(201, 169, 110, 0.12)',
-                  border: '1px solid rgba(201, 169, 110, 0.3)',
-                  borderRadius: '8px',
-                  color: '#e8c97a',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  marginBottom: '4px',
-                  textDecoration: 'none',
-                  transition: 'all 0.2s ease',
-                  boxSizing: 'border-box'
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(201, 169, 110, 0.22)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(201, 169, 110, 0.12)')}
-              >
-                <i className="fa-solid fa-shield-halved" style={{ color: '#e8c97a', width: '16px', textAlign: 'center' }}></i>
-                <span>Admin Console</span>
-              </a>
-
               {/* Logout Action */}
               {onLogout ? (
                 <button

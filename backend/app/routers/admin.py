@@ -436,9 +436,11 @@ async def capture_traffic_event(
     and resolves client IP geolocation.
     """
     client_ip = (
-        request.headers.get("x-forwarded-for", "").split(",")[0].strip()
-        or request.headers.get("x-real-ip", "")
+        request.headers.get("cf-connecting-ip", "").strip()
+        or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+        or request.headers.get("x-real-ip", "").strip()
         or (request.client.host if request.client else "")
+        or (body.ip or "").strip()
     )
 
     async def _process_capture():
@@ -448,20 +450,58 @@ async def capture_traffic_event(
             resolved_country = body.country or ""
             resolved_loc = body.location or ""
 
-            if client_ip and (not resolved_city or resolved_city == "Unknown"):
+            if client_ip and client_ip not in ("127.0.0.1", "localhost", "::1") and (not resolved_city or resolved_city == "Unknown"):
                 geo = await _resolve_geo(client_ip)
                 resolved_city = geo.get("city", "")
                 resolved_country = geo.get("country", "")
                 resolved_loc = ", ".join(filter(None, [resolved_city, resolved_country]))
 
-            identifier = body.user_id or body.visitor_id or f"ip_{client_ip}"
+            effective_ip = client_ip or body.ip or ""
+
+            # Check if an existing live session already exists for this client (by user_id, IP, or visitor_id)
+            existing_session = None
+            if db_manager.is_connected and db_manager.db is not None:
+                match_clauses = []
+                if body.user_id:
+                    match_clauses.append({"user_id": body.user_id})
+                if effective_ip and effective_ip not in ("127.0.0.1", "localhost", "::1"):
+                    match_clauses.append({"ip": effective_ip})
+                if body.visitor_id:
+                    match_clauses.append({"visitor_id": body.visitor_id})
+                if match_clauses:
+                    existing_session = await db_manager.db.live_sessions.find_one({"$or": match_clauses})
+            else:
+                for s in db_manager.memory_store.get("live_sessions", {}).values():
+                    if body.user_id and s.get("user_id") == body.user_id:
+                        existing_session = s
+                        break
+                    if effective_ip and effective_ip not in ("127.0.0.1", "localhost", "::1") and s.get("ip") == effective_ip:
+                        existing_session = s
+                        break
+                    if body.visitor_id and s.get("visitor_id") == body.visitor_id:
+                        existing_session = s
+                        break
+
+            # Use consistent identifier across navigations
+            if existing_session and existing_session.get("identifier"):
+                identifier = existing_session["identifier"]
+            elif body.user_id:
+                identifier = f"usr_{body.user_id}"
+            elif effective_ip and effective_ip not in ("127.0.0.1", "localhost", "::1"):
+                identifier = f"ip_{effective_ip}"
+            else:
+                identifier = body.visitor_id or f"v_{uuid.uuid4().hex[:8]}"
+
+            final_user_id = body.user_id or (existing_session.get("user_id") if existing_session else None)
+            final_user_name = body.user_name or (existing_session.get("user_name") if existing_session and existing_session.get("user_name") != "Visitor" else (body.user_name or "Visitor"))
+            final_user_email = body.user_email or (existing_session.get("user_email") if existing_session else None)
 
             session_record = {
                 "identifier": identifier,
-                "user_id": body.user_id,
-                "visitor_id": body.visitor_id,
-                "user_email": body.user_email,
-                "user_name": body.user_name,
+                "user_id": final_user_id,
+                "visitor_id": body.visitor_id or (existing_session.get("visitor_id") if existing_session else None),
+                "user_email": final_user_email,
+                "user_name": final_user_name,
                 "current_page": body.page,
                 "last_seen": now_utc,
                 "device": body.device,
@@ -473,7 +513,7 @@ async def capture_traffic_event(
                 "local_time": body.local_time,
                 "local_date": body.local_date,
                 "local_datetime_iso": body.local_datetime_iso,
-                "ip": client_ip or body.ip,
+                "ip": effective_ip,
                 "city": resolved_city,
                 "country": resolved_country,
                 "location": resolved_loc,
@@ -491,21 +531,33 @@ async def capture_traffic_event(
                 # Upsert active live session
                 await db_manager.db.live_sessions.update_one(
                     {"identifier": identifier},
-                    {"$set": session_record, "$push": {"events": {"$each": [{"e": body.event, "p": body.page, "t": now_utc}], "$slice": -25}}},
+                    {"$set": session_record, "$push": {"events": {"$each": [{"e": body.event, "p": body.page, "t": now_utc}], "$slice": -30}}},
                     upsert=True
                 )
                 # Store historical traffic event
                 await db_manager.db.traffic_events.insert_one(event_record)
 
+                # Prune any duplicate sessions sharing this IP or user_id
+                prune_filters = []
+                if effective_ip and effective_ip not in ("127.0.0.1", "localhost", "::1"):
+                    prune_filters.append({"ip": effective_ip})
+                if final_user_id:
+                    prune_filters.append({"user_id": final_user_id})
+                if prune_filters:
+                    await db_manager.db.live_sessions.delete_many({
+                        "$or": prune_filters,
+                        "identifier": {"$ne": identifier}
+                    })
+
                 # Update user record last seen info if logged in
-                if body.user_id:
+                if final_user_id:
                     await db_manager.db.users.update_one(
-                        {"$or": [{"user_id": body.user_id}, {"id": body.user_id}]},
+                        {"$or": [{"user_id": final_user_id}, {"id": final_user_id}]},
                         {"$set": {
                             "last_seen": now_utc,
                             "last_device": body.device,
                             "last_location": resolved_loc,
-                            "last_ip": client_ip,
+                            "last_ip": effective_ip,
                             "last_local_time": body.local_time,
                             "timezone": body.timezone
                         }}
@@ -514,7 +566,23 @@ async def capture_traffic_event(
                 # Local memory fallback
                 if "live_sessions" not in db_manager.memory_store:
                     db_manager.memory_store["live_sessions"] = {}
+
+                prev_events = db_manager.memory_store["live_sessions"].get(identifier, {}).get("events", [])
+                session_record["events"] = (prev_events + [{"e": body.event, "p": body.page, "t": now_utc}])[-30:]
                 db_manager.memory_store["live_sessions"][identifier] = session_record
+
+                # Prune duplicate sessions in memory
+                cleaned = {}
+                for k, s in db_manager.memory_store["live_sessions"].items():
+                    if k == identifier:
+                        cleaned[k] = s
+                    elif effective_ip and effective_ip not in ("127.0.0.1", "localhost", "::1") and s.get("ip") == effective_ip:
+                        continue
+                    elif final_user_id and s.get("user_id") == final_user_id:
+                        continue
+                    else:
+                        cleaned[k] = s
+                db_manager.memory_store["live_sessions"] = cleaned
 
                 if "traffic_events" not in db_manager.memory_store:
                     db_manager.memory_store["traffic_events"] = []
@@ -522,14 +590,14 @@ async def capture_traffic_event(
                 if len(db_manager.memory_store["traffic_events"]) > 500:
                     db_manager.memory_store["traffic_events"] = db_manager.memory_store["traffic_events"][:500]
 
-                if body.user_id:
+                if final_user_id:
                     users = db_manager.memory_store.get("users", {})
                     for u in users.values():
-                        if u.get("user_id") == body.user_id or u.get("id") == body.user_id:
+                        if u.get("user_id") == final_user_id or u.get("id") == final_user_id:
                             u["last_seen"] = now_utc
                             u["last_device"] = body.device
                             u["last_location"] = resolved_loc
-                            u["last_ip"] = client_ip
+                            u["last_ip"] = effective_ip
                             u["last_local_time"] = body.local_time
                             u["timezone"] = body.timezone
                 db_manager.save_memory_store()
@@ -538,15 +606,15 @@ async def capture_traffic_event(
             await ws_manager.broadcast({
                 "type": "traffic_event",
                 "identifier": identifier,
-                "user_name": body.user_name or "Visitor",
-                "user_email": body.user_email,
+                "user_name": final_user_name,
+                "user_email": final_user_email,
                 "event": body.event,
                 "page": body.page,
                 "device": body.device,
                 "location": resolved_loc,
                 "city": resolved_city,
                 "country": resolved_country,
-                "ip": client_ip or body.ip,
+                "ip": effective_ip,
                 "local_time": body.local_time,
                 "timestamp": now_utc
             })
@@ -570,7 +638,7 @@ async def capture_traffic_compat(
 
 @router.get("/live-sessions")
 async def get_live_sessions(admin: Dict[str, Any] = Depends(get_current_admin)):
-    """Returns sessions active within the last 15 minutes."""
+    """Returns sessions active within the last 15 minutes, deduplicated per client/IP."""
     cutoff = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=15)).isoformat()
     sessions = []
     if db_manager.is_connected and db_manager.db is not None:
@@ -581,7 +649,20 @@ async def get_live_sessions(admin: Dict[str, Any] = Depends(get_current_admin)):
         sessions = [clean_mongo_doc(s) for s in all_s if s.get("last_seen", "") >= cutoff]
         sessions.sort(key=lambda s: s.get("last_seen", ""), reverse=True)
 
-    return {"success": True, "data": sessions, "count": len(sessions)}
+    # Strictly deduplicate by IP and user so 1 IP never displays as multiple users
+    unique_by_ip = {}
+    for s in sessions:
+        s_ip = str(s.get("ip") or "").strip()
+        key = s_ip if (s_ip and s_ip not in ("127.0.0.1", "localhost", "::1")) else (s.get("user_id") or s.get("identifier"))
+        if key not in unique_by_ip:
+            unique_by_ip[key] = s
+        else:
+            # Upgrade anonymous card to registered user card if user logged in
+            if not unique_by_ip[key].get("user_id") and s.get("user_id"):
+                unique_by_ip[key] = s
+
+    deduped = list(unique_by_ip.values())
+    return {"success": True, "data": deduped, "count": len(deduped)}
 
 @router.get("/traffic/events")
 async def get_traffic_events(
@@ -638,9 +719,20 @@ async def get_admin_dashboard_stats(admin: Dict[str, Any] = Depends(get_current_
     if db_manager.is_connected and db_manager.db is not None:
         total_users = await db_manager.db.users.count_documents({})
         new_this_week = await db_manager.db.users.count_documents({"created_at": {"$gte": week_start}})
-        online_now = await db_manager.db.live_sessions.count_documents({"last_seen": {"$gte": active_cutoff}})
-        active_today = await db_manager.db.traffic_events.distinct("identifier", {"timestamp": {"$gte": today_start}})
-        active_today_count = len(active_today)
+        
+        # Deduplicate active live sessions by IP
+        distinct_ips = await db_manager.db.live_sessions.distinct("ip", {"last_seen": {"$gte": active_cutoff}, "ip": {"$nin": ["", "127.0.0.1", "localhost", "::1"]}})
+        distinct_anon = await db_manager.db.live_sessions.count_documents({"last_seen": {"$gte": active_cutoff}, "ip": {"$in": ["", "127.0.0.1", "localhost", "::1"]}})
+        online_now = len(distinct_ips) + distinct_anon
+
+        # Deduplicate today's active traffic by IP
+        active_today_ips = await db_manager.db.traffic_events.distinct("ip", {"timestamp": {"$gte": today_start}, "ip": {"$nin": ["", "127.0.0.1", "localhost", "::1"]}})
+        if active_today_ips:
+            active_today_count = len(active_today_ips)
+        else:
+            active_today = await db_manager.db.traffic_events.distinct("identifier", {"timestamp": {"$gte": today_start}})
+            active_today_count = len(active_today)
+
         total_txns = await db_manager.db.transactions.count_documents({})
         total_sheets = await db_manager.db.spreadsheets.count_documents({})
         total_inventory = await db_manager.db.inventory.count_documents({})
@@ -656,7 +748,7 @@ async def get_admin_dashboard_stats(admin: Dict[str, Any] = Depends(get_current_
             {"$group": {"_id": "$device_type", "count": {"$sum": 1}}}
         ]).to_list(10)
         for d in dev_agg:
-            dt = d.get("_id") or "Desktop"
+            dt = str(d.get("_id") or "Desktop")
             if dt in device_counts:
                 device_counts[dt] += d.get("count", 0)
     else:
@@ -664,10 +756,16 @@ async def get_admin_dashboard_stats(admin: Dict[str, Any] = Depends(get_current_
         total_users = len(users)
         new_this_week = len([u for u in users if u.get("created_at", "") >= week_start])
         sessions = list(db_manager.memory_store.get("live_sessions", {}).values())
-        online_now = len([s for s in sessions if s.get("last_seen", "") >= active_cutoff])
+        online_now = len(set(
+            s.get("ip") if (s.get("ip") and s.get("ip") not in ("127.0.0.1", "localhost", "::1")) else (s.get("user_id") or s.get("identifier"))
+            for s in sessions if s.get("last_seen", "") >= active_cutoff
+        ))
         events = db_manager.memory_store.get("traffic_events", [])
         today_events = [e for e in events if e.get("timestamp", "") >= today_start]
-        active_today_count = len(set(e.get("identifier") for e in today_events))
+        active_today_count = len(set(
+            e.get("ip") if (e.get("ip") and e.get("ip") not in ("127.0.0.1", "localhost", "::1")) else (e.get("user_id") or e.get("visitor_id") or e.get("identifier"))
+            for e in today_events
+        ))
 
         all_txns = []
         for u_txns in db_manager.memory_store.get("transactions", {}).values():
@@ -731,7 +829,8 @@ async def get_platform_analytics(
             day = str(e.get("timestamp") or "")[:10]
             if day in daily_traffic:
                 daily_traffic[day] += 1
-                ident = str(e.get("identifier") or e.get("user_id") or e.get("visitor_id") or "")
+                e_ip = str(e.get("ip") or "").strip()
+                ident = e_ip if (e_ip and e_ip not in ("127.0.0.1", "localhost", "::1")) else str(e.get("user_id") or e.get("visitor_id") or e.get("identifier") or "")
                 daily_unique.setdefault(day, set()).add(ident)
             p = str(e.get("page") or "/")
             top_pages[p] = top_pages.get(p, 0) + 1
@@ -756,7 +855,8 @@ async def get_platform_analytics(
             day = str(e.get("timestamp") or "")[:10]
             if day in daily_traffic:
                 daily_traffic[day] += 1
-                ident = str(e.get("identifier") or e.get("user_id") or e.get("visitor_id") or "")
+                e_ip = str(e.get("ip") or "").strip()
+                ident = e_ip if (e_ip and e_ip not in ("127.0.0.1", "localhost", "::1")) else str(e.get("user_id") or e.get("visitor_id") or e.get("identifier") or "")
                 daily_unique.setdefault(day, set()).add(ident)
             p = str(e.get("page") or "/")
             top_pages[p] = top_pages.get(p, 0) + 1
@@ -1791,7 +1891,9 @@ async def get_homepage_traffic_metrics(admin: Dict[str, Any] = Depends(get_curre
         try:
             hp_query = {"$or": [{"page": "/"}, {"page": "/home"}]}
             total_views = await db_manager.db.traffic_events.count_documents(hp_query)
-            unique_visitors = len(await db_manager.db.traffic_events.distinct("visitor_id", hp_query))
+            distinct_ips = await db_manager.db.traffic_events.distinct("ip", {**hp_query, "ip": {"$nin": ["", "127.0.0.1", "localhost", "::1"]}})
+            distinct_anon = len(await db_manager.db.traffic_events.distinct("visitor_id", {**hp_query, "ip": {"$in": ["", "127.0.0.1", "localhost", "::1"]}}))
+            unique_visitors = len(distinct_ips) + distinct_anon
             
             # Devices
             for d in ["Desktop", "Mobile", "Tablet"]:
@@ -1819,7 +1921,10 @@ async def get_homepage_traffic_metrics(admin: Dict[str, Any] = Depends(get_curre
         events = db_manager.memory_store.get("traffic_events", [])
         hp_events = [e for e in events if e.get("page") in ("/", "/home")]
         total_views = len(hp_events)
-        unique_visitors = len(set(e.get("visitor_id") for e in hp_events if e.get("visitor_id")))
+        unique_visitors = len(set(
+            e.get("ip") if (e.get("ip") and e.get("ip") not in ("127.0.0.1", "localhost", "::1")) else (e.get("visitor_id") or e.get("identifier"))
+            for e in hp_events
+        ))
         for e in hp_events:
             dt = e.get("device_type", "Desktop")
             device_breakdown[dt] = device_breakdown.get(dt, 0) + 1
