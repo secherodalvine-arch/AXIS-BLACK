@@ -14,6 +14,7 @@ import { AdminAgent } from '@/pages/AdminAgent';
 import { Payments } from '@/pages/Payments';
 import { Messages } from '@/pages/Messages';
 import { Settings } from '@/pages/Settings';
+import { SystemLogs } from '@/pages/SystemLogs';
 
 import { CheckCircle2, AlertCircle, Info, AlertTriangle } from 'lucide-react';
 
@@ -88,7 +89,10 @@ export default function App() {
           <Route path="database" element={<DatabaseExplorer />} />
           <Route path="payments" element={<Payments />} />
           <Route path="agent-usage" element={<AdminAgent />} />
+          <Route path="agent" element={<AdminAgent />} />
           <Route path="messages" element={<Messages />} />
+          <Route path="support" element={<Messages />} />
+          <Route path="logs" element={<SystemLogs />} />
           <Route path="settings" element={<Settings />} />
         </Route>
 

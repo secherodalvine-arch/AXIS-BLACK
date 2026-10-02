@@ -5,6 +5,7 @@
 /* Reset */
 *, *::before, *::after { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; padding: 0; }
+
 body {
   font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -20,7 +21,7 @@ body {
   --bg-sidebar: #080f1a;
   --bg-elevated: #ffffff;
   --bg-input: #f1f5f9;
-  --bg-hover: rgba(0,0,0,0.04);
+  --bg-hover: rgba(0, 0, 0, 0.04);
   --text-primary: #0f172a;
   --text-muted: #64748b;
   --text-subtle: #94a3b8;
@@ -35,7 +36,7 @@ html.dark {
   --bg-sidebar: #060b13;
   --bg-elevated: #0d1624;
   --bg-input: #111d2e;
-  --bg-hover: rgba(255,255,255,0.04);
+  --bg-hover: rgba(255, 255, 255, 0.04);
   --text-primary: #f8fafc;
   --text-muted: #94a3b8;
   --text-subtle: #64748b;
@@ -44,24 +45,90 @@ html.dark {
   color-scheme: dark;
 }
 
-/* Light mode overrides for navy classes */
-:root:not(.dark) .bg-navy-950 { background-color: #f1f5f9 !important; }
-:root:not(.dark) .bg-navy-900 { background-color: #ffffff !important; }
-:root:not(.dark) .bg-navy-800 { background-color: #f8fafc !important; }
-:root:not(.dark) .bg-navy-700 { background-color: #e2e8f0 !important; }
-:root:not(.dark) .border-white\/8,
-:root:not(.dark) .border-white\/10,
-:root:not(.dark) .border-white\/12 { border-color: #e2e8f0 !important; }
-:root:not(.dark) .text-white { color: #0f172a !important; }
-:root:not(.dark) .text-navy-300 { color: #334155 !important; }
-:root:not(.dark) .text-navy-400 { color: #475569 !important; }
+/* Light mode overrides for navy classes (scoped outside sidebar) */
+:root:not(.dark) main .bg-navy-950,
+:root:not(.dark) header .bg-navy-950,
+:root:not(.dark) .modal-container .bg-navy-950 {
+  background-color: #f1f5f9 !important;
+}
 
-/* Keep sidebar permanently dark & sleek */
+:root:not(.dark) main .bg-navy-900,
+:root:not(.dark) header.bg-navy-900\/80,
+:root:not(.dark) .modal-container .bg-navy-900 {
+  background-color: #ffffff !important;
+}
+
+:root:not(.dark) main .bg-navy-800,
+:root:not(.dark) .modal-container .bg-navy-800 {
+  background-color: #f8fafc !important;
+}
+
+:root:not(.dark) main .border-white\/8,
+:root:not(.dark) main .border-white\/10,
+:root:not(.dark) main .border-white\/12,
+:root:not(.dark) header .border-white\/8,
+:root:not(.dark) .modal-container .border-white\/8 {
+  border-color: #e2e8f0 !important;
+}
+
+:root:not(.dark) main .text-white,
+:root:not(.dark) header .text-white,
+:root:not(.dark) .modal-container .text-white {
+  color: #0f172a !important;
+}
+
+:root:not(.dark) main .text-slate-400,
+:root:not(.dark) header .text-slate-400,
+:root:not(.dark) .modal-container .text-slate-400 {
+  color: #64748b !important;
+}
+
+:root:not(.dark) main .text-slate-300,
+:root:not(.dark) header .text-slate-300,
+:root:not(.dark) .modal-container .text-slate-300 {
+  color: #334155 !important;
+}
+
+:root:not(.dark) main input,
+:root:not(.dark) main textarea,
+:root:not(.dark) main select,
+:root:not(.dark) .modal-container input,
+:root:not(.dark) .modal-container textarea,
+:root:not(.dark) .modal-container select {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+:root:not(.dark) main input::placeholder,
+:root:not(.dark) main textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Keep sidebar permanently sleek & dark across all themes */
 aside.admin-sidebar {
   background-color: #060b13 !important;
-}
-aside.admin-sidebar * {
   border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+aside.admin-sidebar * {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+aside.admin-sidebar .text-white {
+  color: #ffffff !important;
+}
+
+aside.admin-sidebar .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+aside.admin-sidebar .text-slate-300 {
+  color: #cbd5e1 !important;
+}
+
+aside.admin-sidebar .text-slate-500 {
+  color: #64748b !important;
 }
 
 /* Custom scrollbars */

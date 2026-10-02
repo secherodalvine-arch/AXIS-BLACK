@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { sendSupportMessageApi } from '../utils/api';
+import { captureEvent } from '../utils/traffic';
 
 interface HomePageProps {
   onEnterDashboard: () => void;
@@ -86,6 +87,29 @@ export const HomePage: React.FC<HomePageProps> = ({
     const t = setTimeout(() => setVisible(true), 60);
     return () => clearTimeout(t);
   }, []);
+
+  // ── Homepage Traffic Recording ──
+  useEffect(() => {
+    const pageRoute = currentView === 'home' ? '/' : `/${currentView}`;
+    captureEvent({
+      event: 'homepage_visit',
+      page: pageRoute,
+      data: {
+        view: currentView,
+        referrer: typeof document !== 'undefined' ? document.referrer : '',
+        timestamp: new Date().toISOString()
+      }
+    });
+  }, [currentView]);
+
+  const trackCta = (target: string, action?: () => void) => {
+    captureEvent({
+      event: 'cta_click',
+      page: currentView === 'home' ? '/' : `/${currentView}`,
+      data: { target, view: currentView }
+    });
+    if (action) action();
+  };
 
   const navigateTo = (view: HomeView) => {
     setCurrentView(view);
@@ -197,16 +221,16 @@ export const HomePage: React.FC<HomePageProps> = ({
           <button className={`home-nav-link ${currentView === 'about' ? 'active' : ''}`} onClick={() => navigateTo('about')}>About Us</button>
           <button className={`home-nav-link ${currentView === 'contact' ? 'active' : ''}`} onClick={() => navigateTo('contact')}>Contact</button>
           {onNavigateLogin && (
-            <button className="home-nav-link" onClick={onNavigateLogin}>
+            <button className="home-nav-link" onClick={() => trackCta('login', onNavigateLogin)}>
               <i className="fa-solid fa-right-to-bracket"></i> Sign In
             </button>
           )}
           {onNavigateRegister ? (
-            <button className="home-nav-cta" onClick={onNavigateRegister}>
+            <button className="home-nav-cta" onClick={() => trackCta('register', onNavigateRegister)}>
               <i className="fa-solid fa-rocket"></i> Get Started
             </button>
           ) : (
-            <button className="home-nav-cta" onClick={onNavigateLogin}>
+            <button className="home-nav-cta" onClick={() => trackCta('login', onNavigateLogin)}>
               <i className="fa-solid fa-right-to-bracket"></i> Sign In
             </button>
           )}

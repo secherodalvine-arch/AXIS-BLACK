@@ -52,6 +52,64 @@ app.add_middleware(
 )
 
 
+# ── Global Exception Handler & Real-Time Error Telemetry ──────
+import traceback
+import uuid
+import datetime
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from app.database import db_manager
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    error_id = f"err-{uuid.uuid4().hex[:8]}"
+    tb = traceback.format_exc()
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    log_doc = {
+        "id": f"log-{uuid.uuid4().hex[:10]}",
+        "timestamp": now_iso,
+        "level": "CRITICAL",
+        "service": "Backend API",
+        "event": "Unhandled Server Exception",
+        "message": str(exc) or "Internal Server Error",
+        "path": request.url.path,
+        "status_code": 500,
+        "stack_trace": tb,
+        "client_ip": request.client.host if request.client else "unknown",
+        "resolved": False
+    }
+    try:
+        if db_manager.is_connected and db_manager.db is not None:
+            await db_manager.db.system_logs.insert_one(log_doc)
+            await db_manager.db.admin_notifications.insert_one({
+                "id": f"notif-{uuid.uuid4().hex[:10]}",
+                "title": "Critical Backend Exception",
+                "message": f"[500] {str(exc)[:90]} at {request.url.path}",
+                "type": "warning",
+                "timestamp": now_iso,
+                "read": False,
+                "link": "/logs"
+            })
+        else:
+            db_manager.memory_store.setdefault("system_logs", []).insert(0, log_doc)
+            db_manager.memory_store.setdefault("admin_notifications", []).insert(0, {
+                "id": f"notif-{uuid.uuid4().hex[:10]}",
+                "title": "Critical Backend Exception",
+                "message": f"[500] {str(exc)[:90]} at {request.url.path}",
+                "type": "warning",
+                "timestamp": now_iso,
+                "read": False,
+                "link": "/logs"
+            })
+            db_manager.save_memory_store()
+    except Exception:
+        pass
+
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error occurred.", "error_id": error_id}
+    )
+
 # ── Auth & Support APIs (public — no user token required) ──────
 app.include_router(auth.router)
 app.include_router(support.router)
