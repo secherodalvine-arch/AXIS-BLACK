@@ -203,35 +203,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
 
       </nav>
-
-      <div className="sidebar-footer" style={{ padding: isCollapsed ? '8px 4px' : '12px 14px' }}>
-        <a 
-          href="http://localhost:5174" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          title="Admin Console"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            padding: '8px 12px',
-            borderRadius: '10px',
-            background: 'rgba(201, 169, 110, 0.1)',
-            border: '1px solid rgba(201, 169, 110, 0.25)',
-            color: '#e8c97a',
-            textDecoration: 'none',
-            fontSize: '0.82rem',
-            fontWeight: 600,
-            justifyContent: isCollapsed ? 'center' : 'flex-start',
-            transition: 'all 0.2s ease'
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(201, 169, 110, 0.2)')}
-          onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(201, 169, 110, 0.1)')}
-        >
-          <i className="fa-solid fa-shield-halved" style={{ fontSize: '0.9rem', color: '#e8c97a' }}></i>
-          {!isCollapsed && <span>Admin Console</span>}
-        </a>
-      </div>
     </aside>
   );
 };

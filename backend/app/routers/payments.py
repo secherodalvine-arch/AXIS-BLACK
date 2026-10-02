@@ -483,7 +483,7 @@ async def get_subscription(current_user: dict = Depends(get_current_user)):
 
 @router.get("/history")
 async def get_payment_history(current_user: dict = Depends(get_current_user)):
-    """Returns user's transaction/payment history."""
+    """Returns user's transaction/payment history, auto-syncing recent pending Paystack payments."""
     user_id = current_user.get("owner_id") if current_user.get("is_sub_user") else current_user.get("user_id")
     payments = []
     if db_manager.is_connected and db_manager.db is not None:
@@ -496,6 +496,57 @@ async def get_payment_history(current_user: dict = Depends(get_current_user)):
             if p.get("user_id") == user_id:
                 payments.append(dict(p))
         payments.sort(key=lambda x: str(x.get("created_at", "")), reverse=True)
+
+    # Auto-synchronize pending Paystack transactions with real gateway state
+    pending_paystack = [p for p in payments if p.get("status") == "pending" and p.get("provider") == "paystack"][:6]
+    if pending_paystack and PAYSTACK_SECRET:
+        for p in pending_paystack:
+            ref = p.get("reference")
+            if not ref:
+                continue
+            try:
+                ps_res = await _check_paystack_status(ref)
+                if ps_res["status"] == "success":
+                    p["status"] = "paid"
+                    p["paid_at"] = _now().isoformat()
+                    p["payment_mode"] = "M-Pesa" if p.get("channel") == "mobile_money" else "Card"
+                    await _update_payment(p["_id"], {
+                        "status": "paid",
+                        "paid_at": p["paid_at"],
+                        "payment_mode": p["payment_mode"],
+                        "updated_at": _now().isoformat()
+                    })
+                elif ps_res["status"] == "failed":
+                    fail_msg = ps_res.get("gateway_response") or "Payment was cancelled or failed."
+                    p["status"] = "failed"
+                    p["failure_reason"] = fail_msg
+                    p["gateway_response"] = ps_res.get("gateway_response", "")
+                    await _update_payment(p["_id"], {
+                        "status": "failed",
+                        "failure_reason": fail_msg,
+                        "gateway_response": p["gateway_response"],
+                        "updated_at": _now().isoformat()
+                    })
+                else:
+                    # Check timeout by age
+                    created_at_dt = None
+                    if p.get("created_at"):
+                        try:
+                            created_at_dt = datetime.datetime.fromisoformat(p["created_at"].replace("Z", "+00:00"))
+                        except Exception:
+                            pass
+                    max_secs = 120 if p.get("channel") == "mobile_money" else 900
+                    if created_at_dt and (_now() - created_at_dt).total_seconds() > max_secs:
+                        timeout_msg = "M-Pesa STK prompt timed out." if p.get("channel") == "mobile_money" else "Payment session expired."
+                        p["status"] = "failed"
+                        p["failure_reason"] = timeout_msg
+                        await _update_payment(p["_id"], {
+                            "status": "failed",
+                            "failure_reason": timeout_msg,
+                            "updated_at": _now().isoformat()
+                        })
+            except Exception as e:
+                logger.warning(f"Auto-sync history error for ref {ref}: {e}")
 
     return {"status": "success", "data": payments}
 
@@ -695,6 +746,103 @@ async def initiate_payment(
         raise HTTPException(400, f"Unsupported payment channel: {body.channel}")
 
 
+async def _check_paystack_status(ref: str) -> dict:
+    """
+    Queries Paystack to determine real-time status of transaction or mobile money charge.
+    Returns:
+        {
+            "status": "success" | "failed" | "pending",
+            "gateway_response": str,
+            "channel": str,
+            "raw_status": str
+        }
+    """
+    if not PAYSTACK_SECRET:
+        return {
+            "status": "pending",
+            "gateway_response": "Gateway offline",
+            "channel": "mobile_money",
+            "raw_status": "pending"
+        }
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        # 1. Primary check: /transaction/verify/{ref}
+        try:
+            r1 = await client.get(
+                f"{PAYSTACK_BASE}/transaction/verify/{ref}",
+                headers={"Authorization": f"Bearer {PAYSTACK_SECRET}"}
+            )
+            if r1.is_success:
+                res1 = r1.json()
+                data1 = res1.get("data") or {}
+                raw_st = (data1.get("status") or "").lower()
+                gateway_resp = data1.get("gateway_response") or data1.get("message") or ""
+                channel = data1.get("channel") or ""
+
+                if raw_st == "success":
+                    return {
+                        "status": "success",
+                        "gateway_response": gateway_resp or "Payment successful",
+                        "channel": channel,
+                        "raw_status": raw_st,
+                        "data": data1
+                    }
+                elif raw_st in ("failed", "abandoned", "timeout", "reversed"):
+                    clean_msg = gateway_resp
+                    if "cancel" in clean_msg.lower():
+                        clean_msg = "Request Cancelled by user."
+                    elif not clean_msg:
+                        clean_msg = f"Transaction was {raw_st}."
+                    return {
+                        "status": "failed",
+                        "gateway_response": clean_msg,
+                        "channel": channel,
+                        "raw_status": raw_st,
+                        "data": data1
+                    }
+        except Exception as e:
+            logger.warning(f"Paystack /transaction/verify error for {ref}: {e}")
+
+        # 2. Secondary check for Mobile Money charge: /charge/{ref}
+        try:
+            r2 = await client.get(
+                f"{PAYSTACK_BASE}/charge/{ref}",
+                headers={"Authorization": f"Bearer {PAYSTACK_SECRET}"}
+            )
+            if r2.is_success:
+                res2 = r2.json()
+                data2 = res2.get("data") or {}
+                raw_st = (data2.get("status") or "").lower()
+                gateway_resp = data2.get("gateway_response") or data2.get("message") or ""
+
+                if raw_st == "success":
+                    return {
+                        "status": "success",
+                        "gateway_response": gateway_resp or "Payment successful",
+                        "channel": "mobile_money",
+                        "raw_status": raw_st,
+                        "data": data2
+                    }
+                elif raw_st in ("failed", "abandoned", "timeout", "reversed"):
+                    clean_msg = gateway_resp or f"M-Pesa transaction was {raw_st}."
+                    return {
+                        "status": "failed",
+                        "gateway_response": clean_msg,
+                        "channel": "mobile_money",
+                        "raw_status": raw_st,
+                        "data": data2
+                    }
+        except Exception as e:
+            logger.warning(f"Paystack /charge error for {ref}: {e}")
+
+    return {
+        "status": "pending",
+        "gateway_response": "Awaiting customer authorization on mobile phone.",
+        "channel": "mobile_money",
+        "raw_status": "pending"
+    }
+
+
 @router.post("/verify")
 async def verify_payment(
     body: VerifyPaymentReq,
@@ -702,6 +850,7 @@ async def verify_payment(
 ):
     """
     Verifies a transaction by reference against Paystack or stored record.
+    Detects success, user cancellation, decline, or prompt timeout.
     Activates the subscription and sets expiration timestamp upon success.
     """
     ref = body.reference.strip()
@@ -723,77 +872,150 @@ async def verify_payment(
             "data": sub
         }
 
-    # Query Paystack verification endpoint
-    is_success = False
-    payment_channel = payment.get("channel", "card")
-    ps_data = {}
-
-    if PAYSTACK_SECRET:
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                r = await client.get(
-                    f"{PAYSTACK_BASE}/transaction/verify/{ref}",
-                    headers={"Authorization": f"Bearer {PAYSTACK_SECRET}"}
-                )
-            if r.is_success:
-                ps_res = r.json()
-                ps_data = ps_res.get("data", {})
-                if ps_data.get("status") == "success":
-                    is_success = True
-                    payment_channel = ps_data.get("channel") or payment_channel
-        except Exception as e:
-            logger.warning(f"Paystack verification request error: {e}")
-
-    # For testing or if already confirmed by status
-    if not is_success and payment.get("status") == "paid":
-        is_success = True
-
-    if not is_success:
+    # If already marked failed or cancelled in DB, return failed status immediately
+    if payment.get("status") in ("failed", "cancelled"):
         return {
-            "status": "pending",
-            "message": "Payment is still processing or awaiting confirmation. Please complete the prompt on your phone or try again in a few moments.",
+            "status": "failed",
+            "message": payment.get("failure_reason") or "Payment was cancelled or could not be completed.",
+            "gateway_response": payment.get("gateway_response") or payment.get("failure_reason") or "",
             "data": {
                 "reference": ref,
-                "status": payment.get("status", "pending")
+                "status": payment.get("status"),
+                "failure_reason": payment.get("failure_reason")
             }
         }
 
-    # Activate Plan
-    plan_key = payment.get("plan", "starter")
-    plan = PLANS.get(plan_key, PLANS["starter"])
-    expires_at = _now() + datetime.timedelta(days=plan["duration_days"])
-    paid_at = _now()
+    # Query Paystack verification endpoint
+    ps_result = await _check_paystack_status(ref)
 
-    receipt_no = payment.get("receipt_number") or _receipt_number(ref)
-    mode_label = "M-Pesa" if payment_channel in ("mobile_money", "mpesa") else "Card"
+    if ps_result["status"] == "success":
+        # Activate Plan
+        plan_key = payment.get("plan", "starter")
+        plan = PLANS.get(plan_key, PLANS["starter"])
+        expires_at = _now() + datetime.timedelta(days=plan["duration_days"])
+        paid_at = _now()
 
-    update_fields = {
-        "status": "paid",
-        "paid_at": paid_at.isoformat(),
-        "expires_at": expires_at.isoformat(),
-        "receipt_number": receipt_no,
-        "payment_mode": mode_label,
-        "updated_at": _now().isoformat(),
-    }
-    await _update_payment(payment["_id"], update_fields)
+        receipt_no = payment.get("receipt_number") or _receipt_number(ref)
+        mode_label = "M-Pesa" if ps_result.get("channel") in ("mobile_money", "mpesa") or payment.get("channel") == "mobile_money" else "Card"
 
-    # Also log an audit activity in the workspace
-    await AxisDataStore.log_activity(
-        owner_id=user_id,
-        actor_id=user_id,
-        actor_name=current_user.get("name", "Owner"),
-        actor_role="Owner",
-        action="billing.upgrade",
-        details=f"Upgraded subscription to {plan['name']} (Ref: {ref}, Receipt: {receipt_no})",
-        ip="127.0.0.1"
-    )
+        update_fields = {
+            "status": "paid",
+            "paid_at": paid_at.isoformat(),
+            "expires_at": expires_at.isoformat(),
+            "receipt_number": receipt_no,
+            "payment_mode": mode_label,
+            "gateway_response": ps_result.get("gateway_response", ""),
+            "updated_at": _now().isoformat(),
+        }
+        await _update_payment(payment["_id"], update_fields)
 
-    # Return refreshed subscription state
-    sub = await get_user_subscription(user_id)
+        # Audit activity
+        await AxisDataStore.log_activity(
+            owner_id=user_id,
+            actor_id=user_id,
+            actor_name=current_user.get("name", "Owner"),
+            actor_role="Owner",
+            action="billing.upgrade",
+            details=f"Upgraded subscription to {plan['name']} (Ref: {ref}, Receipt: {receipt_no})",
+            ip="127.0.0.1"
+        )
+
+        sub = await get_user_subscription(user_id)
+        return {
+            "status": "success",
+            "message": f"Congratulations! Your {plan['name']} subscription is now active.",
+            "data": sub
+        }
+
+    elif ps_result["status"] == "failed":
+        reason = ps_result.get("gateway_response") or "Payment was cancelled or failed."
+        await _update_payment(payment["_id"], {
+            "status": "failed",
+            "failure_reason": reason,
+            "gateway_response": ps_result.get("gateway_response", ""),
+            "updated_at": _now().isoformat(),
+        })
+        return {
+            "status": "failed",
+            "message": reason,
+            "gateway_response": ps_result.get("gateway_response", ""),
+            "data": {
+                "reference": ref,
+                "status": "failed",
+                "failure_reason": reason
+            }
+        }
+
+    else:
+        # Check if transaction has timed out by age (> 2 minutes for mobile money, 15 min for card)
+        created_at_dt = None
+        if payment.get("created_at"):
+            try:
+                created_at_dt = datetime.datetime.fromisoformat(payment["created_at"].replace("Z", "+00:00"))
+            except Exception:
+                pass
+
+        is_stk = payment.get("channel") == "mobile_money"
+        max_age_secs = 120 if is_stk else 900
+        if created_at_dt and (_now() - created_at_dt).total_seconds() > max_age_secs:
+            timeout_msg = "M-Pesa STK prompt timed out. No response received from phone." if is_stk else "Payment session expired."
+            await _update_payment(payment["_id"], {
+                "status": "failed",
+                "failure_reason": timeout_msg,
+                "gateway_response": "Timed out",
+                "updated_at": _now().isoformat(),
+            })
+            return {
+                "status": "failed",
+                "message": timeout_msg,
+                "gateway_response": "Timed out",
+                "data": {
+                    "reference": ref,
+                    "status": "failed",
+                    "failure_reason": timeout_msg
+                }
+            }
+
+        return {
+            "status": "pending",
+            "message": "Payment is awaiting confirmation on your mobile phone.",
+            "data": {
+                "reference": ref,
+                "status": "pending"
+            }
+        }
+
+
+@router.post("/cancel")
+async def cancel_pending_payment(
+    body: VerifyPaymentReq,
+    current_user: dict = Depends(get_current_user)
+):
+    """Allows user to cancel a pending STK prompt or card payment."""
+    ref = body.reference.strip()
+    payment = await _find_payment_by_ref(ref)
+    if not payment:
+        raise HTTPException(404, "Payment reference not found.")
+
+    user_id = current_user.get("owner_id") if current_user.get("is_sub_user") else current_user.get("user_id")
+    if payment.get("user_id") != user_id:
+        raise HTTPException(403, "Payment belongs to another account.")
+
+    if payment.get("status") == "paid":
+        raise HTTPException(400, "Cannot cancel an already completed payment.")
+
+    await _update_payment(payment["_id"], {
+        "status": "cancelled",
+        "failure_reason": "Prompt cancelled by user.",
+        "updated_at": _now().isoformat()
+    })
     return {
         "status": "success",
-        "message": f"Congratulations! Your {plan['name']} subscription is now active.",
-        "data": sub
+        "message": "Payment prompt cancelled.",
+        "data": {
+            "reference": ref,
+            "status": "cancelled"
+        }
     }
 
 

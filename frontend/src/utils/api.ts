@@ -601,6 +601,13 @@ export const extendDailyLimitApi = async (type: 'chat' | 'voice' = 'chat') => {
   });
 };
 
+export const cancelPaymentApi = async (reference: string) => {
+  return await request<any>('/payments/cancel', {
+    method: 'POST',
+    body: JSON.stringify({ reference })
+  });
+};
+
 export const getPaymentHistoryApi = async () => {
   const res = await request<any>('/payments/history');
   return res.data || [];

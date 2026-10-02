@@ -1152,6 +1152,7 @@ export const App: React.FC = () => {
         }}
         reason={upgradeModalReason}
         featureName={upgradeModalFeature}
+        currency={currency}
       />
 
       {/* IN-APP / POPUP NOTIFICATION: Business Financial Insight */}
