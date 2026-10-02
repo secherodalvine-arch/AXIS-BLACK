@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { NavTab, Timeframe, Currency, Transaction, AIStreamItem, ChatMessage, MetricData } from './types';
+import { NavTab, Timeframe, Currency, Transaction, AIStreamItem, ChatMessage, MetricData, UserSubscription } from './types';
 import { AppBackground } from './components/AppBackground';
 import { Sidebar } from './components/Sidebar';
 import { Header, SystemNotification } from './components/Header';
 import { NewTransactionModal } from './components/NewTransactionModal';
 import { AxisVoiceSupportAgent } from './components/AxisVoiceSupportAgent';
+import { UpgradeModal } from './components/UpgradeModal';
 import { formatCurrency } from './utils/currencyUtils';
 
 import { OverviewDashboard as DashboardPage } from './pages/DashboardPage';
@@ -17,6 +18,7 @@ import { RunwaySimulator as ForecastPage } from './pages/RunwaySimulatorPage';
 import { SettingsView as SettingsPage } from './pages/SettingsPage';
 import { MyBusinessPage } from './pages/MyBusinessPage';
 import { ActivitiesPage } from './pages/ActivitiesPage';
+import { BillingPage } from './pages/BillingPage';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -36,7 +38,8 @@ import {
   verifyEmailApi,
   getNotificationsApi,
   markNotificationReadApi,
-  updateUserProfileApi
+  updateUserProfileApi,
+  getSubscriptionApi
 } from './utils/api';
 import { captureEvent } from './utils/traffic';
 
@@ -146,7 +149,7 @@ export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<NavTab>(() => {
     try {
       const saved = localStorage.getItem('axis_active_tab') as NavTab | null;
-      const validTabs: NavTab[] = ['dashboard', 'spreadsheet', 'business', 'inventory', 'analytics', 'transactions', 'activities', 'agent', 'forecast', 'settings'];
+      const validTabs: NavTab[] = ['dashboard', 'spreadsheet', 'business', 'inventory', 'analytics', 'transactions', 'activities', 'agent', 'forecast', 'settings', 'billing'];
       if (saved && validTabs.includes(saved)) {
         return saved;
       }
@@ -233,6 +236,26 @@ export const App: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVoiceAgentOpen, setIsVoiceAgentOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Subscription & Tier entitlement states
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [upgradeModalReason, setUpgradeModalReason] = useState<string | undefined>(undefined);
+  const [upgradeModalFeature, setUpgradeModalFeature] = useState<string | undefined>(undefined);
+
+  const openUpgradeModal = useCallback((reason?: string, feature?: string) => {
+    setUpgradeModalReason(reason);
+    setUpgradeModalFeature(feature);
+    setIsUpgradeModalOpen(true);
+  }, []);
+
+  const refreshSubscription = useCallback(() => {
+    if (getAccessToken()) {
+      getSubscriptionApi()
+        .then(sub => setSubscription(sub))
+        .catch(() => setSubscription(null));
+    }
+  }, []);
 
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => getAccountTheme(getStoredUser()?.user_id));
 
@@ -584,6 +607,7 @@ export const App: React.FC = () => {
         .catch(err => console.log('Transactions fetch error:', err));
 
       fetchLiveInventory();
+      refreshSubscription();
 
       getNotificationsApi()
         .then(serverNotifs => {
@@ -611,13 +635,17 @@ export const App: React.FC = () => {
         })
         .catch(err => console.log('Notifications fetch error:', err));
     }
-  }, [user?.user_id, fetchLiveInventory]);
+  }, [user?.user_id, fetchLiveInventory, refreshSubscription]);
 
   React.useEffect(() => {
     fetchLiveData();
     window.addEventListener('axis-data-updated', fetchLiveData);
-    return () => window.removeEventListener('axis-data-updated', fetchLiveData);
-  }, [fetchLiveData]);
+    window.addEventListener('axis-subscription-updated', refreshSubscription);
+    return () => {
+      window.removeEventListener('axis-data-updated', fetchLiveData);
+      window.removeEventListener('axis-subscription-updated', refreshSubscription);
+    };
+  }, [fetchLiveData, refreshSubscription]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -758,14 +786,21 @@ export const App: React.FC = () => {
           timestamp: new Date().toISOString()
         };
         setChatMessages(prev => [...prev, aiReply]);
-      } catch {
+      } catch (err: any) {
+        const errMsg = err?.message || '';
+        const isLimit = err?.status === 429 || err?.status === 403 || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('limit');
         const errorReply: ChatMessage = {
           id: `ai-${Date.now()}`,
           sender: 'ai',
-          text: "I'm unable to reach the Axis intelligence backend right now. Please check your connection or try again in a moment. Your data and sessions are safe.",
+          text: isLimit 
+            ? `⚠️ **Quota Limit Reached**: ${errMsg}\n\nYou can review current usage or upgrade to a higher tier on the Upgrade / Billing tab.` 
+            : "I'm unable to reach the Axis intelligence backend right now. Please check your connection or try again in a moment. Your data and sessions are safe.",
           timestamp: new Date().toISOString()
         };
         setChatMessages(prev => [...prev, errorReply]);
+        if (isLimit) {
+          openUpgradeModal(errMsg, 'Axis Agent Intelligence');
+        }
       } finally {
         setIsAgentProcessing(false);
       }
@@ -913,6 +948,7 @@ export const App: React.FC = () => {
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           onCloseMobile={() => setMobileMenuOpen(false)}
           user={user}
+          subscription={subscription}
         />
 
         <main className="main-wrapper">
@@ -952,7 +988,7 @@ export const App: React.FC = () => {
                 const isOwner = !user?.is_sub_user;
                 const perms = user?.permissions || [];
                 const canAccessTab = (t: NavTab) => {
-                  if (t === 'settings') return true;
+                  if (t === 'settings' || t === 'billing') return true;
                   if (isOwner) return true;
                   if (t === 'business') return false; // Strictly owner only
                   if (t === 'spreadsheet') return isOwner || perms.includes('transactions') || perms.includes('inventory') || perms.includes('dashboard') || perms.includes('analytics');
@@ -1002,11 +1038,20 @@ export const App: React.FC = () => {
                   transactions={transactions}
                   user={user}
                   onRefreshData={fetchLiveData}
+                  subscription={subscription}
+                  onOpenUpgrade={(reason, feat) => {
+                    openUpgradeModal(reason, feat || 'Spreadsheet Engine');
+                  }}
                 />
               )}
 
               {currentTab === 'inventory' && (!user?.is_sub_user || user?.permissions?.includes('inventory')) && (
-                <InventoryPage currency={currency} searchQuery={searchQuery} />
+                <InventoryPage 
+                  currency={currency} 
+                  searchQuery={searchQuery}
+                  subscription={subscription}
+                  onOpenUpgrade={openUpgradeModal}
+                />
               )}
               {currentTab === 'analytics' && (!user?.is_sub_user || user?.permissions?.includes('analytics')) && (
                 <AnalyticsPage currency={currency} transactions={transactions} searchQuery={searchQuery} />
@@ -1034,13 +1079,29 @@ export const App: React.FC = () => {
                 />
               )}
               {currentTab === 'business' && !user?.is_sub_user && (
-                <MyBusinessPage currency={currency} user={user} />
+                <MyBusinessPage 
+                  currency={currency} 
+                  user={user} 
+                  subscription={subscription}
+                  onOpenUpgrade={openUpgradeModal}
+                />
               )}
               {currentTab === 'activities' && (!user?.is_sub_user || user?.permissions?.includes('activities')) && (
                 <ActivitiesPage userRole={user?.role} isOwner={!user?.is_sub_user} />
               )}
               {currentTab === 'forecast' && (!user?.is_sub_user || user?.permissions?.includes('forecast')) && (
                 <ForecastPage currency={currency} transactions={transactions} />
+              )}
+              {currentTab === 'billing' && (
+                <BillingPage
+                  user={user}
+                  currency={currency}
+                  onRefreshUserData={() => {
+                    refreshSubscription();
+                    fetchLiveData();
+                  }}
+                  showToast={showToast}
+                />
               )}
               {currentTab === 'settings' && (
                 <SettingsPage 
@@ -1074,10 +1135,23 @@ export const App: React.FC = () => {
         isOpen={isVoiceAgentOpen}
         onClose={() => setIsVoiceAgentOpen(false)}
         activeTab={currentTab}
+        subscription={subscription}
         onNavigate={(tab) => {
           setCurrentTab(tab);
           showToast(`Navigated to ${tab.toUpperCase()} via Voice Support`);
         }}
+        onOpenUpgrade={openUpgradeModal}
+      />
+
+      <UpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        onNavigateToBilling={() => {
+          setIsUpgradeModalOpen(false);
+          setCurrentTab('billing');
+        }}
+        reason={upgradeModalReason}
+        featureName={upgradeModalFeature}
       />
 
       {/* IN-APP / POPUP NOTIFICATION: Business Financial Insight */}

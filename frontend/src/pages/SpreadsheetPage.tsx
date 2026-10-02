@@ -18,11 +18,15 @@ import {
 import '../styles/spreadsheet.css';
 import { generateSmartItemCode } from '../utils/skuUtils';
 
+import { UserSubscription } from '../types';
+
 interface SpreadsheetPageProps {
   currency?: Currency;
   transactions?: Transaction[];
   user?: UserProfile | null;
   onRefreshData?: () => void;
+  subscription?: UserSubscription | null;
+  onOpenUpgrade?: (reason?: string, feature?: string) => void;
 }
 
 export interface ColumnDef {
@@ -71,12 +75,85 @@ export const getColumnLetter = (colIdx: number): string => {
 export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   currency = 'USD',
   user: currentUser,
-  onRefreshData
+  onRefreshData,
+  subscription,
+  onOpenUpgrade
 }) => {
+  // If user is on Free tier, render upgrade showcase
+  if (subscription && !subscription.entitlements?.spreadsheet) {
+    return (
+      <div className="tab-view active" style={{ maxWidth: '850px', margin: '40px auto', textAlign: 'center' }}>
+        <div className="glass-card" style={{ padding: '48px 36px', borderRadius: '24px', border: '1px solid rgba(16, 124, 65, 0.4)', background: 'linear-gradient(145deg, rgba(16, 124, 65, 0.08), rgba(14, 20, 32, 0.95))' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: 'rgba(16, 124, 65, 0.2)', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', margin: '0 auto 20px', border: '1px solid rgba(16, 124, 65, 0.4)' }}>
+            <i className="fa-solid fa-table-cells"></i>
+          </div>
+          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#34d399', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>
+            PREMIUM WORKSPACE MODULE
+          </div>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', margin: '0 0 12px' }}>
+            Interactive Spreadsheet Engine
+          </h2>
+          <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.6, maxWidth: '580px', margin: '0 auto 28px' }}>
+            The Spreadsheet workspace is unlocked on <strong>Starter (KES 899/mo)</strong> and <strong>Pro (KES 2,299/3 mo)</strong> tiers. It provides two-way synced live ledger formulas, inventory batch editing, custom multi-tab sheets, and CSV sync.
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', textAlign: 'left', marginBottom: '32px' }}>
+            <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <div style={{ color: '#34d399', fontWeight: 700, fontSize: '0.85rem', marginBottom: '4px' }}>
+                <i className="fa-solid fa-bolt" style={{ marginRight: '6px' }}></i> Two-Way Live Sync
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: '0.78rem', lineHeight: 1.4 }}>
+                Instant real-time sync with transactions ledger and warehouse inventory items.
+              </div>
+            </div>
+            <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <div style={{ color: '#00d4ff', fontWeight: 700, fontSize: '0.85rem', marginBottom: '4px' }}>
+                <i className="fa-solid fa-square-root-variable" style={{ marginRight: '6px' }}></i> Formulas &amp; Grid
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: '0.78rem', lineHeight: 1.4 }}>
+                SUM, AVERAGE, MIN, MAX formula engine with cell selection and drag handles.
+              </div>
+            </div>
+            <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <div style={{ color: '#e8c97a', fontWeight: 700, fontSize: '0.85rem', marginBottom: '4px' }}>
+                <i className="fa-solid fa-file-excel" style={{ marginRight: '6px' }}></i> Multi-Tab Workbooks
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: '0.78rem', lineHeight: 1.4 }}>
+                Create unlimited custom sheets, import CSV datasets, and export workbooks.
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => onOpenUpgrade?.("Interactive Spreadsheet is available on Starter and Pro tiers.", "Spreadsheet Engine")}
+            style={{
+              padding: '13px 32px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #107c41, #34d399)',
+              color: '#fff',
+              fontSize: '0.95rem',
+              fontWeight: 800,
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 4px 20px rgba(16, 124, 65, 0.4)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}
+          >
+            <i className="fa-solid fa-crown" style={{ color: '#fff' }}></i>
+            <span>Upgrade to Unlock Spreadsheet</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // ── Navigation State: 'hub' (Home Screen) or 'editor' (Workbook Interface) ──
   const [viewMode, setViewMode] = useState<'hub' | 'editor'>('hub');
   const [workbookTitle, setWorkbookTitle] = useState('Enterprise Financial Model');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+
 
   // ── Raw Data Stores ──
   const [liveLedger, setLiveLedger] = useState<any[]>([]);

@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavTab } from '../types';
+import { NavTab, UserSubscription } from '../types';
 import { UserProfile } from '../utils/api';
 
 interface SidebarProps {
@@ -10,6 +10,7 @@ interface SidebarProps {
   onToggleCollapse?: () => void;
   onCloseMobile?: () => void;
   user?: UserProfile | null;
+  subscription?: UserSubscription | null;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -19,7 +20,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isCollapsed = false,
   onToggleCollapse,
   onCloseMobile,
-  user
+  user,
+  subscription
 }) => {
   const isOwner = !user?.is_sub_user;
   const perms = user?.permissions || [];
@@ -161,6 +163,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <div className="nav-section-title">SYSTEM</div>
         <button 
+          className={`nav-item ${currentTab === 'billing' ? 'active' : ''}`}
+          onClick={() => onTabChange('billing')}
+          title={isCollapsed ? "Upgrade / Billing" : undefined}
+        >
+          <div className="nav-icon-wrapper" style={{ color: currentTab === 'billing' ? '#00d4ff' : '#e8c97a' }}>
+            <i className="fa-solid fa-crown"></i>
+          </div>
+          {!isCollapsed && (
+            <span className="nav-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <span>Upgrade / Billing</span>
+              <span style={{ 
+                fontSize: '0.62rem', 
+                background: subscription?.plan_key === 'pro' 
+                  ? 'linear-gradient(135deg, #cebdff, #00d4ff)' 
+                  : subscription?.plan_key === 'starter' 
+                  ? 'linear-gradient(135deg, #00d4ff, #0077ff)' 
+                  : 'linear-gradient(135deg, #e8c97a, #c9a96e)', 
+                color: subscription?.plan_key === 'starter' || subscription?.plan_key === 'pro' ? '#000' : '#000', 
+                padding: '2px 7px', 
+                borderRadius: '4px', 
+                fontWeight: 800, 
+                letterSpacing: '0.5px', 
+                marginLeft: '6px' 
+              }}>
+                {(subscription?.plan_name || 'FREE').toUpperCase()}
+              </span>
+            </span>
+          )}
+        </button>
+
+        <button 
           className={`nav-item ${currentTab === 'settings' ? 'active' : ''}`}
           onClick={() => onTabChange('settings')}
           title={isCollapsed ? "Settings" : undefined}
@@ -168,6 +201,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="nav-icon-wrapper"><i className="fa-solid fa-sliders"></i></div>
           {!isCollapsed && <span className="nav-label">Settings</span>}
         </button>
+
       </nav>
 
       <div className="sidebar-footer" style={{ padding: isCollapsed ? '8px 4px' : '12px 14px' }}>

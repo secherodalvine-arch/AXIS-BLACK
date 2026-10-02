@@ -7,6 +7,8 @@ import datetime
 from app.database import AxisDataStore
 from app.auth.dependencies import get_current_user
 from app.routers.business import get_business_doc
+from app.routers.payments import get_user_subscription
+
 
 router = APIRouter(prefix="/api/inventory", tags=["Inventory Intelligence"])
 
@@ -117,7 +119,20 @@ async def create_inventory_item(
     _check_inventory_permission(current_user, write=True)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
+
+    # Enforce Tier Limits (Free: max 2 uploads/items, Starter & Pro: unlimited)
+    sub = await get_user_subscription(owner_id)
+    inv_limit = sub.get("entitlements", {}).get("inventory_limit", 2)
+    if inv_limit != -1:
+        current_inv = await AxisDataStore.get_inventory(owner_id)
+        if len(current_inv) >= inv_limit:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Inventory limit reached ({inv_limit} uploads max on {sub.get('name', 'Free Tier')}). Upgrade to Starter or Pro for unlimited inventory and ledger access."
+            )
+
     data = payload.model_dump()
+
 
     # Validate or auto-generate category-aware SKU
     provided_sku = str(data.get("sku") or "").strip()
@@ -248,7 +263,19 @@ async def import_inventory_csv(
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
 
+    # Enforce Tier Limits (Free: max 2 uploads/items, Starter & Pro: unlimited)
+    sub = await get_user_subscription(owner_id)
+    inv_limit = sub.get("entitlements", {}).get("inventory_limit", 2)
+    if inv_limit != -1:
+        current_inv = await AxisDataStore.get_inventory(owner_id)
+        if len(current_inv) >= inv_limit:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Inventory limit reached ({inv_limit} uploads max on {sub.get('name', 'Free Tier')}). Upgrade to Starter or Pro for bulk CSV import and unlimited inventory."
+            )
+
     doc = await get_business_doc(owner_id)
+
     branches = doc.get("branches", [])
 
     if is_sub_user and current_user.get("branch_id"):

@@ -8,7 +8,9 @@ export type NavTab =
   | 'forecast'
   | 'business'
   | 'activities'
+  | 'billing'
   | 'settings';
+
 
 export type Currency = 'USD' | 'KES';
 
@@ -141,5 +143,110 @@ export interface CustomSpreadsheet {
   rows: Record<string, any>[];
   updated_at?: string;
 }
+
+export type PlanKey = 'free' | 'starter' | 'pro';
+
+export interface SubscriptionPlan {
+  key: PlanKey;
+  name: string;
+  amount_kes: number;
+  duration_days: number;
+  billing_period: string;
+  description: string;
+  features: string[];
+  branches_limit: number;
+  inventory_limit: number;
+  runway_simulator: boolean;
+  business_summary: boolean;
+  voice_agent: boolean;
+  spreadsheet: boolean;
+  team_roles: boolean;
+  axis_agent_daily_limit: number;
+  axis_agent_monthly_limit: number;
+  voice_agent_daily_limit: number;
+  voice_agent_monthly_limit: number;
+  can_extend_agent: boolean;
+  can_extend_voice: boolean;
+  priority_support: boolean;
+}
+
+export interface UserSubscription {
+  plan: PlanKey;
+  plan_key?: PlanKey;
+  name: string;
+  plan_name?: string;
+  is_active: boolean;
+  is_paid: boolean;
+  expires_at: string | null;
+  days_left: number;
+  receipt_number?: string;
+  payment_mode?: string;
+  payment_id?: string;
+  amount_kes: number;
+  billing_period: string;
+  entitlements: {
+    runway_simulator: boolean;
+    business_summary: boolean;
+    voice_agent: boolean;
+    spreadsheet: boolean;
+    team_roles: boolean;
+    priority_support: boolean;
+    branches_limit: number;
+    inventory_limit: number;
+  };
+  resources: {
+    branches_count: number;
+    branches_limit: number;
+    can_add_branch: boolean;
+    inventory_count: number;
+    inventory_limit: number;
+    can_add_inventory: boolean;
+  };
+  usage: {
+    axis_agent_chat: {
+      used_today: number;
+      daily_limit: number;
+      base_daily_limit: number;
+      used_month: number;
+      monthly_limit: number;
+      daily_limit_reached: boolean;
+      can_extend: boolean;
+      is_extended: boolean;
+    };
+    voice_agent: {
+      used_today: number;
+      daily_limit: number;
+      base_daily_limit: number;
+      used_month: number;
+      monthly_limit: number;
+      daily_limit_reached: boolean;
+      can_extend: boolean;
+      is_extended: boolean;
+    };
+  };
+}
+
+export interface PaymentRecord {
+  _id: string;
+  user_id: string;
+  user_name?: string;
+  user_email?: string;
+  plan: PlanKey;
+  amount_kes: number;
+  fee_kes?: number;
+  net_kes?: number;
+  receipt_number?: string;
+  payment_mode?: string;
+  paid_at?: string;
+  currency: string;
+  channel?: string;
+  status: 'pending' | 'paid' | 'failed' | 'rejected' | 'cancelled';
+  provider: string;
+  reference?: string;
+  description?: string;
+  expires_at?: string;
+  created_at: string;
+}
+
 
 

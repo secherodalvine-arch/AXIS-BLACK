@@ -25,8 +25,11 @@ class DatabaseManager:
         "inventory": {},
         "analytics": {},
         "copilot_chats": {},
-        "spreadsheets": {}
+        "spreadsheets": {},
+        "payments": {},
+        "usage": {}
     }
+
 
     def load_memory_store(self):
         try:

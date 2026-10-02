@@ -11,8 +11,10 @@ import { Analytics } from '@/pages/Analytics';
 import { AuditLog } from '@/pages/AuditLog';
 import { DatabaseExplorer } from '@/pages/DatabaseExplorer';
 import { AdminAgent } from '@/pages/AdminAgent';
+import { Payments } from '@/pages/Payments';
 import { Messages } from '@/pages/Messages';
 import { Settings } from '@/pages/Settings';
+
 import { CheckCircle2, AlertCircle, Info, AlertTriangle } from 'lucide-react';
 
 function ToastContainer() {
@@ -84,10 +86,12 @@ export default function App() {
           <Route path="analytics" element={<Analytics />} />
           <Route path="audit" element={<AuditLog />} />
           <Route path="database" element={<DatabaseExplorer />} />
+          <Route path="payments" element={<Payments />} />
           <Route path="agent-usage" element={<AdminAgent />} />
           <Route path="messages" element={<Messages />} />
           <Route path="settings" element={<Settings />} />
         </Route>
+
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

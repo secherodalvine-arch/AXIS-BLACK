@@ -31,7 +31,16 @@ class BatchSyncPayload(BaseModel):
     items: List[BatchSyncItem]
 
 
-def _check_spreadsheet_permission(current_user: dict, write: bool = False):
+async def _check_spreadsheet_permission(current_user: dict, write: bool = False):
+    from app.routers.payments import get_user_subscription
+    owner_id = current_user.get("owner_id") if current_user.get("is_sub_user") else current_user.get("user_id", "default_user")
+    sub = await get_user_subscription(owner_id)
+    if not sub.get("entitlements", {}).get("spreadsheet"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Interactive Spreadsheet is available on Starter and Pro packages. Upgrade to unlock the spreadsheet ledger and inventory workspace."
+        )
+
     if current_user.get("is_sub_user"):
         perms = current_user.get("permissions") or []
         if write:
@@ -48,10 +57,11 @@ def _check_spreadsheet_permission(current_user: dict, write: bool = False):
                 )
 
 
+
 @router.get("/overview")
 async def get_spreadsheet_overview(current_user: dict = Depends(get_current_user)):
     """Return overview summary of available business sheets."""
-    _check_spreadsheet_permission(current_user, write=False)
+    await _check_spreadsheet_permission(current_user, write=False)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
 
@@ -84,7 +94,7 @@ async def get_spreadsheet_overview(current_user: dict = Depends(get_current_user
 @router.get("/custom", response_model=List[Dict[str, Any]])
 async def get_custom_sheets(current_user: dict = Depends(get_current_user)):
     """Fetch custom spreadsheets created by the user."""
-    _check_spreadsheet_permission(current_user, write=False)
+    await _check_spreadsheet_permission(current_user, write=False)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
     sheets = await AxisDataStore.get_custom_spreadsheets(owner_id)
@@ -97,7 +107,7 @@ async def save_custom_sheet(
     current_user: dict = Depends(get_current_user)
 ):
     """Save or update a custom spreadsheet."""
-    _check_spreadsheet_permission(current_user, write=True)
+    await _check_spreadsheet_permission(current_user, write=True)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
 
@@ -129,7 +139,7 @@ async def delete_custom_sheet(
     current_user: dict = Depends(get_current_user)
 ):
     """Delete a custom spreadsheet."""
-    _check_spreadsheet_permission(current_user, write=True)
+    await _check_spreadsheet_permission(current_user, write=True)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
 
@@ -148,7 +158,7 @@ async def batch_sync_records(
     Sync multiple rows or edits made in the spreadsheet in a single request.
     Handles Ledger, Inventory, and Custom sheets.
     """
-    _check_spreadsheet_permission(current_user, write=True)
+    await _check_spreadsheet_permission(current_user, write=True)
     is_sub_user = bool(current_user.get("is_sub_user"))
     owner_id = current_user.get("owner_id") if is_sub_user else current_user.get("user_id", "default_user")
 

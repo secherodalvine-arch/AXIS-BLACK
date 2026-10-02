@@ -1,13 +1,15 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { ConversationProvider, useConversation } from '@elevenlabs/react';
 import { getVoiceConfigApi, getVoiceSignedUrlApi } from '../utils/api';
-import { NavTab } from '../types';
+import { NavTab, UserSubscription } from '../types';
 
 interface AxisVoiceSupportAgentProps {
   isOpen: boolean;
   onClose: () => void;
   activeTab: NavTab;
   onNavigate: (tab: NavTab) => void;
+  subscription?: UserSubscription | null;
+  onOpenUpgrade?: (reason?: string, feature?: string) => void;
 }
 
 const DEFAULT_AGENT_ID = 'agent_6601m1bjmavhem6a2a7epcx9rxzk';
@@ -174,7 +176,7 @@ const VoiceModal: React.FC<Omit<AxisVoiceSupportAgentProps, 'isOpen'> & { onClos
 
 // ── Outer wrapper — fetches signed URL, provides ConversationProvider ──
 export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = (props) => {
-  const { isOpen, onClose } = props;
+  const { isOpen, onClose, subscription, onOpenUpgrade, onNavigate } = props;
   const [agentId, setAgentId] = useState<string>(DEFAULT_AGENT_ID);
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
@@ -189,8 +191,14 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = (prop
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  const isVoiceLocked = Boolean(subscription && !subscription.entitlements?.voice_agent);
+
   useEffect(() => {
     if (!isOpen) return;
+    if (isVoiceLocked) {
+      setSessionReady(true);
+      return;
+    }
     setSessionReady(false);
 
     const fetchSession = async () => {
@@ -215,9 +223,104 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = (prop
     };
 
     fetchSession();
-  }, [isOpen]);
+  }, [isOpen, isVoiceLocked]);
 
   if (!isOpen || !sessionReady) return null;
+
+  if (isVoiceLocked) {
+    return (
+      <div
+        className="voice-modal-backdrop"
+        style={styles.backdrop}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
+        <div style={{ ...styles.modal, maxWidth: '480px', padding: '32px 24px', textAlign: 'center', position: 'relative' }}>
+          <button 
+            onClick={onClose}
+            style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.2rem', cursor: 'pointer' }}
+          >
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+
+          <div style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            background: 'rgba(0, 212, 255, 0.1)',
+            border: '1px solid rgba(0, 212, 255, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '1.8rem',
+            color: '#00d4ff',
+            margin: '0 auto 18px',
+            boxShadow: '0 0 25px rgba(0, 212, 255, 0.2)'
+          }}>
+            <i className="fa-solid fa-microphone-slash"></i>
+          </div>
+
+          <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#fff', marginBottom: '8px' }}>
+            Voice Support Locked
+          </h3>
+          <p style={{ fontSize: '0.88rem', color: '#94a3b8', lineHeight: 1.6, marginBottom: '24px' }}>
+            Real-time interactive voice consultation and audio navigation are reserved for <strong style={{ color: '#00d4ff' }}>Starter</strong> and <strong style={{ color: '#cebdff' }}>Pro</strong> tiers.
+          </p>
+
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '12px',
+            padding: '14px',
+            marginBottom: '24px',
+            textAlign: 'left',
+            fontSize: '0.82rem',
+            color: '#cbd5e1'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <i className="fa-solid fa-bolt" style={{ color: '#00d4ff' }}></i>
+              <span><strong>Starter:</strong> 400 voice exchanges / mo (13 daily)</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <i className="fa-solid fa-crown" style={{ color: '#e8c97a' }}></i>
+              <span><strong>Pro:</strong> 800 voice exchanges / mo (26 daily + extensions)</span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              onClose();
+              if (onOpenUpgrade) {
+                onOpenUpgrade('Voice Agent is available on Starter and Pro tiers.', 'Axis Voice Agent');
+              } else {
+                onNavigate('billing');
+              }
+            }}
+            style={{
+              width: '100%',
+              padding: '12px 18px',
+              borderRadius: '12px',
+              border: 'none',
+              background: 'linear-gradient(135deg, #00d4ff 0%, #3b82f6 100%)',
+              color: '#090d16',
+              fontWeight: 800,
+              fontSize: '0.92rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: '0 4px 20px rgba(0, 212, 255, 0.3)'
+            }}
+          >
+            <i className="fa-solid fa-crown"></i>
+            <span>Upgrade to Unlock Voice Support</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Pass signedUrl for private agents, agentId for public agents
   const providerProps = signedUrl

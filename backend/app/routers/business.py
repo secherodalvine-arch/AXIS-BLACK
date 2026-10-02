@@ -13,8 +13,10 @@ from pydantic import BaseModel, Field
 from app.auth.dependencies import get_current_user
 from app.database import db_manager, AxisDataStore
 from app.auth.security import hash_password
+from app.routers.payments import get_user_subscription
 
 router = APIRouter(prefix="/api/business", tags=["Business Management"])
+
 
 
 # ── Models ────────────────────────────────────────────────────────────────────
@@ -247,6 +249,17 @@ async def create_branch(
         doc = {"owner_id": owner_id, "branches": [], "roles": [], "sub_users": [],
                "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()}
 
+    # Enforce Tier Limits (Free: 1 branch max, Starter & Pro: unlimited)
+    sub = await get_user_subscription(owner_id)
+    branches_limit = sub.get("entitlements", {}).get("branches_limit", 1)
+    existing_count = len(doc.get("branches", []))
+    if branches_limit != -1 and existing_count >= branches_limit:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Branch limit reached ({branches_limit} branch max on {sub.get('name', 'Free Tier')}). Upgrade to Starter or Pro for unlimited branch locations."
+        )
+
+
     branch = {
         "id": f"branch-{uuid.uuid4().hex[:8]}",
         "owner_id": owner_id,
@@ -390,10 +403,20 @@ async def create_role(
 ):
     require_business_owner(current_user)
     owner_id, _, _, actor_id, actor_name, actor_role = get_user_context(current_user)
+
+    # Enforce Tier Limits (Team roles require Starter or Pro)
+    sub = await get_user_subscription(owner_id)
+    if not sub.get("entitlements", {}).get("team_roles"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Custom team roles and permission controls require Starter or Pro tier. Upgrade to unlock."
+        )
+
     doc = await get_business_doc(owner_id)
     if not doc:
         doc = {"owner_id": owner_id, "branches": [], "roles": [], "sub_users": [],
                "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()}
+
 
     role = {
         "id": f"role-{uuid.uuid4().hex[:8]}",
@@ -513,10 +536,20 @@ async def create_sub_user(
 ):
     require_business_owner(current_user)
     owner_id, _, _, actor_id, actor_name, actor_role = get_user_context(current_user)
+
+    # Enforce Tier Limits (Inviting team members requires Starter or Pro)
+    sub = await get_user_subscription(owner_id)
+    if not sub.get("entitlements", {}).get("team_roles"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Inviting team members and assigning roles requires Starter or Pro tier. Upgrade to unlock unlimited team collaboration."
+        )
+
     doc = await get_business_doc(owner_id)
     if not doc:
         doc = {"owner_id": owner_id, "branches": [], "roles": [], "sub_users": [],
                "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()}
+
 
     # Check email uniqueness
     existing = doc.get("sub_users", [])

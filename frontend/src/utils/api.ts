@@ -558,6 +558,55 @@ export const dispatchSummaryNotificationApi = async (settingsPayload?: any) => {
   });
 };
 
+// ── Payment Engine & Subscription APIs ──
+export const getSubscriptionApi = async () => {
+  const res = await request<any>('/payments/subscription');
+  return res.data;
+};
+
+export const getPlansApi = async () => {
+  return await request<any>('/payments/plans');
+};
+
+export const initiatePaymentApi = async (plan: string, channel: 'card' | 'mobile_money' = 'card', phone?: string) => {
+  return await request<any>('/payments/initiate', {
+    method: 'POST',
+    body: JSON.stringify({ plan, channel, phone })
+  });
+};
+
+export const verifyPaymentApi = async (reference: string) => {
+  return await request<any>('/payments/verify', {
+    method: 'POST',
+    body: JSON.stringify({ reference })
+  });
+};
+
+export const getTillInfoApi = async () => {
+  const res = await request<any>('/payments/till-info');
+  return res.data;
+};
+
+export const submitTillPaymentApi = async (plan: string, reference: string, phone: string = '') => {
+  return await request<any>('/payments/till-submit', {
+    method: 'POST',
+    body: JSON.stringify({ plan, reference, phone })
+  });
+};
+
+export const extendDailyLimitApi = async (type: 'chat' | 'voice' = 'chat') => {
+  return await request<any>('/payments/extend-daily-limit', {
+    method: 'POST',
+    body: JSON.stringify({ type })
+  });
+};
+
+export const getPaymentHistoryApi = async () => {
+  const res = await request<any>('/payments/history');
+  return res.data || [];
+};
+
+
 
 
 

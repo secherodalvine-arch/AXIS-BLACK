@@ -50,7 +50,7 @@ class Settings:
     ELEVENLABS_API_KEY: str = os.getenv("ELEVENLABS_API_KEY", "")
 
     # TalkSasa SMS Notifications (referenced from HOUSEKONECT)
-    TALKSASA_API_KEY: str = os.getenv("TALKSASA_API_KEY", "4310|Doz00xhJWd1U1LzI8ayNCSZ5h47AyWeUurAuI5Ud963dd83f")
+    TALKSASA_API_KEY: str = os.getenv("TALKSASA_API_KEY", "")
     TALKSASA_SENDER_ID: str = os.getenv("TALKSASA_SENDER_ID", "TALKSASA")
     TALKSASA_API_URL: str = os.getenv("TALKSASA_API_URL", "https://bulksms.talksasa.com/api/v3/sms/send")
 
@@ -62,4 +62,11 @@ class Settings:
     ADMIN_JWT_SECRET: str = os.getenv("ADMIN_JWT_SECRET", "axis-black-super-secure-admin-secret-2026")
     ADMIN_JWT_EXPIRE_HOURS: int = int(os.getenv("ADMIN_JWT_EXPIRE_HOURS", "72"))
 
+    # Paystack & M-Pesa Payment Engine (referenced from REINO FORMS)
+    PAYSTACK_SECRET_KEY: str = os.getenv("PAYSTACK_SECRET_KEY", "")
+    PAYSTACK_BASE_URL: str = os.getenv("PAYSTACK_BASE_URL", "https://api.paystack.co")
+    MPESA_TILL_NUMBER: str = os.getenv("MPESA_TILL_NUMBER", "3645270")
+    MPESA_BUSINESS_NAME: str = os.getenv("MPESA_BUSINESS_NAME", "IAN WABWIRE")
+
 settings = Settings()
+

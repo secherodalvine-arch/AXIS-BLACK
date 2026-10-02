@@ -43,6 +43,32 @@ async def query_axis_agent(
             )
 
     user_id = current_user.get("owner_id") if current_user.get("is_sub_user") else current_user.get("user_id", "usr_guest")
+
+    # Enforce Tier Usage Limits (Free: 8 daily / 240 mo; Starter: 20 daily / 600 mo; Pro: 40-80 daily / 1200 mo)
+    from app.routers.payments import get_user_subscription, record_usage
+    sub = await get_user_subscription(user_id)
+    chat_usage = sub.get("usage", {}).get("axis_agent_chat", {})
+
+    daily_used = chat_usage.get("used_today", 0)
+    daily_limit = chat_usage.get("daily_limit", 8)
+    monthly_used = chat_usage.get("used_month", 0)
+    monthly_limit = chat_usage.get("monthly_limit", 240)
+    plan_name = sub.get("name", "Free Tier")
+    can_extend = chat_usage.get("can_extend", False)
+
+    if daily_used >= daily_limit:
+        extend_hint = " As a Pro member, you can double your daily limit by clicking 'Extend Daily Limit' in Billing." if can_extend else " Upgrade your package for higher daily capacity."
+        raise HTTPException(
+            status_code=429,
+            detail=f"Daily Axis Agent query limit reached ({daily_used}/{daily_limit} on {plan_name}).{extend_hint} Quota resets at midnight UTC."
+        )
+
+    if monthly_used >= monthly_limit:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Monthly Axis Agent query limit reached ({monthly_used}/{monthly_limit} on {plan_name}). Upgrade to Starter or Pro for expanded monthly exchanges."
+        )
+
     metrics = await AxisDataStore.get_dashboard_metrics(user_id)
     txns = await AxisDataStore.get_transactions(user_id)
     inventory = await AxisDataStore.get_inventory(user_id)
@@ -57,7 +83,20 @@ async def query_axis_agent(
         },
         advisor_type=payload.advisor_type
     )
+
+    # Record usage
+    await record_usage(user_id, "chat")
+    # Attach usage info to response
+    response["quota"] = {
+        "used_today": daily_used + 1,
+        "daily_limit": daily_limit,
+        "used_month": monthly_used + 1,
+        "monthly_limit": monthly_limit,
+        "plan": sub.get("plan", "free"),
+        "can_extend": can_extend
+    }
     return response
+
 
 @router.get("/advisors/{advisor_type}", response_model=Dict[str, Any])
 async def get_advisor_skill_telemetry(

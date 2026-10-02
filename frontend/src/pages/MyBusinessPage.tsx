@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Branch, BusinessProfile, BranchPerformance, BusinessRole, SubUser, Currency } from '../types';
+import { Branch, BusinessProfile, BranchPerformance, BusinessRole, SubUser, Currency, UserSubscription } from '../types';
 import {
   getBusinessProfileApi, updateBusinessProfileApi,
   getBranchesApi, createBranchApi, updateBranchApi, deleteBranchApi, getBranchPerformanceApi,
@@ -12,6 +12,8 @@ import { formatRelativeTime } from '../utils/dateUtils';
 interface MyBusinessPageProps {
   currency?: Currency;
   user?: any;
+  subscription?: UserSubscription | null;
+  onOpenUpgrade?: (reason?: string, feature?: string) => void;
 }
 
 const BUSINESS_CATEGORIES = [
@@ -38,10 +40,17 @@ const PERMISSION_OPTIONS = [
   { id: 'settings', label: 'Settings', icon: 'fa-sliders' },
 ];
 
-export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD', user }) => {
+export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
+  currency = 'USD',
+  user,
+  subscription,
+  onOpenUpgrade
+}) => {
+  const isFreeTier = subscription?.plan_key === 'free' || (!subscription && true);
   const [activeTab, setActiveTab] = useState<'overview' | 'branches' | 'team' | 'roles'>('overview');
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const isBranchLimitReached = Boolean(isFreeTier && branches.length >= 1);
   const [roles, setRoles] = useState<BusinessRole[]>([]);
   const [team, setTeam] = useState<SubUser[]>([]);
   const [branchPerformances, setBranchPerformances] = useState<Record<string, BranchPerformance>>({});
@@ -110,14 +119,14 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
     }
   }, []);
 
-  useEffect(() => { 
-    loadAll(); 
+  useEffect(() => {
+    loadAll();
     const handleDataUpdated = () => {
       loadAll();
       if (selectedBranch) {
         getBranchDetailsApi(selectedBranch)
           .then(data => setSelectedBranchDetails(data))
-          .catch(() => {});
+          .catch(() => { });
       }
     };
     window.addEventListener('axis-data-updated', handleDataUpdated);
@@ -170,7 +179,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
       setEditingBranch(null);
       setBranchForm({ name: '', location: '', phone: '', email: '', manager_user_id: '', is_active: true });
       if (selectedBranch) {
-        getBranchDetailsApi(selectedBranch).then(setSelectedBranchDetails).catch(() => {});
+        getBranchDetailsApi(selectedBranch).then(setSelectedBranchDetails).catch(() => { });
       }
     } catch (err: any) {
       showStatus(err.message || 'Failed to save branch', 'error');
@@ -252,7 +261,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
     const confirmPrompt = isCurrentlyActive
       ? `Suspend ${member.name}'s account? They will be blocked from logging into the workspace until re-activated.`
       : `Re-activate ${member.name}'s account? They will be able to log in and access their assigned workspace.`;
-    
+
     if (!confirm(confirmPrompt)) return;
     try {
       const updated = await updateSubUserApi(member.id, { is_active: !isCurrentlyActive });
@@ -565,13 +574,41 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
                   Click on any branch to monitor its ledger, inventory, manager, and performance
                 </span>
               </div>
-              <button
-                className="action-btn-primary"
-                style={{ gap: '8px', fontSize: '0.82rem', padding: '8px 16px' }}
-                onClick={() => { setEditingBranch(null); setBranchForm({ name: '', location: '', phone: '', email: '', manager_user_id: user?.user_id || 'owner', is_active: true }); setShowBranchModal(true); }}
-              >
-                <i className="fa-solid fa-plus"></i> Add Branch
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {isFreeTier && (
+                  <div style={{
+                    fontSize: '0.78rem',
+                    background: isBranchLimitReached ? 'rgba(239, 68, 68, 0.12)' : 'rgba(0, 212, 255, 0.08)',
+                    border: `1px solid ${isBranchLimitReached ? 'rgba(239, 68, 68, 0.3)' : 'rgba(0, 212, 255, 0.2)'}`,
+                    color: isBranchLimitReached ? '#f87171' : '#00d4ff',
+                    padding: '4px 10px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <i className={isBranchLimitReached ? "fa-solid fa-lock" : "fa-solid fa-code-branch"}></i>
+                    <span>{branches.length} / 1 Branch (Free{isBranchLimitReached ? ' Limit Reached' : ''})</span>
+                  </div>
+                )}
+                <button
+                  className="action-btn-primary"
+                  style={{ gap: '8px', fontSize: '0.82rem', padding: '8px 16px' }}
+                  onClick={() => {
+                    if (isBranchLimitReached) {
+                      if (onOpenUpgrade) {
+                        onOpenUpgrade('Free tier supports 1 branch. Upgrade to Starter or Pro for unlimited branches and multi-location tracking.', 'Branches');
+                      }
+                      return;
+                    }
+                    setEditingBranch(null);
+                    setBranchForm({ name: '', location: '', phone: '', email: '', manager_user_id: user?.user_id || 'owner', is_active: true });
+                    setShowBranchModal(true);
+                  }}
+                >
+                  <i className="fa-solid fa-plus"></i> Add Branch
+                </button>
+              </div>
             </div>
 
             {branches.length === 0 ? (
@@ -908,235 +945,303 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({ currency = 'USD'
 
       {/* TEAM TAB */}
       {activeTab === 'team' && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>
-                <i className="fa-solid fa-users" style={{ color: '#a78bfa', marginRight: '10px' }}></i>
-                Team Members & Access ({team.length})
-              </h3>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)' }}>
-                Add managers and staff. They login with their email as temporary password.
-              </span>
+        isFreeTier ? (
+          <div className="glass-card" style={{ padding: '48px 24px', textAlign: 'center', maxWidth: '580px', margin: '40px auto' }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: 'rgba(167, 139, 250, 0.12)',
+              border: '1px solid rgba(167, 139, 250, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.8rem',
+              color: '#a78bfa',
+              margin: '0 auto 16px',
+              boxShadow: '0 0 25px rgba(167, 139, 250, 0.2)'
+            }}>
+              <i className="fa-solid fa-users-slash"></i>
             </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', marginBottom: '8px' }}>
+              Team Management Locked
+            </h3>
+            <p style={{ fontSize: '0.88rem', color: '#94a3b8', lineHeight: 1.6, marginBottom: '24px' }}>
+              Multi-user team collaboration, staff accounts, branch managers, and granular role assignments are reserved for <strong style={{ color: '#00d4ff' }}>Starter</strong> and <strong style={{ color: '#cebdff' }}>Pro</strong> tiers.
+            </p>
             <button
               className="action-btn-primary"
-              style={{ gap: '8px', fontSize: '0.82rem', padding: '8px 16px' }}
-              onClick={() => setShowTeamModal(true)}
+              onClick={() => onOpenUpgrade?.('Team member collaboration is available on Starter and Pro tiers.', 'Team Access')}
+              style={{ margin: '0 auto', gap: '8px', padding: '10px 22px', fontSize: '0.88rem', display: 'inline-flex', alignItems: 'center' }}
             >
-              <i className="fa-solid fa-user-plus"></i> Add Team Member
+              <i className="fa-solid fa-crown"></i> Upgrade to Unlock Team Members
             </button>
           </div>
-
-          {/* Owner card */}
-          <div className="glass-card" style={{ padding: '18px 20px', marginBottom: '12px', border: '1px solid rgba(0, 212, 255, 0.35)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'linear-gradient(135deg, #00d4ff, #7c5fe6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '1rem', color: '#fff', flexShrink: 0 }}>
-                {(user?.name || 'O').charAt(0).toUpperCase()}
+        ) : (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>
+                  <i className="fa-solid fa-users" style={{ color: '#a78bfa', marginRight: '10px' }}></i>
+                  Team Members & Access ({team.length})
+                </h3>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)' }}>
+                  Add managers and staff. They login with their email as temporary password.
+                </span>
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, color: 'var(--text-main, #ffffff)', fontSize: '0.94rem' }}>{user?.name || 'Account Owner'}</div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)' }}>{user?.email}</div>
+              <button
+                className="action-btn-primary"
+                style={{ gap: '8px', fontSize: '0.82rem', padding: '8px 16px' }}
+                onClick={() => setShowTeamModal(true)}
+              >
+                <i className="fa-solid fa-user-plus"></i> Add Team Member
+              </button>
+            </div>
+
+            {/* Owner card */}
+            <div className="glass-card" style={{ padding: '18px 20px', marginBottom: '12px', border: '1px solid rgba(0, 212, 255, 0.35)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'linear-gradient(135deg, #00d4ff, #7c5fe6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '1rem', color: '#fff', flexShrink: 0 }}>
+                  {(user?.name || 'O').charAt(0).toUpperCase()}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, color: 'var(--text-main, #ffffff)', fontSize: '0.94rem' }}>{user?.name || 'Account Owner'}</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)' }}>{user?.email}</div>
+                </div>
+                <span style={{ fontSize: '0.72rem', padding: '4px 12px', borderRadius: '20px', background: 'rgba(0, 212, 255, 0.15)', color: 'var(--secondary-cyan, #00d4ff)', border: '1px solid rgba(0, 212, 255, 0.35)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <i className="fa-solid fa-crown" style={{ color: '#f59e0b', fontSize: '0.75rem' }}></i> BUSINESS OWNER
+                </span>
               </div>
-              <span style={{ fontSize: '0.72rem', padding: '4px 12px', borderRadius: '20px', background: 'rgba(0, 212, 255, 0.15)', color: 'var(--secondary-cyan, #00d4ff)', border: '1px solid rgba(0, 212, 255, 0.35)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                <i className="fa-solid fa-crown" style={{ color: '#f59e0b', fontSize: '0.75rem' }}></i> BUSINESS OWNER
-              </span>
             </div>
-          </div>
 
-          {team.length === 0 ? (
-            <div className="glass-card" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted, #9ca3af)' }}>
-              <i className="fa-solid fa-user-slash" style={{ fontSize: '2.5rem', marginBottom: '16px', display: 'block', opacity: 0.4 }}></i>
-              <div style={{ fontWeight: 600 }}>No sub-users added yet</div>
-              <div style={{ fontSize: '0.85rem', marginTop: '6px' }}>Add managers and staff to assign them roles and branches.</div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {team.map(member => {
-                const memberRole = roles.find(r => r.id === member.role_id);
-                const memberBranch = branches.find(b => b.id === member.branch_id);
-                const isSuspended = member.is_active === false;
-                return (
-                  <div key={member.id} className="glass-card biz-team-card" style={{ padding: '16px 20px', border: isSuspended ? '1px solid rgba(239, 68, 68, 0.25)' : undefined }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: '260px' }}>
-                        <div style={{
-                          width: '42px', height: '42px', borderRadius: '50%',
-                          background: isSuspended ? 'rgba(239, 68, 68, 0.15)' : 'rgba(167, 139, 250, 0.2)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontWeight: 700, fontSize: '0.95rem',
-                          color: isSuspended ? '#ef4444' : '#a78bfa',
-                          flexShrink: 0
-                        }}>
-                          {member.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <span style={{ fontWeight: 700, color: 'var(--text-main, #ffffff)', fontSize: '0.92rem' }}>{member.name}</span>
-                            {isSuspended ? (
-                              <span style={{ fontSize: '0.68rem', background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', borderRadius: '20px', padding: '2px 8px', border: '1px solid rgba(239, 68, 68, 0.3)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                <i className="fa-solid fa-ban" style={{ fontSize: '0.62rem' }}></i> Suspended
-                              </span>
-                            ) : (
-                              <span style={{ fontSize: '0.68rem', background: 'rgba(74, 222, 128, 0.12)', color: '#4ade80', borderRadius: '20px', padding: '2px 8px', border: '1px solid rgba(74, 222, 128, 0.3)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                <i className="fa-solid fa-circle-check" style={{ fontSize: '0.62rem' }}></i> Active
-                              </span>
-                            )}
-                            {member.must_change_password && (
-                              <span style={{ fontSize: '0.65rem', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', borderRadius: '20px', padding: '2px 8px', border: '1px solid rgba(245, 158, 11, 0.3)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                <i className="fa-solid fa-key" style={{ fontSize: '0.6rem' }}></i> Password Change Pending
-                              </span>
-                            )}
+            {team.length === 0 ? (
+              <div className="glass-card" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted, #9ca3af)' }}>
+                <i className="fa-solid fa-user-slash" style={{ fontSize: '2.5rem', marginBottom: '16px', display: 'block', opacity: 0.4 }}></i>
+                <div style={{ fontWeight: 600 }}>No sub-users added yet</div>
+                <div style={{ fontSize: '0.85rem', marginTop: '6px' }}>Add managers and staff to assign them roles and branches.</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {team.map(member => {
+                  const memberRole = roles.find(r => r.id === member.role_id);
+                  const memberBranch = branches.find(b => b.id === member.branch_id);
+                  const isSuspended = member.is_active === false;
+                  return (
+                    <div key={member.id} className="glass-card biz-team-card" style={{ padding: '16px 20px', border: isSuspended ? '1px solid rgba(239, 68, 68, 0.25)' : undefined }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: '260px' }}>
+                          <div style={{
+                            width: '42px', height: '42px', borderRadius: '50%',
+                            background: isSuspended ? 'rgba(239, 68, 68, 0.15)' : 'rgba(167, 139, 250, 0.2)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontWeight: 700, fontSize: '0.95rem',
+                            color: isSuspended ? '#ef4444' : '#a78bfa',
+                            flexShrink: 0
+                          }}>
+                            {member.name.charAt(0).toUpperCase()}
                           </div>
-                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', marginTop: '2px' }}>{member.email}</div>
-                          <div style={{ display: 'flex', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
-                            {memberRole && (
-                              <span style={{ fontSize: '0.72rem', color: '#a78bfa', background: 'rgba(167, 139, 250, 0.12)', borderRadius: '6px', padding: '2px 8px', border: '1px solid rgba(167, 139, 250, 0.25)' }}>
-                                <i className="fa-solid fa-user-shield" style={{ marginRight: '4px' }}></i>{memberRole.role_name}
-                              </span>
-                            )}
-                            {memberBranch ? (
-                              <span style={{ fontSize: '0.72rem', color: 'var(--secondary-cyan, #00d4ff)', background: 'rgba(0, 212, 255, 0.12)', borderRadius: '6px', padding: '2px 8px', border: '1px solid rgba(0, 212, 255, 0.25)' }}>
-                                <i className="fa-solid fa-store" style={{ marginRight: '4px' }}></i>{memberBranch.name}
-                              </span>
-                            ) : (
-                              <span className="biz-branch-badge-all">
-                                <i className="fa-solid fa-globe" style={{ marginRight: '4px' }}></i>All Branches
-                              </span>
-                            )}
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 700, color: 'var(--text-main, #ffffff)', fontSize: '0.92rem' }}>{member.name}</span>
+                              {isSuspended ? (
+                                <span style={{ fontSize: '0.68rem', background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', borderRadius: '20px', padding: '2px 8px', border: '1px solid rgba(239, 68, 68, 0.3)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                  <i className="fa-solid fa-ban" style={{ fontSize: '0.62rem' }}></i> Suspended
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: '0.68rem', background: 'rgba(74, 222, 128, 0.12)', color: '#4ade80', borderRadius: '20px', padding: '2px 8px', border: '1px solid rgba(74, 222, 128, 0.3)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                  <i className="fa-solid fa-circle-check" style={{ fontSize: '0.62rem' }}></i> Active
+                                </span>
+                              )}
+                              {member.must_change_password && (
+                                <span style={{ fontSize: '0.65rem', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', borderRadius: '20px', padding: '2px 8px', border: '1px solid rgba(245, 158, 11, 0.3)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                  <i className="fa-solid fa-key" style={{ fontSize: '0.6rem' }}></i> Password Change Pending
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', marginTop: '2px' }}>{member.email}</div>
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
+                              {memberRole && (
+                                <span style={{ fontSize: '0.72rem', color: '#a78bfa', background: 'rgba(167, 139, 250, 0.12)', borderRadius: '6px', padding: '2px 8px', border: '1px solid rgba(167, 139, 250, 0.25)' }}>
+                                  <i className="fa-solid fa-user-shield" style={{ marginRight: '4px' }}></i>{memberRole.role_name}
+                                </span>
+                              )}
+                              {memberBranch ? (
+                                <span style={{ fontSize: '0.72rem', color: 'var(--secondary-cyan, #00d4ff)', background: 'rgba(0, 212, 255, 0.12)', borderRadius: '6px', padding: '2px 8px', border: '1px solid rgba(0, 212, 255, 0.25)' }}>
+                                  <i className="fa-solid fa-store" style={{ marginRight: '4px' }}></i>{memberBranch.name}
+                                </span>
+                              ) : (
+                                <span className="biz-branch-badge-all">
+                                  <i className="fa-solid fa-globe" style={{ marginRight: '4px' }}></i>All Branches
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Team Member Action Buttons */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <button
-                          onClick={() => openEditTeamMember(member)}
-                          className="action-btn-secondary"
-                          style={{ padding: '6px 12px', fontSize: '0.78rem', gap: '6px' }}
-                          title="Edit member details, role, or branch"
-                        >
-                          <i className="fa-solid fa-pen"></i> Edit
-                        </button>
+                        {/* Team Member Action Buttons */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => openEditTeamMember(member)}
+                            className="action-btn-secondary"
+                            style={{ padding: '6px 12px', fontSize: '0.78rem', gap: '6px' }}
+                            title="Edit member details, role, or branch"
+                          >
+                            <i className="fa-solid fa-pen"></i> Edit
+                          </button>
 
-                        <button
-                          onClick={() => handleToggleSuspendTeamMember(member)}
-                          style={{
-                            padding: '6px 12px', fontSize: '0.78rem', borderRadius: '8px', cursor: 'pointer',
-                            display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600,
-                            background: !isSuspended ? 'rgba(245, 158, 11, 0.12)' : 'rgba(74, 222, 128, 0.12)',
-                            border: !isSuspended ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(74, 222, 128, 0.3)',
-                            color: !isSuspended ? '#f59e0b' : '#4ade80'
-                          }}
-                          title={!isSuspended ? "Suspend account access" : "Re-activate account access"}
-                        >
-                          <i className={!isSuspended ? "fa-solid fa-ban" : "fa-solid fa-circle-check"}></i>
-                          {!isSuspended ? 'Suspend' : 'Activate'}
-                        </button>
+                          <button
+                            onClick={() => handleToggleSuspendTeamMember(member)}
+                            style={{
+                              padding: '6px 12px', fontSize: '0.78rem', borderRadius: '8px', cursor: 'pointer',
+                              display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600,
+                              background: !isSuspended ? 'rgba(245, 158, 11, 0.12)' : 'rgba(74, 222, 128, 0.12)',
+                              border: !isSuspended ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(74, 222, 128, 0.3)',
+                              color: !isSuspended ? '#f59e0b' : '#4ade80'
+                            }}
+                            title={!isSuspended ? "Suspend account access" : "Re-activate account access"}
+                          >
+                            <i className={!isSuspended ? "fa-solid fa-ban" : "fa-solid fa-circle-check"}></i>
+                            {!isSuspended ? 'Suspend' : 'Activate'}
+                          </button>
 
-                        <button
-                          onClick={() => handleDeleteTeamMember(member)}
-                          style={{
-                            padding: '6px 12px', fontSize: '0.78rem', borderRadius: '8px', cursor: 'pointer',
-                            display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600,
-                            background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)',
-                            color: '#ef4444'
-                          }}
-                          title="Delete member permanently"
-                        >
-                          <i className="fa-solid fa-trash-can"></i> Delete
-                        </button>
+                          <button
+                            onClick={() => handleDeleteTeamMember(member)}
+                            style={{
+                              padding: '6px 12px', fontSize: '0.78rem', borderRadius: '8px', cursor: 'pointer',
+                              display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600,
+                              background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)',
+                              color: '#ef4444'
+                            }}
+                            title="Delete member permanently"
+                          >
+                            <i className="fa-solid fa-trash-can"></i> Delete
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )
       )}
 
       {/* ROLES TAB */}
       {activeTab === 'roles' && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>
-                <i className="fa-solid fa-user-shield" style={{ color: '#4ade80', marginRight: '10px' }}></i>
-                Custom Roles & Privileges ({displayRoles.length})
-              </h3>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)' }}>
-                Create, customize, and edit roles with scoped access permissions for your staff
-              </span>
+        isFreeTier ? (
+          <div className="glass-card" style={{ padding: '48px 24px', textAlign: 'center', maxWidth: '580px', margin: '40px auto' }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: 'rgba(74, 222, 128, 0.12)',
+              border: '1px solid rgba(74, 222, 128, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.8rem',
+              color: '#4ade80',
+              margin: '0 auto 16px',
+              boxShadow: '0 0 25px rgba(74, 222, 128, 0.2)'
+            }}>
+              <i className="fa-solid fa-shield-halved"></i>
             </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', marginBottom: '8px' }}>
+              Custom Roles Locked
+            </h3>
+            <p style={{ fontSize: '0.88rem', color: '#94a3b8', lineHeight: 1.6, marginBottom: '24px' }}>
+              Granular permission controls, role templates (Manager, Cashier, Auditor), and access privilege tuning require <strong style={{ color: '#00d4ff' }}>Starter</strong> or <strong style={{ color: '#cebdff' }}>Pro</strong>.
+            </p>
             <button
               className="action-btn-primary"
-              style={{ gap: '8px', fontSize: '0.82rem', padding: '8px 16px' }}
-              onClick={openCreateRole}
+              onClick={() => onOpenUpgrade?.('Role-based access control is available on Starter and Pro tiers.', 'Custom Roles')}
+              style={{ margin: '0 auto', gap: '8px', padding: '10px 22px', fontSize: '0.88rem', display: 'inline-flex', alignItems: 'center' }}
             >
-              <i className="fa-solid fa-plus"></i> Create Role
+              <i className="fa-solid fa-crown"></i> Upgrade to Unlock Custom Roles
             </button>
           </div>
-
-          {displayRoles.length === 0 ? (
-            <div className="glass-card" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted, #9ca3af)' }}>
-              <i className="fa-solid fa-shield-halved" style={{ fontSize: '2.5rem', marginBottom: '16px', display: 'block', opacity: 0.4 }}></i>
-              <div style={{ fontWeight: 600 }}>No custom roles created</div>
-              <div style={{ fontSize: '0.85rem', marginTop: '6px' }}>Click "Create Role" above to set up specific privileges for managers and staff.</div>
+        ) : (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>
+                  <i className="fa-solid fa-user-shield" style={{ color: '#4ade80', marginRight: '10px' }}></i>
+                  Custom Roles & Privileges ({displayRoles.length})
+                </h3>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)' }}>
+                  Create, customize, and edit roles with scoped access permissions for your staff
+                </span>
+              </div>
+              <button
+                className="action-btn-primary"
+                style={{ gap: '8px', fontSize: '0.82rem', padding: '8px 16px' }}
+                onClick={openCreateRole}
+              >
+                <i className="fa-solid fa-plus"></i> Create Role
+              </button>
             </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-              {displayRoles.map(role => (
-                <div key={role.id} className="glass-card biz-role-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main, #ffffff)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <i className="fa-solid fa-user-shield" style={{ color: '#4ade80' }}></i>
-                        {role.role_name}
+
+            {displayRoles.length === 0 ? (
+              <div className="glass-card" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted, #9ca3af)' }}>
+                <i className="fa-solid fa-shield-halved" style={{ fontSize: '2.5rem', marginBottom: '16px', display: 'block', opacity: 0.4 }}></i>
+                <div style={{ fontWeight: 600 }}>No custom roles created</div>
+                <div style={{ fontSize: '0.85rem', marginTop: '6px' }}>Click "Create Role" above to set up specific privileges for managers and staff.</div>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+                {displayRoles.map(role => (
+                  <div key={role.id} className="glass-card biz-role-card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main, #ffffff)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <i className="fa-solid fa-user-shield" style={{ color: '#4ade80' }}></i>
+                          {role.role_name}
+                        </div>
+                        {role.description && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', marginTop: '4px' }}>{role.description}</div>}
                       </div>
-                      {role.description && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', marginTop: '4px' }}>{role.description}</div>}
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button
+                          onClick={() => openEditRole(role)}
+                          className="biz-icon-btn"
+                          title="Edit Role"
+                        >
+                          <i className="fa-solid fa-pen"></i>
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!confirm(`Delete role "${role.role_name}"?`)) return;
+                            try {
+                              await deleteRoleApi(role.id);
+                              setRoles(prev => prev.filter(r => r.id !== role.id));
+                              showStatus('Role deleted.');
+                            } catch (e: any) { showStatus(e.message, 'error'); }
+                          }}
+                          className="biz-icon-btn-danger"
+                          title="Delete Role"
+                        >
+                          <i className="fa-solid fa-trash-can"></i>
+                        </button>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <button
-                        onClick={() => openEditRole(role)}
-                        className="biz-icon-btn"
-                        title="Edit Role"
-                      >
-                        <i className="fa-solid fa-pen"></i>
-                      </button>
-                      <button
-                        onClick={async () => {
-                          if (!confirm(`Delete role "${role.role_name}"?`)) return;
-                          try {
-                            await deleteRoleApi(role.id);
-                            setRoles(prev => prev.filter(r => r.id !== role.id));
-                            showStatus('Role deleted.');
-                          } catch (e: any) { showStatus(e.message, 'error'); }
-                        }}
-                        className="biz-icon-btn-danger"
-                        title="Delete Role"
-                      >
-                        <i className="fa-solid fa-trash-can"></i>
-                      </button>
-                    </div>
-                  </div>
 
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {PERMISSION_OPTIONS.map(perm => {
-                      const hasIt = role.permissions.includes(perm.id);
-                      return (
-                        <span key={perm.id} className={`biz-perm-pill ${hasIt ? 'active' : ''}`}>
-                          <i className={`fa-solid ${perm.icon}`} style={{ fontSize: '0.6rem' }}></i>
-                          {perm.label}
-                        </span>
-                      );
-                    })}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {PERMISSION_OPTIONS.map(perm => {
+                        const hasIt = role.permissions.includes(perm.id);
+                        return (
+                          <span key={perm.id} className={`biz-perm-pill ${hasIt ? 'active' : ''}`}>
+                            <i className={`fa-solid ${perm.icon}`} style={{ fontSize: '0.6rem' }}></i>
+                            {perm.label}
+                          </span>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
       )}
 
       {/* BRANCH MODAL */}

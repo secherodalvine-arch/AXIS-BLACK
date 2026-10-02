@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, Radio, BarChart2, ScrollText,
   Database, Bot, MessageSquare, Settings, LogOut, Bell,
   Menu, X, CheckCircle2, UserPlus, LogIn, ExternalLink,
-  Clock, ShieldAlert, Sparkles, Sun, Moon
+  Clock, ShieldAlert, Sparkles, Sun, Moon, CreditCard
 } from 'lucide-react';
 import api from '@/api/client';
 import { fmtDateTime, userTimeZone } from '@/utils/formatDate';
@@ -13,6 +13,7 @@ import { fmtDateTime, userTimeZone } from '@/utils/formatDate';
 const NAV_ITEMS = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/users', label: 'Users & Accounts', icon: Users },
+  { path: '/payments', label: 'Payments & Revenue', icon: CreditCard },
   { path: '/live', label: 'Live Traffic Monitor', icon: Radio },
   { path: '/analytics', label: 'Analytics & Trends', icon: BarChart2 },
   { path: '/audit', label: 'Activity & Audit Log', icon: ScrollText },
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { path: '/messages', label: 'System Broadcasts', icon: MessageSquare },
   { path: '/settings', label: 'Platform Settings', icon: Settings },
 ];
+
 
 function AdminNotifDrawer({ onClose }: { onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);

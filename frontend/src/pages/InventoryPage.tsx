@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Currency } from '../types';
+import { Currency, UserSubscription } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
 import { 
   getInventoryApi, 
@@ -15,6 +15,8 @@ import { generateSmartItemCode } from '../utils/skuUtils';
 interface InventoryViewProps {
   currency?: Currency;
   searchQuery?: string;
+  subscription?: UserSubscription | null;
+  onOpenUpgrade?: (reason?: string, feature?: string) => void;
 }
 
 interface InventoryItem {
@@ -31,11 +33,18 @@ interface InventoryItem {
   branch_id?: string;
 }
 
-export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', searchQuery = '' }) => {
+export const InventoryView: React.FC<InventoryViewProps> = ({ 
+  currency = 'USD', 
+  searchQuery = '',
+  subscription,
+  onOpenUpgrade
+}) => {
   const currentUser = getStoredUser();
   const isSubUserWithBranch = Boolean(currentUser?.is_sub_user && currentUser?.branch_id);
 
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const isFreeTier = subscription?.plan_key === 'free' || (!subscription && true);
+  const isFreeLimitReached = Boolean(isFreeTier && items.length >= 2);
   const [isLoading, setIsLoading] = useState(true);
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -362,17 +371,55 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ currency = 'USD', 
               <span>{branches.find(b => b.id === currentUser?.branch_id)?.name || currentUser?.branch_name || 'Assigned Branch'}</span>
             </div>
           )}
+          {isFreeTier && (
+            <div style={{
+              fontSize: '0.78rem',
+              background: isFreeLimitReached ? 'rgba(239, 68, 68, 0.12)' : 'rgba(0, 212, 255, 0.08)',
+              border: `1px solid ${isFreeLimitReached ? 'rgba(239, 68, 68, 0.3)' : 'rgba(0, 212, 255, 0.2)'}`,
+              color: isFreeLimitReached ? '#f87171' : '#00d4ff',
+              padding: '4px 10px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              flexShrink: 0
+            }}>
+              <i className={isFreeLimitReached ? "fa-solid fa-lock" : "fa-solid fa-layer-group"}></i>
+              <span>{items.length} / 2 Items (Free{isFreeLimitReached ? ' Limit Reached' : ''})</span>
+            </div>
+          )}
+
           <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvImport} />
           <button
             className="action-btn-secondary"
-            onClick={() => csvInputRef.current?.click()}
+            onClick={() => {
+              if (isFreeLimitReached) {
+                if (onOpenUpgrade) {
+                  onOpenUpgrade('Free tier is limited to 2 inventory items. Upgrade to Starter or Pro for unlimited inventory uploads.', 'Inventory Import');
+                }
+                return;
+              }
+              csvInputRef.current?.click();
+            }}
             disabled={csvImporting}
             style={{ gap: '8px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', flexShrink: 0, whiteSpace: 'nowrap' }}
           >
             {csvImporting ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-file-import"></i>}
             {csvImporting ? 'Importing...' : 'Import CSV'}
           </button>
-          <button className="action-btn-primary" onClick={() => setIsModalOpen(true)} style={{ flexShrink: 0, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+          <button 
+            className="action-btn-primary" 
+            onClick={() => {
+              if (isFreeLimitReached) {
+                if (onOpenUpgrade) {
+                  onOpenUpgrade('Free tier is limited to 2 inventory items. Upgrade to Starter or Pro for unlimited SKU management.', 'Inventory Engine');
+                }
+                return;
+              }
+              setIsModalOpen(true);
+            }} 
+            style={{ flexShrink: 0, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+          >
             <i className="fa-solid fa-boxes-stacked"></i>
             <span>Add Inventory Item</span>
           </button>

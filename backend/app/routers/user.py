@@ -164,7 +164,18 @@ async def dispatch_business_summary(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Business notification delivery settings are restricted to business owners."
         )
+
+    user_id = current_user.get("user_id")
+    from app.routers.payments import get_user_subscription
+    sub = await get_user_subscription(user_id)
+    if not sub.get("entitlements", {}).get("business_summary"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Automated Business Summaries are available on Starter and Pro tiers. Upgrade to unlock daily executive reports."
+        )
+
     override = payload.model_dump(exclude_unset=True) if payload else {}
+
     from app.services.scheduler import dispatch_user_summary_notification
     return await dispatch_user_summary_notification(current_user, custom_override=override)
 

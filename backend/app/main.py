@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse
 
 from app.config import settings
 from app.database import connect_to_mongo, close_mongo_connection
-from app.routers import user, dashboard, transactions, voice, auth, storage, inventory, analytics, agent, support, business, spreadsheet, admin
+from app.routers import user, dashboard, transactions, voice, auth, storage, inventory, analytics, agent, support, business, spreadsheet, admin, payments
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -68,6 +68,10 @@ app.include_router(storage.router)
 app.include_router(business.router)
 app.include_router(spreadsheet.router)
 app.include_router(admin.router)
+app.include_router(payments.router)
+app.include_router(payments.admin_payments_router)
+
+
 
 
 # ── Static & Frontend ───────────────────────────────────────────
