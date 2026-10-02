@@ -272,33 +272,30 @@ export const getUserProfileApi = async (): Promise<any> => {
 };
 
 export const updateUserProfileApi = async (updateData: any): Promise<any> => {
+  const current = getStoredUser();
   const updated = await request<any>('/users/me', {
     method: 'PUT',
     body: JSON.stringify(updateData),
   });
-  setStoredUser({
-    user_id: updated.user_id,
-    name: updated.name,
-    email: updated.email,
-    role: updated.role,
-    company: updated.company,
-    currency: updated.currency || 'USD',
-    salary: updated.salary,
-    income_frequency: updated.income_frequency,
-    location: updated.location,
-    avatar_url: updated.avatar_url,
-    personality: updated.personality,
-    theme: updated.theme,
-    notification_settings: updated.notification_settings,
-    is_sub_user: updated.is_sub_user,
-    owner_id: updated.owner_id,
-    role_id: updated.role_id,
-    branch_id: updated.branch_id,
-    branch_name: updated.branch_name,
-    permissions: updated.permissions,
-    must_change_password: updated.must_change_password,
-  });
-  return updated;
+  const merged = {
+    ...current,
+    ...updated,
+    user_id: updated.user_id || current?.user_id,
+    name: updated.name || current?.name,
+    email: updated.email || current?.email,
+    role: updated.role !== undefined ? updated.role : current?.role,
+    company: updated.company !== undefined ? updated.company : current?.company,
+    currency: updated.currency || current?.currency || 'USD',
+    is_sub_user: updated.is_sub_user !== undefined ? updated.is_sub_user : current?.is_sub_user,
+    owner_id: updated.owner_id || current?.owner_id,
+    role_id: updated.role_id || current?.role_id,
+    branch_id: updated.branch_id || current?.branch_id,
+    branch_name: updated.branch_name || current?.branch_name,
+    permissions: (updated.permissions && updated.permissions.length > 0) ? updated.permissions : current?.permissions,
+    must_change_password: updated.must_change_password !== undefined ? updated.must_change_password : current?.must_change_password,
+  };
+  setStoredUser(merged);
+  return merged;
 };
 
 export const changePasswordApi = async (

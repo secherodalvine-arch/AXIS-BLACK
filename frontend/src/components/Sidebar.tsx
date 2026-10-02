@@ -23,8 +23,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   user,
   subscription
 }) => {
-  const isOwner = !user?.is_sub_user;
-  const perms = user?.permissions || [];
+  const isOwner = user?.is_sub_user !== true;
+  const perms = (user?.permissions && user.permissions.length > 0)
+    ? user.permissions
+    : (isOwner ? [] : ['dashboard', 'inventory', 'analytics', 'transactions', 'spreadsheet', 'agent', 'activities', 'forecast']);
   const canAccess = (perm: string) => isOwner || perms.includes(perm);
 
   return (

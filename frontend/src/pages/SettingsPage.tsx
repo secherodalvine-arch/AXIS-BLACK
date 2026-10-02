@@ -140,6 +140,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     return () => { mounted = false; };
   }, []);
 
+  const buildMergedUser = (updated: any): UserProfile => {
+    return {
+      ...(user || {}),
+      ...(updated || {}),
+      user_id: updated?.user_id || user?.user_id || 'usr_active',
+      name: updated?.name || user?.name || '',
+      email: updated?.email || user?.email || '',
+      role: updated?.role !== undefined ? updated.role : user?.role,
+      company: updated?.company !== undefined ? updated.company : user?.company,
+      currency: (updated?.currency || user?.currency || 'USD') as Currency,
+      avatar_url: updated?.avatar_url !== undefined ? updated.avatar_url : user?.avatar_url,
+      theme: updated?.theme || user?.theme,
+      notification_settings: updated?.notification_settings || user?.notification_settings,
+      is_sub_user: updated?.is_sub_user !== undefined ? updated.is_sub_user : user?.is_sub_user,
+      owner_id: updated?.owner_id || user?.owner_id,
+      role_id: updated?.role_id || user?.role_id,
+      branch_id: updated?.branch_id || user?.branch_id,
+      branch_name: updated?.branch_name || user?.branch_name,
+      permissions: (updated?.permissions && updated.permissions.length > 0) ? updated.permissions : user?.permissions,
+    };
+  };
+
   const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -160,23 +182,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         });
         
         if (onUserUpdate && updatedUserDoc) {
-          onUserUpdate({
-            user_id: updatedUserDoc.user_id || user?.user_id || 'usr_active',
-            name: updatedUserDoc.name,
-            email: updatedUserDoc.email,
-            role: updatedUserDoc.role,
-            company: updatedUserDoc.company,
-            currency: updatedUserDoc.currency as Currency,
-            avatar_url: updatedUserDoc.avatar_url,
-            theme: updatedUserDoc.theme,
-            notification_settings: updatedUserDoc.notification_settings,
-            is_sub_user: updatedUserDoc.is_sub_user,
-            owner_id: updatedUserDoc.owner_id,
-            role_id: updatedUserDoc.role_id,
-            branch_id: updatedUserDoc.branch_id,
-            branch_name: updatedUserDoc.branch_name,
-            permissions: updatedUserDoc.permissions,
-          });
+          onUserUpdate(buildMergedUser(updatedUserDoc));
         }
         setSaveSuccess('Profile photo uploaded and saved successfully!');
         setTimeout(() => setSaveSuccess(null), 4000);
@@ -202,23 +208,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     try {
       const updated = await updateUserProfileApi({ theme: newTheme });
       if (onUserUpdate && updated) {
-        onUserUpdate({
-          user_id: updated.user_id || user?.user_id || 'usr_active',
-          name: updated.name,
-          email: updated.email,
-          role: updated.role,
-          company: updated.company,
-          currency: updated.currency as Currency,
-          avatar_url: updated.avatar_url,
-          theme: updated.theme,
-          notification_settings: updated.notification_settings,
-          is_sub_user: updated.is_sub_user,
-          owner_id: updated.owner_id,
-          role_id: updated.role_id,
-          branch_id: updated.branch_id,
-          branch_name: updated.branch_name,
-          permissions: updated.permissions,
-        });
+        onUserUpdate(buildMergedUser(updated));
       }
       setSaveSuccess(`Theme set to ${newTheme === 'light' ? 'Light' : newTheme === 'dark' ? 'Dark' : 'System'} mode.`);
       setTimeout(() => setSaveSuccess(null), 3000);
@@ -240,23 +230,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     try {
       const updated = await updateUserProfileApi({ currency: newCurrency });
       if (onUserUpdate && updated) {
-        onUserUpdate({
-          user_id: updated.user_id || user?.user_id || 'usr_active',
-          name: updated.name,
-          email: updated.email,
-          role: updated.role,
-          company: updated.company,
-          currency: updated.currency as Currency,
-          avatar_url: updated.avatar_url,
-          theme: updated.theme,
-          notification_settings: updated.notification_settings,
-          is_sub_user: updated.is_sub_user,
-          owner_id: updated.owner_id,
-          role_id: updated.role_id,
-          branch_id: updated.branch_id,
-          branch_name: updated.branch_name,
-          permissions: updated.permissions,
-        });
+        onUserUpdate(buildMergedUser(updated));
       }
     } catch (err) {
       console.error('Failed to persist currency change to DB:', err);
@@ -288,23 +262,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       setSaveSuccess('User profile updated successfully!');
       if (onUserUpdate && updated) {
-        onUserUpdate({
-          user_id: updated.user_id || user?.user_id || 'usr_active',
-          name: updated.name,
-          email: updated.email,
-          role: updated.role,
-          company: updated.company,
-          currency: updated.currency as Currency,
-          avatar_url: updated.avatar_url,
-          theme: updated.theme,
-          notification_settings: updated.notification_settings,
-          is_sub_user: updated.is_sub_user,
-          owner_id: updated.owner_id,
-          role_id: updated.role_id,
-          branch_id: updated.branch_id,
-          branch_name: updated.branch_name,
-          permissions: updated.permissions,
-        });
+        onUserUpdate(buildMergedUser(updated));
       }
       setTimeout(() => setSaveSuccess(null), 4000);
     } catch (err: any) {

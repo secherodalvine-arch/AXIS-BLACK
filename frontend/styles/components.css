@@ -3589,3 +3589,405 @@ body.light-theme .telemetry-popup-close:hover,
   color: #0f172a;
 }
 
+/* ==========================================================================
+   Customer Support Header Button & Modal (Dark & Light Theme)
+   ========================================================================== */
+
+/* Header Support Button */
+.support-header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px 0 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 212, 255, 0.35);
+  color: #ffffff;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  transition: all 0.2s ease;
+  line-height: normal;
+  text-decoration: none;
+}
+
+.support-header-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(0, 212, 255, 0.6);
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.support-header-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.support-header-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, #00d4ff, #7c5fe6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: #ffffff;
+}
+
+.support-online-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 1.5px solid #141418;
+  box-shadow: 0 0 6px #22c55e;
+}
+
+.support-header-text {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  line-height: 1.15;
+}
+
+.support-header-title {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.support-header-sub {
+  font-size: 0.62rem;
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.support-unread-badge {
+  font-size: 0.62rem;
+  font-weight: 800;
+  background: #00d4ff;
+  color: #000000;
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-left: 2px;
+}
+
+@media (max-width: 600px) {
+  .support-header-text {
+    display: none;
+  }
+  .support-header-btn {
+    padding: 0 7px;
+    width: 38px;
+    justify-content: center;
+  }
+}
+
+/* Light Theme Overrides for Support Header Button */
+body.light-theme .support-header-btn,
+.light-theme .support-header-btn,
+[data-theme="light"] .support-header-btn {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08) !important;
+}
+
+body.light-theme .support-header-btn:hover,
+.light-theme .support-header-btn:hover,
+[data-theme="light"] .support-header-btn:hover {
+  background: #f8fafc !important;
+  border-color: #0891b2 !important;
+  box-shadow: 0 0 10px rgba(8, 145, 178, 0.18) !important;
+}
+
+body.light-theme .support-header-title,
+.light-theme .support-header-title,
+[data-theme="light"] .support-header-title {
+  color: #0f172a !important;
+}
+
+body.light-theme .support-header-sub,
+.light-theme .support-header-sub,
+[data-theme="light"] .support-header-sub {
+  color: #16a34a !important;
+}
+
+body.light-theme .support-online-dot,
+.light-theme .support-online-dot,
+[data-theme="light"] .support-online-dot {
+  border-color: #ffffff !important;
+}
+
+/* Customer Support Modal Classes */
+.support-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.support-modal-card {
+  width: 740px;
+  max-width: 96vw;
+  height: 600px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: #0d1117;
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.95), 0 0 30px rgba(0, 212, 255, 0.12);
+  border-radius: 20px;
+  overflow: hidden;
+  color: #f3f4f6;
+}
+
+.support-modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(90deg, rgba(0, 212, 255, 0.08) 0%, rgba(124, 95, 230, 0.04) 100%);
+  flex-shrink: 0;
+}
+
+.support-modal-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+.support-modal-subtitle {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.support-modal-close-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  color: #9ca3af;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.support-modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.support-tabs-bar {
+  display: flex;
+  padding: 8px 20px;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+}
+
+.support-tab-btn {
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.support-tab-btn.active {
+  background: rgba(0, 212, 255, 0.18);
+  color: #00d4ff;
+}
+
+.support-thread-sidebar {
+  width: 230px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.support-chat-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: rgba(10, 14, 22, 0.6);
+}
+
+.support-input-field {
+  width: 100%;
+  padding: 10px 14px;
+  background: #141822;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 0.85rem;
+  box-sizing: border-box;
+}
+
+.support-input-field:focus {
+  outline: none;
+  border-color: #00d4ff;
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.2);
+}
+
+.support-channel-card {
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  transition: all 0.2s ease;
+}
+
+.support-channel-card:hover {
+  transform: translateY(-1px);
+}
+
+.support-faq-card {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.2s ease;
+}
+
+/* Light Theme Overrides for Customer Support Modal */
+body.light-theme .support-modal-backdrop,
+.light-theme .support-modal-backdrop,
+[data-theme="light"] .support-modal-backdrop {
+  background: rgba(15, 23, 42, 0.45) !important;
+}
+
+body.light-theme .support-modal-card,
+.light-theme .support-modal-card,
+[data-theme="light"] .support-modal-card {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.2), 0 0 25px rgba(2, 132, 199, 0.08) !important;
+  color: #0f172a !important;
+}
+
+body.light-theme .support-modal-header,
+.light-theme .support-modal-header,
+[data-theme="light"] .support-modal-header {
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+body.light-theme .support-modal-title,
+.light-theme .support-modal-title,
+[data-theme="light"] .support-modal-title {
+  color: #0f172a !important;
+}
+
+body.light-theme .support-modal-subtitle,
+.light-theme .support-modal-subtitle,
+[data-theme="light"] .support-modal-subtitle {
+  color: #475569 !important;
+}
+
+body.light-theme .support-modal-close-btn,
+.light-theme .support-modal-close-btn,
+[data-theme="light"] .support-modal-close-btn {
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #64748b !important;
+}
+
+body.light-theme .support-modal-close-btn:hover,
+.light-theme .support-modal-close-btn:hover,
+[data-theme="light"] .support-modal-close-btn:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+body.light-theme .support-tabs-bar,
+.light-theme .support-tabs-bar,
+[data-theme="light"] .support-tabs-bar {
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+body.light-theme .support-tab-btn,
+.light-theme .support-tab-btn,
+[data-theme="light"] .support-tab-btn {
+  color: #64748b !important;
+}
+
+body.light-theme .support-tab-btn.active,
+.light-theme .support-tab-btn.active,
+[data-theme="light"] .support-tab-btn.active {
+  background: rgba(8, 145, 178, 0.12) !important;
+  color: #0891b2 !important;
+}
+
+body.light-theme .support-thread-sidebar,
+.light-theme .support-thread-sidebar,
+[data-theme="light"] .support-thread-sidebar {
+  background: #f8fafc !important;
+  border-right: 1px solid #e2e8f0 !important;
+}
+
+body.light-theme .support-chat-panel,
+.light-theme .support-chat-panel,
+[data-theme="light"] .support-chat-panel {
+  background: #ffffff !important;
+}
+
+body.light-theme .support-input-field,
+.light-theme .support-input-field,
+[data-theme="light"] .support-input-field {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+body.light-theme .support-channel-card,
+.light-theme .support-channel-card,
+[data-theme="light"] .support-channel-card {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+body.light-theme .support-faq-card,
+.light-theme .support-faq-card,
+[data-theme="light"] .support-faq-card {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+

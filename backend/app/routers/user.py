@@ -71,6 +71,8 @@ async def update_user_profile(payload: UserProfileUpdate, current_user: dict = D
         if updated_doc:
             updated_doc.pop("_id", None)
             updated_doc.pop("hashed_password", None)
+            from app.auth.dependencies import resolve_user_team_context
+            updated_doc = await resolve_user_team_context(updated_doc)
             return updated_doc
 
     current_user.update(updates)
@@ -81,6 +83,8 @@ async def update_user_profile(payload: UserProfileUpdate, current_user: dict = D
             if u_val.get("email") == email:
                 u_val.update(updates)
     db_manager.save_memory_store()
+    from app.auth.dependencies import resolve_user_team_context
+    current_user = await resolve_user_team_context(current_user)
     current_user.pop("hashed_password", None)
     return current_user
 

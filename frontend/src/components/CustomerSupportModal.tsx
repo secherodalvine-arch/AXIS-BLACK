@@ -3,8 +3,7 @@ import {
   getMySupportThreadsApi,
   replySupportThreadApi,
   sendSupportMessageApi,
-  SupportThread,
-  SupportMessageItem
+  SupportThread
 } from '../utils/api';
 import { formatNotificationTime } from '../utils/dateUtils';
 
@@ -97,7 +96,6 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
       const res = await replySupportThreadApi(activeThread.id, textToSend);
       if (res && res.data) {
         setReplyText('');
-        // Update local state immediately
         setThreads(prev =>
           prev.map(t =>
             t.id === activeThread.id
@@ -132,7 +130,7 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
         message: newMessage.trim(),
       });
 
-      setFeedbackMsg({ type: 'success', text: 'Inquiry dispatched to Axis Concierge desk.' });
+      setFeedbackMsg({ type: 'success', text: 'Message sent to customer support. Our team will reply shortly.' });
       setNewSubject('');
       setNewMessage('');
       setIsCreatingNew(false);
@@ -144,7 +142,7 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
         await fetchThreads(true);
       }
     } catch (err: any) {
-      setFeedbackMsg({ type: 'error', text: err.message || 'Could not dispatch ticket. Please try again.' });
+      setFeedbackMsg({ type: 'error', text: err.message || 'Could not send message. Please try again.' });
     } finally {
       setSending(false);
     }
@@ -154,62 +152,26 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
 
   return (
     <div
-      className="modal-overlay active"
-      style={{
-        zIndex: 1500,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-        background: 'rgba(0, 0, 0, 0.75)',
-        backdropFilter: 'blur(8px)',
-        position: 'fixed',
-        inset: 0
-      }}
+      className="support-modal-backdrop"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div
-        className="glass-card"
-        style={{
-          width: '740px',
-          maxWidth: '96vw',
-          height: '620px',
-          maxHeight: '92vh',
-          display: 'flex',
-          flexDirection: 'column',
-          background: 'var(--dropdown-bg, #0d1117)',
-          border: '1px solid var(--dropdown-border, rgba(0, 212, 255, 0.35))',
-          boxShadow: '0 24px 80px rgba(0, 0, 0, 0.95), 0 0 40px rgba(0, 212, 255, 0.15)',
-          borderRadius: '20px',
-          overflow: 'hidden'
-        }}
-      >
+      <div className="support-modal-card">
         {/* Top Header */}
-        <div
-          style={{
-            padding: '16px 20px',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: 'linear-gradient(90deg, rgba(0, 212, 255, 0.08) 0%, rgba(124, 95, 230, 0.04) 100%)',
-            flexShrink: 0
-          }}
-        >
+        <div className="support-modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div
               style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '12px',
+                width: '38px',
+                height: '38px',
+                borderRadius: '10px',
                 background: 'linear-gradient(135deg, #00d4ff, #7c5fe6)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: '#fff',
-                fontSize: '1.1rem',
+                fontSize: '1rem',
                 boxShadow: '0 0 15px rgba(0, 212, 255, 0.4)',
                 flexShrink: 0
               }}
@@ -218,8 +180,8 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#ffffff', fontFamily: 'Plus Jakarta Sans' }}>
-                  Axis Concierge &amp; Support Desk
+                <h3 className="support-modal-title">
+                  Customer Support Desk
                 </h3>
                 <span
                   style={{
@@ -230,9 +192,9 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                     fontWeight: 700,
                     padding: '2px 8px',
                     borderRadius: '12px',
-                    background: 'rgba(74, 222, 128, 0.15)',
-                    color: '#4ade80',
-                    border: '1px solid rgba(74, 222, 128, 0.3)'
+                    background: 'rgba(34, 197, 94, 0.15)',
+                    color: '#22c55e',
+                    border: '1px solid rgba(34, 197, 94, 0.3)'
                   }}
                 >
                   <span
@@ -240,79 +202,45 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                       width: '6px',
                       height: '6px',
                       borderRadius: '50%',
-                      background: '#4ade80',
-                      boxShadow: '0 0 6px #4ade80'
+                      background: '#22c55e',
+                      boxShadow: '0 0 6px #22c55e'
                     }}
                   />
                   ONLINE
                 </span>
               </div>
-              <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
-                24/7 Financial operations concierge &bull; Direct access to enterprise desk
+              <p className="support-modal-subtitle">
+                24/7 Financial operations support
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '10px',
-              width: '32px',
-              height: '32px',
-              color: '#9ca3af',
-              fontSize: '1.2rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
-            }}
+            className="support-modal-close-btn"
             title="Close Support Desk"
+            aria-label="Close"
           >
             &times;
           </button>
         </div>
 
         {/* Tab Switcher */}
-        <div
-          style={{
-            display: 'flex',
-            padding: '8px 20px',
-            gap: '8px',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-            background: 'rgba(0, 0, 0, 0.25)',
-            flexShrink: 0
-          }}
-        >
+        <div className="support-tabs-bar">
           <button
             onClick={() => setActiveTab('chat')}
-            style={{
-              padding: '6px 14px',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              background: activeTab === 'chat' ? 'rgba(0, 212, 255, 0.2)' : 'transparent',
-              color: activeTab === 'chat' ? '#00d4ff' : '#9ca3af',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.15s ease'
-            }}
+            className={`support-tab-btn ${activeTab === 'chat' ? 'active' : ''}`}
           >
             <i className="fa-solid fa-comments"></i>
-            <span>Live Inquiries &amp; Tickets</span>
+            <span>Messages</span>
             {threads.length > 0 && (
               <span
                 style={{
                   fontSize: '0.65rem',
                   padding: '1px 6px',
                   borderRadius: '10px',
-                  background: activeTab === 'chat' ? '#00d4ff' : 'rgba(255, 255, 255, 0.1)',
-                  color: activeTab === 'chat' ? '#000' : '#fff',
+                  background: activeTab === 'chat' ? '#00d4ff' : 'rgba(255, 255, 255, 0.12)',
+                  color: activeTab === 'chat' ? '#000' : 'inherit',
                   fontWeight: 700
                 }}
               >
@@ -323,20 +251,7 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
 
           <button
             onClick={() => setActiveTab('contact')}
-            style={{
-              padding: '6px 14px',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              background: activeTab === 'contact' ? 'rgba(0, 212, 255, 0.2)' : 'transparent',
-              color: activeTab === 'contact' ? '#00d4ff' : '#9ca3af',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.15s ease'
-            }}
+            className={`support-tab-btn ${activeTab === 'contact' ? 'active' : ''}`}
           >
             <i className="fa-solid fa-address-book"></i>
             <span>Direct Channels</span>
@@ -344,23 +259,10 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
 
           <button
             onClick={() => setActiveTab('faq')}
-            style={{
-              padding: '6px 14px',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              background: activeTab === 'faq' ? 'rgba(0, 212, 255, 0.2)' : 'transparent',
-              color: activeTab === 'faq' ? '#00d4ff' : '#9ca3af',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.15s ease'
-            }}
+            className={`support-tab-btn ${activeTab === 'faq' ? 'active' : ''}`}
           >
             <i className="fa-solid fa-circle-question"></i>
-            <span>FAQ &amp; Knowledgebase</span>
+            <span>Help &amp; FAQs</span>
           </button>
         </div>
 
@@ -369,17 +271,8 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
           {/* TAB 1: LIVE CHAT & TICKETS */}
           {activeTab === 'chat' && (
             <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-              {/* Thread list sidebar (if multiple tickets or on demand) */}
-              <div
-                style={{
-                  width: '230px',
-                  borderRight: '1px solid rgba(255, 255, 255, 0.08)',
-                  background: 'rgba(0, 0, 0, 0.2)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  flexShrink: 0
-                }}
-              >
+              {/* Thread list sidebar */}
+              <div className="support-thread-sidebar">
                 <div style={{ padding: '10px', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
                   <button
                     onClick={() => {
@@ -403,18 +296,18 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                       transition: 'all 0.2s ease'
                     }}
                   >
-                    <i className="fa-solid fa-plus"></i> New Inquiry
+                    <i className="fa-solid fa-plus"></i> New Message
                   </button>
                 </div>
 
                 <div style={{ flex: 1, overflowY: 'auto', padding: '6px' }}>
                   {loading && threads.length === 0 ? (
-                    <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '0.75rem' }}>
-                      <i className="fa-solid fa-spinner fa-spin" style={{ marginRight: '6px' }}></i> Loading threads...
+                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted, #9ca3af)', fontSize: '0.75rem' }}>
+                      <i className="fa-solid fa-spinner fa-spin" style={{ marginRight: '6px' }}></i> Loading...
                     </div>
                   ) : threads.length === 0 ? (
-                    <div style={{ padding: '20px 10px', textAlign: 'center', color: '#64748b', fontSize: '0.75rem' }}>
-                      No support tickets yet. Click "New Inquiry" above to chat with concierge.
+                    <div style={{ padding: '20px 10px', textAlign: 'center', color: 'var(--text-dim, #64748b)', fontSize: '0.75rem' }}>
+                      No messages yet. Click "New Message" to chat with support.
                     </div>
                   ) : (
                     threads.map(t => {
@@ -443,14 +336,14 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                               style={{
                                 fontSize: '0.78rem',
                                 fontWeight: 700,
-                                color: isSelected ? '#00d4ff' : '#ffffff',
+                                color: isSelected ? '#00d4ff' : 'inherit',
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 maxWidth: '130px'
                               }}
                             >
-                              {t.subject || 'Support Ticket'}
+                              {t.subject || 'Support Request'}
                             </span>
                             <span
                               style={{
@@ -459,16 +352,16 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                                 borderRadius: '6px',
                                 fontWeight: 600,
                                 background: t.status === 'resolved' ? 'rgba(74, 222, 128, 0.15)' : t.status === 'in_progress' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(251, 191, 36, 0.15)',
-                                color: t.status === 'resolved' ? '#4ade80' : t.status === 'in_progress' ? '#00d4ff' : '#fbbf24'
+                                color: t.status === 'resolved' ? '#22c55e' : t.status === 'in_progress' ? '#00d4ff' : '#fbbf24'
                               }}
                             >
                               {t.status === 'in_progress' ? 'Active' : t.status}
                             </span>
                           </div>
-                          <div style={{ fontSize: '0.7rem', color: '#9ca3af', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {lastMsg ? (lastMsg.sender === 'admin' ? `Admin: ${lastMsg.text}` : `You: ${lastMsg.text}`) : 'No messages'}
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted, #9ca3af)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {lastMsg ? (lastMsg.sender === 'admin' ? `Support: ${lastMsg.text}` : `You: ${lastMsg.text}`) : 'No messages'}
                           </div>
-                          <div style={{ fontSize: '0.62rem', color: '#64748b', marginTop: '3px', fontFamily: 'JetBrains Mono' }}>
+                          <div style={{ fontSize: '0.62rem', color: 'var(--text-dim, #64748b)', marginTop: '3px', fontFamily: 'JetBrains Mono, monospace' }}>
                             {formatNotificationTime(t.updated_at || t.created_at)}
                           </div>
                         </div>
@@ -479,22 +372,22 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
               </div>
 
               {/* Main Chat / New Ticket Panel */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'rgba(10, 14, 22, 0.6)' }}>
+              <div className="support-chat-panel">
                 {isCreatingNew ? (
                   /* NEW TICKET FORM */
                   <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#ffffff' }}>
+                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'inherit' }}>
                         <i className="fa-solid fa-pen-to-square" style={{ color: '#00d4ff', marginRight: '8px' }}></i>
-                        Start a Direct Support Inquiry
+                        Send a Message to Support
                       </h4>
                       {threads.length > 0 && (
                         <button
                           type="button"
                           onClick={() => setIsCreatingNew(false)}
-                          style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '0.75rem', cursor: 'pointer' }}
+                          style={{ background: 'none', border: 'none', color: 'var(--text-muted, #9ca3af)', fontSize: '0.75rem', cursor: 'pointer' }}
                         >
-                          &larr; Back to ongoing chat
+                          &larr; Back to conversation
                         </button>
                       )}
                     </div>
@@ -507,8 +400,8 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                           fontSize: '0.8rem',
                           marginBottom: '16px',
                           background: feedbackMsg.type === 'success' ? 'rgba(74, 222, 128, 0.12)' : 'rgba(255, 142, 142, 0.12)',
-                          color: feedbackMsg.type === 'success' ? '#4ade80' : '#ff8e8e',
-                          border: feedbackMsg.type === 'success' ? '1px solid rgba(74, 222, 128, 0.3)' : '1px solid rgba(255, 142, 142, 0.3)'
+                          color: feedbackMsg.type === 'success' ? '#22c55e' : '#ef4444',
+                          border: feedbackMsg.type === 'success' ? '1px solid rgba(74, 222, 128, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'
                         }}
                       >
                         {feedbackMsg.text}
@@ -518,16 +411,15 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                     <form onSubmit={handleCreateTicket} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                       {/* Topic chips */}
                       <div>
-                        <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9ca3af', display: 'block', marginBottom: '6px' }}>
-                          Select Inquiry Category
+                        <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted, #9ca3af)', display: 'block', marginBottom: '6px' }}>
+                          Category
                         </label>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                           {[
                             { key: 'billing', label: 'Billing & Receipt' },
                             { key: 'support', label: 'Technical Support' },
                             { key: 'team', label: 'Team & Permissions' },
-                            { key: 'feature', label: 'Feature Request' },
-                            { key: 'concierge', label: 'Enterprise Concierge' },
+                            { key: 'general', label: 'General Inquiry' },
                           ].map(cat => (
                             <button
                               type="button"
@@ -538,9 +430,9 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                                 borderRadius: '16px',
                                 fontSize: '0.74rem',
                                 fontWeight: 600,
-                                border: newCategory === cat.key ? '1px solid #00d4ff' : '1px solid rgba(255, 255, 255, 0.1)',
-                                background: newCategory === cat.key ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                                color: newCategory === cat.key ? '#00d4ff' : '#9ca3af',
+                                border: newCategory === cat.key ? '1px solid #00d4ff' : '1px solid var(--glass-border, rgba(255, 255, 255, 0.1))',
+                                background: newCategory === cat.key ? 'rgba(0, 212, 255, 0.15)' : 'transparent',
+                                color: newCategory === cat.key ? '#00d4ff' : 'var(--text-muted, #9ca3af)',
                                 cursor: 'pointer'
                               }}
                             >
@@ -551,48 +443,31 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                       </div>
 
                       <div>
-                        <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9ca3af', display: 'block', marginBottom: '6px' }}>
-                          Subject / Inquiry Summary
+                        <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted, #9ca3af)', display: 'block', marginBottom: '6px' }}>
+                          Subject
                         </label>
                         <input
                           type="text"
                           required
                           value={newSubject}
                           onChange={(e) => setNewSubject(e.target.value)}
-                          placeholder="e.g. Question regarding recent Pro upgrade receipt or Runway projection..."
-                          style={{
-                            width: '100%',
-                            padding: '10px 14px',
-                            background: '#141822',
-                            border: '1px solid rgba(255, 255, 255, 0.12)',
-                            borderRadius: '10px',
-                            color: '#ffffff',
-                            fontSize: '0.85rem'
-                          }}
+                          placeholder="What can we help you with?"
+                          className="support-input-field"
                         />
                       </div>
 
                       <div>
-                        <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9ca3af', display: 'block', marginBottom: '6px' }}>
-                          Detailed Message
+                        <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted, #9ca3af)', display: 'block', marginBottom: '6px' }}>
+                          Message
                         </label>
                         <textarea
                           required
                           rows={4}
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
-                          placeholder="Please describe how we can assist you. Include any relevant transaction references or details..."
-                          style={{
-                            width: '100%',
-                            padding: '10px 14px',
-                            background: '#141822',
-                            border: '1px solid rgba(255, 255, 255, 0.12)',
-                            borderRadius: '10px',
-                            color: '#ffffff',
-                            fontSize: '0.85rem',
-                            resize: 'vertical',
-                            lineHeight: 1.5
-                          }}
+                          placeholder="Write your message or question here..."
+                          className="support-input-field"
+                          style={{ resize: 'vertical', lineHeight: 1.5 }}
                         />
                       </div>
 
@@ -602,13 +477,12 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                             type="button"
                             onClick={() => setIsCreatingNew(false)}
                             style={{
-                              padding: '10px 18px',
+                              padding: '8px 16px',
                               background: 'transparent',
-                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              border: '1px solid var(--glass-border, rgba(255, 255, 255, 0.15))',
                               borderRadius: '10px',
-                              color: '#9ca3af',
-                              fontSize: '0.82rem',
-                              fontWeight: 600,
+                              color: 'var(--text-muted, #9ca3af)',
+                              fontSize: '0.8rem',
                               cursor: 'pointer'
                             }}
                           >
@@ -619,31 +493,39 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                           type="submit"
                           disabled={sending || !newSubject.trim() || !newMessage.trim()}
                           style={{
-                            padding: '10px 22px',
+                            padding: '8px 20px',
                             background: 'linear-gradient(135deg, #00d4ff, #7c5fe6)',
                             border: 'none',
                             borderRadius: '10px',
                             color: '#ffffff',
-                            fontSize: '0.82rem',
+                            fontSize: '0.8rem',
                             fontWeight: 700,
-                            cursor: sending ? 'wait' : 'pointer',
-                            opacity: sending || !newSubject.trim() || !newMessage.trim() ? 0.6 : 1,
-                            boxShadow: '0 0 15px rgba(0, 212, 255, 0.3)'
+                            cursor: sending ? 'not-allowed' : 'pointer',
+                            opacity: sending ? 0.6 : 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
                           }}
                         >
                           {sending ? (
-                            <span><i className="fa-solid fa-spinner fa-spin"></i> Dispatching...</span>
+                            <>
+                              <i className="fa-solid fa-spinner fa-spin"></i>
+                              <span>Sending...</span>
+                            </>
                           ) : (
-                            <span><i className="fa-solid fa-paper-plane"></i> Send to Support</span>
+                            <>
+                              <i className="fa-solid fa-paper-plane"></i>
+                              <span>Send Message</span>
+                            </>
                           )}
                         </button>
                       </div>
                     </form>
                   </div>
                 ) : activeThread ? (
-                  /* ACTIVE THREAD CONVERSATION */
+                  /* CONVERSATION THREAD VIEW */
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                    {/* Thread header */}
+                    {/* Active Thread Banner */}
                     <div
                       style={{
                         padding: '12px 18px',
@@ -651,72 +533,44 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        background: 'rgba(0, 0, 0, 0.15)',
+                        background: 'rgba(0, 0, 0, 0.1)',
                         flexShrink: 0
                       }}
                     >
                       <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#ffffff' }}>
-                            {activeThread.subject}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: '0.65rem',
-                              fontWeight: 700,
-                              padding: '2px 8px',
-                              borderRadius: '6px',
-                              background: activeThread.status === 'resolved' ? 'rgba(74, 222, 128, 0.15)' : 'rgba(0, 212, 255, 0.15)',
-                              color: activeThread.status === 'resolved' ? '#4ade80' : '#00d4ff',
-                              textTransform: 'uppercase'
-                            }}
-                          >
-                            {activeThread.status}
-                          </span>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'inherit' }}>
+                          {activeThread.subject}
                         </div>
-                        <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>
-                          Category: <span style={{ color: '#00d4ff', textTransform: 'capitalize' }}>{activeThread.label || 'support'}</span> &bull; Ticket ID: {activeThread.id}
-                        </span>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted, #9ca3af)' }}>
+                          Ticket ID: <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>{activeThread.id}</span>
+                        </div>
                       </div>
-
-                      <button
-                        onClick={() => fetchThreads(false)}
-                        title="Refresh Conversation"
+                      <span
                         style={{
-                          background: 'rgba(255, 255, 255, 0.04)',
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          fontSize: '0.68rem',
+                          padding: '3px 8px',
                           borderRadius: '8px',
-                          color: '#9ca3af',
-                          padding: '6px 10px',
-                          cursor: 'pointer',
-                          fontSize: '0.75rem'
+                          fontWeight: 700,
+                          background: activeThread.status === 'resolved' ? 'rgba(74, 222, 128, 0.15)' : 'rgba(0, 212, 255, 0.15)',
+                          color: activeThread.status === 'resolved' ? '#22c55e' : '#00d4ff',
+                          border: activeThread.status === 'resolved' ? '1px solid rgba(74, 222, 128, 0.3)' : '1px solid rgba(0, 212, 255, 0.3)'
                         }}
                       >
-                        <i className="fa-solid fa-arrows-rotate"></i>
-                      </button>
+                        {activeThread.status === 'in_progress' ? 'Active' : activeThread.status}
+                      </span>
                     </div>
 
-                    {/* Messages Scroll Area */}
-                    <div
-                      style={{
-                        flex: 1,
-                        overflowY: 'auto',
-                        padding: '18px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '14px'
-                      }}
-                    >
+                    {/* Chat Bubble Scroll Area */}
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {activeThread.messages && activeThread.messages.length > 0 ? (
-                        activeThread.messages.map((m: SupportMessageItem) => {
+                        activeThread.messages.map((m, idx) => {
                           const isAdmin = m.sender === 'admin';
                           return (
                             <div
-                              key={m.id}
+                              key={idx}
                               style={{
                                 display: 'flex',
                                 flexDirection: 'column',
-                                alignItems: isAdmin ? 'flex-start' : 'flex-end',
                                 maxWidth: '85%',
                                 alignSelf: isAdmin ? 'flex-start' : 'flex-end'
                               }}
@@ -728,7 +582,7 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                                   gap: '6px',
                                   marginBottom: '4px',
                                   fontSize: '0.7rem',
-                                  color: '#9ca3af'
+                                  color: 'var(--text-muted, #9ca3af)'
                                 }}
                               >
                                 {isAdmin ? (
@@ -749,13 +603,13 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                                     >
                                       A
                                     </span>
-                                    <strong style={{ color: '#00d4ff' }}>Axis Support Concierge</strong>
+                                    <strong style={{ color: '#00d4ff' }}>Axis Support</strong>
                                   </>
                                 ) : (
-                                  <strong style={{ color: '#e2e8f0' }}>You</strong>
+                                  <strong>You</strong>
                                 )}
                                 <span>&bull;</span>
-                                <span style={{ fontFamily: 'JetBrains Mono', fontSize: '0.65rem' }}>
+                                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.65rem' }}>
                                   {formatNotificationTime(m.timestamp)}
                                 </span>
                               </div>
@@ -764,14 +618,14 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                                 style={{
                                   padding: '12px 16px',
                                   borderRadius: isAdmin ? '4px 16px 16px 16px' : '16px 4px 16px 16px',
-                                  background: isAdmin ? 'linear-gradient(145deg, #121927, #162033)' : 'linear-gradient(145deg, #1e2638, #182234)',
-                                  border: isAdmin ? '1px solid rgba(0, 212, 255, 0.25)' : '1px solid rgba(255, 255, 255, 0.1)',
-                                  boxShadow: isAdmin ? '0 4px 20px rgba(0, 212, 255, 0.08)' : '0 4px 15px rgba(0, 0, 0, 0.3)',
-                                  color: '#ffffff',
+                                  background: isAdmin ? 'var(--bg-surface-high, #141b29)' : 'var(--bg-surface, #1e2638)',
+                                  border: isAdmin ? '1px solid rgba(0, 212, 255, 0.25)' : '1px solid var(--glass-border, rgba(255, 255, 255, 0.1))',
+                                  color: 'inherit',
                                   fontSize: '0.84rem',
                                   lineHeight: 1.55,
                                   whiteSpace: 'pre-wrap',
-                                  wordBreak: 'break-word'
+                                  wordBreak: 'break-word',
+                                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
                                 }}
                               >
                                 {m.text}
@@ -780,8 +634,8 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                           );
                         })
                       ) : (
-                        <div style={{ textAlign: 'center', color: '#64748b', padding: '40px 0', fontSize: '0.8rem' }}>
-                          No messages recorded in this conversation yet.
+                        <div style={{ textAlign: 'center', color: 'var(--text-dim, #64748b)', padding: '40px 0', fontSize: '0.8rem' }}>
+                          No messages in this conversation yet.
                         </div>
                       )}
                       <div ref={messagesEndRef} />
@@ -793,7 +647,7 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                       style={{
                         padding: '12px 16px',
                         borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-                        background: 'rgba(0, 0, 0, 0.3)',
+                        background: 'rgba(0, 0, 0, 0.15)',
                         display: 'flex',
                         gap: '10px',
                         alignItems: 'center',
@@ -804,17 +658,10 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                         type="text"
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
-                        placeholder="Type your message to Axis Concierge..."
+                        placeholder="Type a message..."
                         disabled={sending}
-                        style={{
-                          flex: 1,
-                          padding: '10px 16px',
-                          background: '#141822',
-                          border: '1px solid rgba(255, 255, 255, 0.14)',
-                          borderRadius: '12px',
-                          color: '#ffffff',
-                          fontSize: '0.84rem'
-                        }}
+                        className="support-input-field"
+                        style={{ flex: 1 }}
                       />
                       <button
                         type="submit"
@@ -823,7 +670,7 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                           padding: '10px 18px',
                           background: 'linear-gradient(135deg, #00d4ff, #7c5fe6)',
                           border: 'none',
-                          borderRadius: '12px',
+                          borderRadius: '10px',
                           color: '#ffffff',
                           fontSize: '0.84rem',
                           fontWeight: 700,
@@ -832,7 +679,6 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                           display: 'flex',
                           alignItems: 'center',
                           gap: '6px',
-                          boxShadow: '0 0 12px rgba(0, 212, 255, 0.3)',
                           flexShrink: 0
                         }}
                       >
@@ -862,43 +708,43 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                   >
                     <div
                       style={{
-                        width: '64px',
-                        height: '64px',
-                        borderRadius: '20px',
+                        width: '56px',
+                        height: '56px',
+                        borderRadius: '16px',
                         background: 'rgba(0, 212, 255, 0.1)',
                         border: '1px solid rgba(0, 212, 255, 0.3)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: '#00d4ff',
-                        fontSize: '1.8rem',
-                        marginBottom: '16px'
+                        fontSize: '1.6rem',
+                        marginBottom: '14px'
                       }}
                     >
                       <i className="fa-solid fa-comments"></i>
                     </div>
-                    <h4 style={{ margin: '0 0 6px', fontSize: '1.05rem', fontWeight: 700, color: '#ffffff' }}>
-                      Welcome to Axis Concierge
+                    <h4 style={{ margin: '0 0 6px', fontSize: '1.05rem', fontWeight: 700, color: 'inherit' }}>
+                      Welcome to Customer Support
                     </h4>
-                    <p style={{ margin: '0 0 20px', fontSize: '0.82rem', color: '#9ca3af', maxWidth: '380px' }}>
-                      Have a question regarding your subscription upgrade, ledger analytics, or team settings? Start a live conversation with our support team.
+                    <p style={{ margin: '0 0 18px', fontSize: '0.82rem', color: 'var(--text-muted, #9ca3af)', maxWidth: '380px' }}>
+                      Have a question about your subscription, payments, or account? Send us a message and our team will get back to you.
                     </p>
                     <button
                       onClick={() => setIsCreatingNew(true)}
                       style={{
-                        padding: '10px 24px',
+                        padding: '10px 22px',
                         background: 'linear-gradient(135deg, #00d4ff, #7c5fe6)',
                         border: 'none',
-                        borderRadius: '12px',
+                        borderRadius: '10px',
                         color: '#ffffff',
                         fontSize: '0.85rem',
                         fontWeight: 700,
                         cursor: 'pointer',
-                        boxShadow: '0 0 20px rgba(0, 212, 255, 0.4)'
+                        boxShadow: '0 0 20px rgba(0, 212, 255, 0.35)'
                       }}
                     >
                       <i className="fa-solid fa-pen-to-square" style={{ marginRight: '8px' }}></i>
-                      Start New Inquiry
+                      New Message
                     </button>
                   </div>
                 )}
@@ -906,31 +752,68 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
             </div>
           )}
 
-          {/* TAB 2: DIRECT CHANNELS */}
+          {/* TAB 2: DIRECT CHANNELS (Using Homepage Contact Details) */}
           {activeTab === 'contact' && (
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
               <div style={{ marginBottom: '20px' }}>
-                <h4 style={{ margin: '0 0 4px', fontSize: '1rem', fontWeight: 700, color: '#ffffff' }}>
-                  Enterprise Communication Channels
+                <h4 style={{ margin: '0 0 4px', fontSize: '1rem', fontWeight: 700, color: 'inherit' }}>
+                  Direct Support Channels
                 </h4>
-                <p style={{ margin: 0, fontSize: '0.78rem', color: '#9ca3af' }}>
-                  Direct contact endpoints for executive escalation, billing queries, and integration support.
+                <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)' }}>
+                  Reach our team directly via WhatsApp, email, or phone.
                 </p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px', marginBottom: '24px' }}>
-                {/* Email card */}
-                <div
-                  style={{
-                    padding: '16px',
-                    borderRadius: '14px',
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid rgba(0, 212, 255, 0.25)',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '14px'
-                  }}
-                >
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+                {/* WhatsApp Chat card */}
+                <div className="support-channel-card">
+                  <div
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '10px',
+                      background: 'rgba(34, 197, 94, 0.15)',
+                      color: '#22c55e',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '1.2rem',
+                      flexShrink: 0
+                    }}
+                  >
+                    <i className="fa-brands fa-whatsapp"></i>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'inherit' }}>WhatsApp Support</div>
+                    <div style={{ fontSize: '0.82rem', color: '#22c55e', marginTop: '2px', fontWeight: 600, fontFamily: 'JetBrains Mono, monospace' }}>
+                      +254 769 231 760
+                    </div>
+                    <p style={{ fontSize: '0.74rem', color: 'var(--text-muted, #9ca3af)', margin: '4px 0 10px' }}>
+                      Fast reply within minutes • Mon–Sat
+                    </p>
+                    <a
+                      href="https://wa.me/254769231760?text=Hello%20Axis%20Black%20Support"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-block',
+                        padding: '6px 14px',
+                        borderRadius: '8px',
+                        background: 'rgba(34, 197, 94, 0.15)',
+                        border: '1px solid rgba(34, 197, 94, 0.35)',
+                        color: '#22c55e',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        textDecoration: 'none'
+                      }}
+                    >
+                      Open WhatsApp &rarr;
+                    </a>
+                  </div>
+                </div>
+
+                {/* Email Support card */}
+                <div className="support-channel-card">
                   <div
                     style={{
                       width: '40px',
@@ -948,101 +831,34 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                     <i className="fa-solid fa-envelope"></i>
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff' }}>Concierge Email</div>
-                    <div style={{ fontSize: '0.78rem', color: '#00d4ff', marginTop: '2px', fontFamily: 'JetBrains Mono' }}>
-                      nairobi@axisblack.io
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'inherit' }}>Email Support</div>
+                    <div style={{ fontSize: '0.82rem', color: '#00d4ff', marginTop: '2px', fontWeight: 600 }}>
+                      secherodalvine@gmail.com
                     </div>
-                    <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '4px 0 10px' }}>
-                      Official responses within 1-2 business hours.
+                    <p style={{ fontSize: '0.74rem', color: 'var(--text-muted, #9ca3af)', margin: '4px 0 10px' }}>
+                      Direct email assistance • Response within business hours
                     </p>
                     <a
-                      href="mailto:nairobi@axisblack.io?subject=Axis%20Black%20Support%20Inquiry"
+                      href="mailto:secherodalvine@gmail.com?subject=Axis%20Black%20Support%20Inquiry"
                       style={{
                         display: 'inline-block',
-                        padding: '4px 12px',
-                        borderRadius: '6px',
+                        padding: '6px 14px',
+                        borderRadius: '8px',
                         background: 'rgba(0, 212, 255, 0.15)',
-                        border: '1px solid rgba(0, 212, 255, 0.3)',
+                        border: '1px solid rgba(0, 212, 255, 0.35)',
                         color: '#00d4ff',
-                        fontSize: '0.72rem',
-                        fontWeight: 600,
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
                         textDecoration: 'none'
                       }}
                     >
-                      Compose Email &rarr;
+                      Send Email &rarr;
                     </a>
                   </div>
                 </div>
 
-                {/* Direct Phone / WhatsApp card */}
-                <div
-                  style={{
-                    padding: '16px',
-                    borderRadius: '14px',
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid rgba(74, 222, 128, 0.25)',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '14px'
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '10px',
-                      background: 'rgba(74, 222, 128, 0.15)',
-                      color: '#4ade80',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '1.1rem',
-                      flexShrink: 0
-                    }}
-                  >
-                    <i className="fa-solid fa-phone"></i>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff' }}>Direct Line &amp; WhatsApp</div>
-                    <div style={{ fontSize: '0.78rem', color: '#4ade80', marginTop: '2px', fontFamily: 'JetBrains Mono' }}>
-                      +254 700 000 000
-                    </div>
-                    <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '4px 0 10px' }}>
-                      Available Mon–Fri: 08:00 – 18:00 EAT
-                    </p>
-                    <a
-                      href="https://wa.me/254700000000?text=Hello%20Axis%20Black%20Support"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        display: 'inline-block',
-                        padding: '4px 12px',
-                        borderRadius: '6px',
-                        background: 'rgba(74, 222, 128, 0.15)',
-                        border: '1px solid rgba(74, 222, 128, 0.3)',
-                        color: '#4ade80',
-                        fontSize: '0.72rem',
-                        fontWeight: 600,
-                        textDecoration: 'none'
-                      }}
-                    >
-                      Open WhatsApp &rarr;
-                    </a>
-                  </div>
-                </div>
-
-                {/* Physical Headquarters */}
-                <div
-                  style={{
-                    padding: '16px',
-                    borderRadius: '14px',
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid rgba(167, 139, 250, 0.25)',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '14px'
-                  }}
-                >
+                {/* Direct Phone Line */}
+                <div className="support-channel-card">
                   <div
                     style={{
                       width: '40px',
@@ -1057,31 +873,47 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                       flexShrink: 0
                     }}
                   >
-                    <i className="fa-solid fa-building"></i>
+                    <i className="fa-solid fa-phone"></i>
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff' }}>Regional Headquarters</div>
-                    <div style={{ fontSize: '0.78rem', color: '#e2e8f0', marginTop: '2px' }}>
-                      The Oval, Ring Road Parklands
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'inherit' }}>Phone &amp; SMS</div>
+                    <div style={{ fontSize: '0.82rem', color: '#a78bfa', marginTop: '2px', fontWeight: 600, fontFamily: 'JetBrains Mono, monospace' }}>
+                      +254 769 231 760
                     </div>
-                    <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '4px 0 0' }}>
-                      Westlands, Nairobi, Kenya &bull; Private Consultations by appointment.
+                    <p style={{ fontSize: '0.74rem', color: 'var(--text-muted, #9ca3af)', margin: '4px 0 10px' }}>
+                      Direct phone line for immediate support
                     </p>
+                    <a
+                      href="tel:+254769231760"
+                      style={{
+                        display: 'inline-block',
+                        padding: '6px 14px',
+                        borderRadius: '8px',
+                        background: 'rgba(167, 139, 250, 0.15)',
+                        border: '1px solid rgba(167, 139, 250, 0.35)',
+                        color: '#a78bfa',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        textDecoration: 'none'
+                      }}
+                    >
+                      Call Now &rarr;
+                    </a>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* TAB 3: FAQ */}
+          {/* TAB 3: FAQ (Simplified & Streamlined) */}
           {activeTab === 'faq' && (
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
               <div style={{ marginBottom: '18px' }}>
-                <h4 style={{ margin: '0 0 4px', fontSize: '1rem', fontWeight: 700, color: '#ffffff' }}>
+                <h4 style={{ margin: '0 0 4px', fontSize: '1rem', fontWeight: 700, color: 'inherit' }}>
                   Frequently Asked Questions
                 </h4>
-                <p style={{ margin: 0, fontSize: '0.78rem', color: '#9ca3af' }}>
-                  Instant answers to common billing, account tier, and collaborative access inquiries.
+                <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)' }}>
+                  Quick answers to common questions.
                 </p>
               </div>
 
@@ -1089,34 +921,26 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                 {[
                   {
                     q: 'How does upgrading my account benefit my team members?',
-                    a: 'All team members assigned to your business profile inherit your subscription tier immediately. When you upgrade to Starter or Pro, all team members gain access to advanced metrics, collaborative branch operations, and inventory features without requiring separate subscriptions.'
+                    a: 'When you upgrade your business to Starter or Pro, all team members assigned to your business profile automatically gain access to the same upgraded features without needing separate subscriptions.'
                   },
                   {
-                    q: 'How do I receive my payment receipt and tax invoice?',
-                    a: 'Upon successful payment verification (via M-Pesa STK push, Till approval, or Card), an official payment receipt is immediately dispatched to your account email address and saved as an in-app system notification.'
+                    q: 'How do I receive my payment receipt?',
+                    a: 'Upon successful payment verification, your official payment receipt is immediately emailed to you and saved in your notification drawer.'
                   },
                   {
-                    q: 'How do M-Pesa Till payments get verified?',
-                    a: 'When you submit your M-Pesa transaction reference (e.g. QBC123XYZ) under Buy Goods Till 3645270, our admin operations team reviews the payment in real time and approves the tier, instantly firing your activation email and receipt.'
+                    q: 'How do M-Pesa payments get verified?',
+                    a: 'After paying to Buy Goods Till 3645270, submit your M-Pesa transaction reference in the billing modal. Your payment is verified and your tier is immediately activated.'
                   },
                   {
-                    q: 'Can I extend my daily query limit when on the Pro tier?',
-                    a: 'Yes. Pro tier subscribers have access to a daily limit extension button in the billing console, granting extra daily AI financial agent interactions.'
+                    q: 'How do I contact customer support directly?',
+                    a: 'You can chat with us right here, message us on WhatsApp at +254 769 231 760, or email secherodalvine@gmail.com.'
                   }
                 ].map((faq, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: '14px 16px',
-                      borderRadius: '12px',
-                      background: 'rgba(255, 255, 255, 0.03)',
-                      border: '1px solid rgba(255, 255, 255, 0.08)'
-                    }}
-                  >
+                  <div key={idx} className="support-faq-card">
                     <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#00d4ff', marginBottom: '6px' }}>
                       {faq.q}
                     </div>
-                    <div style={{ fontSize: '0.78rem', color: '#cbd5e1', lineHeight: 1.55 }}>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted, #94a3b8)', lineHeight: 1.55 }}>
                       {faq.a}
                     </div>
                   </div>
