@@ -756,6 +756,135 @@ async def get_traffic_events(
         events = [clean_mongo_doc(d) for d in db_manager.memory_store.get("traffic_events", []) if not is_admin_session_dict(d)][:limit]
     return {"success": True, "data": events}
 
+@router.get("/traffic/history")
+async def get_traffic_history(
+    timeframe: str = Query("today", pattern="^(today|yesterday|7d|30d|all)$"),
+    scope: str = Query("all", pattern="^(all|homepage|app)$"),
+    event_type: Optional[str] = Query(None),
+    limit: int = Query(250, ge=1, le=1000),
+    admin: Dict[str, Any] = Depends(get_current_admin)
+):
+    """
+    Returns historical traffic sessions, visits, and telemetry events with
+    aggregated performance metrics filtered by timeframe (today, yesterday, 7d, 30d, all).
+    """
+    admin_filter = get_user_traffic_mongo_filter()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # 1. Time boundary calculations
+    time_filter = {}
+    if timeframe == "today":
+        time_filter = {"timestamp": {"$gte": today_start.isoformat()}}
+    elif timeframe == "yesterday":
+        yesterday_start = today_start - datetime.timedelta(days=1)
+        time_filter = {"timestamp": {"$gte": yesterday_start.isoformat(), "$lt": today_start.isoformat()}}
+    elif timeframe == "7d":
+        start_7d = now - datetime.timedelta(days=7)
+        time_filter = {"timestamp": {"$gte": start_7d.isoformat()}}
+    elif timeframe == "30d":
+        start_30d = now - datetime.timedelta(days=30)
+        time_filter = {"timestamp": {"$gte": start_30d.isoformat()}}
+
+    # 2. Scope filter (homepage vs in-app)
+    hp_regex = r"^/(home|features|pricing|security|contact|landing)?(\?.*)?$"
+    scope_filter = {}
+    if scope == "homepage":
+        scope_filter = {
+            "$or": [
+                {"event": {"$in": ["homepage_visit", "cta_click"]}},
+                {"page": {"$in": ["/", "/home", "", "/landing", "/features", "/pricing", "/security", "/contact"]}},
+                {"page": {"$regex": hp_regex, "$options": "i"}}
+            ]
+        }
+    elif scope == "app":
+        scope_filter = {
+            "$and": [
+                {"event": {"$nin": ["homepage_visit", "cta_click"]}},
+                {"page": {"$nin": ["/", "/home", "", "/landing", "/features", "/pricing", "/security", "/contact"]}}
+            ]
+        }
+
+    query_parts = [admin_filter]
+    if time_filter:
+        query_parts.append(time_filter)
+    if scope_filter:
+        query_parts.append(scope_filter)
+    if event_type and event_type != "all":
+        query_parts.append({"event": event_type})
+
+    combined_query = {"$and": query_parts} if len(query_parts) > 1 else query_parts[0] if query_parts else {}
+
+    events = []
+    if db_manager.is_connected and db_manager.db is not None:
+        docs = await db_manager.db.traffic_events.find(combined_query).sort("timestamp", -1).to_list(length=limit)
+        events = [clean_mongo_doc(d) for d in docs]
+    else:
+        all_ev = [e for e in db_manager.memory_store.get("traffic_events", []) if not is_admin_session_dict(e)]
+        filtered = []
+        for e in all_ev:
+            ts = e.get("timestamp", "")
+            if timeframe == "today" and ts < today_start.isoformat():
+                continue
+            elif timeframe == "yesterday":
+                yesterday_start = (today_start - datetime.timedelta(days=1)).isoformat()
+                if not (yesterday_start <= ts < today_start.isoformat()):
+                    continue
+            elif timeframe == "7d" and ts < (now - datetime.timedelta(days=7)).isoformat():
+                continue
+            elif timeframe == "30d" and ts < (now - datetime.timedelta(days=30)).isoformat():
+                continue
+
+            p = str(e.get("page", "")).lower()
+            ev_name = str(e.get("event", "")).lower()
+            is_hp = ev_name in ("homepage_visit", "cta_click") or p in ("/", "/home", "", "/landing", "/features", "/pricing", "/security", "/contact") or bool(re.match(hp_regex, p, re.IGNORECASE))
+            if scope == "homepage" and not is_hp:
+                continue
+            if scope == "app" and is_hp:
+                continue
+
+            if event_type and event_type != "all" and e.get("event") != event_type:
+                continue
+
+            filtered.append(clean_mongo_doc(e))
+        events = filtered[:limit]
+
+    # Compute summary metrics for this timeframe
+    total_events = len(events)
+    unique_visitors = len(set(
+        e.get("ip") if (e.get("ip") and e.get("ip") not in ("127.0.0.1", "localhost", "::1")) else (e.get("visitor_id") or e.get("identifier") or e.get("user_id") or f"anon-{i}")
+        for i, e in enumerate(events)
+    ))
+    page_views = sum(1 for e in events if e.get("event") in ("page_view", "homepage_visit", "view"))
+    cta_clicks = sum(1 for e in events if "cta" in str(e.get("event", "")).lower() or "click" in str(e.get("event", "")).lower())
+
+    desktop_cnt = sum(1 for e in events if str(e.get("device_type", "")).lower() == "desktop")
+    mobile_cnt = sum(1 for e in events if str(e.get("device_type", "")).lower() == "mobile")
+    tablet_cnt = sum(1 for e in events if str(e.get("device_type", "")).lower() == "tablet")
+
+    page_counts = {}
+    for e in events:
+        pg = e.get("page") or e.get("current_page") or "/"
+        page_counts[pg] = page_counts.get(pg, 0) + 1
+    top_pages_sorted = sorted([{"page": k, "count": v} for k, v in page_counts.items()], key=lambda x: x["count"], reverse=True)[:6]
+
+    summary = {
+        "timeframe": timeframe,
+        "scope": scope,
+        "total_records": total_events,
+        "unique_visitors": unique_visitors,
+        "page_views": page_views or total_events,
+        "cta_clicks": cta_clicks,
+        "devices": {
+            "desktop": desktop_cnt,
+            "mobile": mobile_cnt,
+            "tablet": tablet_cnt
+        },
+        "top_pages": top_pages_sorted
+    }
+
+    return {"success": True, "timeframe": timeframe, "summary": summary, "data": events}
+
 @router.websocket("/ws/{admin_id}")
 async def admin_websocket(websocket: WebSocket, admin_id: str, token: Optional[str] = Query(None)):
     if not token or not decode_admin_token(token):
