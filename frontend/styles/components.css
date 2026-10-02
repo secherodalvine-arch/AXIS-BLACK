@@ -3886,6 +3886,177 @@ body.light-theme .support-online-dot,
   transition: all 0.2s ease;
 }
 
+/* Support Chat Layout & Collapsible Drawer */
+.support-chat-wrapper {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.support-drawer-header {
+  display: none;
+  padding: 12px 14px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+}
+
+.support-drawer-close-btn {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.support-drawer-close-btn:hover {
+  color: #ffffff;
+}
+
+.support-drawer-backdrop {
+  display: none;
+}
+
+.support-drawer-toggle-btn {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: rgba(0, 212, 255, 0.12);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  color: #00d4ff;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+}
+
+.support-drawer-toggle-btn:hover {
+  background: rgba(0, 212, 255, 0.22);
+}
+
+.support-drawer-badge {
+  font-size: 0.62rem;
+  background: #00d4ff;
+  color: #000000;
+  padding: 1px 5px;
+  border-radius: 10px;
+  font-weight: 800;
+}
+
+.support-quick-compose-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #00d4ff, #7c5fe6);
+  border: none;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.support-bubble-admin {
+  background: #141b29;
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  color: #f3f4f6;
+}
+
+.support-bubble-user {
+  background: #1e2638;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f3f4f6;
+}
+
+/* Responsive behavior for small devices <= 768px */
+@media (max-width: 768px) {
+  .support-drawer-backdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 40;
+  }
+
+  .support-thread-sidebar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 280px;
+    max-width: 86%;
+    z-index: 50;
+    background: #0d1117 !important;
+    border-right: 1px solid rgba(0, 212, 255, 0.25) !important;
+    box-shadow: 12px 0 40px rgba(0, 0, 0, 0.85);
+    transform: translateX(-105%);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .support-thread-sidebar.drawer-open {
+    transform: translateX(0);
+  }
+
+  .support-drawer-header {
+    display: flex;
+  }
+
+  .support-drawer-toggle-btn {
+    display: inline-flex;
+  }
+
+  .support-chat-panel {
+    width: 100% !important;
+    flex: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .support-modal-backdrop {
+    padding: 0 !important;
+    align-items: stretch !important;
+  }
+
+  .support-modal-card {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100% !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    border: none !important;
+  }
+
+  .support-modal-header {
+    padding: 12px 14px !important;
+  }
+
+  .support-tabs-bar {
+    padding: 6px 10px !important;
+    gap: 4px !important;
+    overflow-x: auto;
+  }
+
+  .support-tab-btn {
+    padding: 5px 10px !important;
+    font-size: 0.74rem !important;
+    white-space: nowrap !important;
+  }
+}
+
 /* Light Theme Overrides for Customer Support Modal */
 body.light-theme .support-modal-backdrop,
 .light-theme .support-modal-backdrop,
@@ -3963,6 +4134,50 @@ body.light-theme .support-thread-sidebar,
   border-right: 1px solid #e2e8f0 !important;
 }
 
+@media (max-width: 768px) {
+  body.light-theme .support-thread-sidebar,
+  .light-theme .support-thread-sidebar,
+  [data-theme="light"] .support-thread-sidebar {
+    background: #ffffff !important;
+    border-right: 1px solid #cbd5e1 !important;
+    box-shadow: 10px 0 35px rgba(15, 23, 42, 0.15) !important;
+  }
+
+  body.light-theme .support-drawer-header,
+  .light-theme .support-drawer-header,
+  [data-theme="light"] .support-drawer-header {
+    background: #f1f5f9 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    color: #0f172a !important;
+  }
+
+  body.light-theme .support-drawer-close-btn,
+  .light-theme .support-drawer-close-btn,
+  [data-theme="light"] .support-drawer-close-btn {
+    color: #64748b !important;
+  }
+
+  body.light-theme .support-drawer-close-btn:hover,
+  .light-theme .support-drawer-close-btn:hover,
+  [data-theme="light"] .support-drawer-close-btn:hover {
+    color: #0f172a !important;
+  }
+
+  body.light-theme .support-drawer-toggle-btn,
+  .light-theme .support-drawer-toggle-btn,
+  [data-theme="light"] .support-drawer-toggle-btn {
+    background: rgba(8, 145, 178, 0.1) !important;
+    border-color: #0891b2 !important;
+    color: #0891b2 !important;
+  }
+
+  body.light-theme .support-drawer-backdrop,
+  .light-theme .support-drawer-backdrop,
+  [data-theme="light"] .support-drawer-backdrop {
+    background: rgba(15, 23, 42, 0.35) !important;
+  }
+}
+
 body.light-theme .support-chat-panel,
 .light-theme .support-chat-panel,
 [data-theme="light"] .support-chat-panel {
@@ -3989,5 +4204,21 @@ body.light-theme .support-faq-card,
 [data-theme="light"] .support-faq-card {
   background: #f8fafc !important;
   border: 1px solid #e2e8f0 !important;
+}
+
+body.light-theme .support-bubble-admin,
+.light-theme .support-bubble-admin,
+[data-theme="light"] .support-bubble-admin {
+  background: #f0fdf4 !important;
+  border: 1px solid #bbf7d0 !important;
+  color: #0f172a !important;
+}
+
+body.light-theme .support-bubble-user,
+.light-theme .support-bubble-user,
+[data-theme="light"] .support-bubble-user {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
 }
 

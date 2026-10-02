@@ -317,14 +317,16 @@ function AdminNotifDrawer({
         </div>
       </div>
 
-      {/* NOTIFICATION DETAIL MODAL (Matching user platform) */}
+      {/* NOTIFICATION DETAIL MODAL (Prominently displayed above notification drawer) */}
       {selectedNotif && (
         <div
-          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade"
+          style={{ zIndex: 100 }}
           onClick={() => setSelectedNotif(null)}
         >
           <div
-            className="w-full max-w-lg rounded-2xl bg-navy-900 border border-cyan-500/40 shadow-2xl p-6 flex flex-col gap-4 text-xs"
+            className="w-full max-w-lg rounded-2xl bg-navy-900 border border-cyan-500/40 shadow-2xl p-6 flex flex-col gap-4 text-xs relative"
+            style={{ zIndex: 101 }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -348,6 +350,7 @@ function AdminNotifDrawer({
               <button
                 onClick={() => setSelectedNotif(null)}
                 className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer"
+                title="Close alert detail"
               >
                 <X size={18} />
               </button>
@@ -363,19 +366,19 @@ function AdminNotifDrawer({
                 {selectedNotif.message}
               </div>
 
-              {selectedNotif.link && (
+              {(selectedNotif.link || selectedNotif.type === 'support' || selectedNotif.title?.toLowerCase().includes('message') || selectedNotif.title?.toLowerCase().includes('support')) && (
                 <div className="pt-1">
                   <button
                     onClick={() => {
-                      const link = selectedNotif.link!;
+                      const link = selectedNotif.link || '/messages';
                       setSelectedNotif(null);
                       onClose();
                       navigate(link);
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-semibold hover:bg-cyan-500/30 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-xs font-semibold hover:bg-cyan-500/30 transition-all cursor-pointer shadow-sm"
                   >
-                    <ExternalLink size={13} />
-                    <span>Navigate to {selectedNotif.link}</span>
+                    <MessageSquare size={14} />
+                    <span>Open in Customer Support ({selectedNotif.link || '/messages'}) &rarr;</span>
                   </button>
                 </div>
               )}
@@ -389,7 +392,7 @@ function AdminNotifDrawer({
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-semibold border border-rose-500/20 transition-colors cursor-pointer"
               >
                 <Trash2 size={14} />
-                <span>Delete</span>
+                <span>Delete Alert</span>
               </button>
 
               <button

@@ -28,6 +28,7 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [replyText, setReplyText] = useState('');
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   
   // New ticket state
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -270,13 +271,42 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           {/* TAB 1: LIVE CHAT & TICKETS */}
           {activeTab === 'chat' && (
-            <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-              {/* Thread list sidebar */}
-              <div className="support-thread-sidebar">
+            <div className="support-chat-wrapper">
+              {/* Mobile Drawer Backdrop */}
+              {mobileDrawerOpen && (
+                <div
+                  className="support-drawer-backdrop"
+                  onClick={() => setMobileDrawerOpen(false)}
+                />
+              )}
+
+              {/* Thread list sidebar / Mobile Collapsible Drawer */}
+              <div className={`support-thread-sidebar ${mobileDrawerOpen ? 'drawer-open' : ''}`}>
+                {/* Mobile Drawer Header */}
+                <div className="support-drawer-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <i className="fa-solid fa-inbox" style={{ color: '#00d4ff' }}></i>
+                    <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>Conversations</span>
+                    {threads.length > 0 && (
+                      <span className="support-drawer-badge">{threads.length}</span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMobileDrawerOpen(false)}
+                    className="support-drawer-close-btn"
+                    title="Close drawer"
+                  >
+                    &times;
+                  </button>
+                </div>
+
+                {/* New Message Button */}
                 <div style={{ padding: '10px', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
                   <button
                     onClick={() => {
                       setIsCreatingNew(true);
+                      setMobileDrawerOpen(false);
                       setFeedbackMsg(null);
                     }}
                     style={{
@@ -319,6 +349,7 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                           onClick={() => {
                             setSelectedThreadId(t.id);
                             setIsCreatingNew(false);
+                            setMobileDrawerOpen(false);
                             setFeedbackMsg(null);
                           }}
                           style={{
@@ -340,7 +371,7 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
-                                maxWidth: '130px'
+                                maxWidth: '140px'
                               }}
                             >
                               {t.subject || 'Support Request'}
@@ -375,19 +406,33 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
               <div className="support-chat-panel">
                 {isCreatingNew ? (
                   /* NEW TICKET FORM */
-                  <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'inherit' }}>
-                        <i className="fa-solid fa-pen-to-square" style={{ color: '#00d4ff', marginRight: '8px' }}></i>
-                        Send a Message to Support
-                      </h4>
+                  <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {threads.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setMobileDrawerOpen(true)}
+                            className="support-drawer-toggle-btn"
+                            title="Open conversations"
+                          >
+                            <i className="fa-solid fa-inbox"></i>
+                            <span className="support-drawer-btn-label">Inbox</span>
+                            <span className="support-drawer-badge">{threads.length}</span>
+                          </button>
+                        )}
+                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'inherit' }}>
+                          <i className="fa-solid fa-pen-to-square" style={{ color: '#00d4ff', marginRight: '6px' }}></i>
+                          Send a Message
+                        </h4>
+                      </div>
                       {threads.length > 0 && (
                         <button
                           type="button"
                           onClick={() => setIsCreatingNew(false)}
-                          style={{ background: 'none', border: 'none', color: 'var(--text-muted, #9ca3af)', fontSize: '0.75rem', cursor: 'pointer' }}
+                          style={{ background: 'none', border: 'none', color: '#00d4ff', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}
                         >
-                          &larr; Back to conversation
+                          &larr; Back to chat
                         </button>
                       )}
                     </div>
@@ -528,40 +573,73 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                     {/* Active Thread Banner */}
                     <div
                       style={{
-                        padding: '12px 18px',
+                        padding: '10px 16px',
                         borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         background: 'rgba(0, 0, 0, 0.1)',
-                        flexShrink: 0
+                        flexShrink: 0,
+                        gap: '8px'
                       }}
                     >
-                      <div>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'inherit' }}>
-                          {activeThread.subject}
-                        </div>
-                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted, #9ca3af)' }}>
-                          Ticket ID: <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>{activeThread.id}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                        <button
+                          type="button"
+                          onClick={() => setMobileDrawerOpen(true)}
+                          className="support-drawer-toggle-btn"
+                          title="Open conversations drawer"
+                        >
+                          <i className="fa-solid fa-inbox"></i>
+                          <span className="support-drawer-btn-label">Inbox</span>
+                          {threads.length > 0 && <span className="support-drawer-badge">{threads.length}</span>}
+                        </button>
+
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'inherit', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {activeThread.subject}
+                          </div>
+                          <div style={{ fontSize: '0.68rem', color: 'var(--text-muted, #9ca3af)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span>ID: <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>{activeThread.id.slice(0, 8)}</span></span>
+                            <span>&bull;</span>
+                            <span>{activeThread.messages?.length || 0} msgs</span>
+                          </div>
                         </div>
                       </div>
-                      <span
-                        style={{
-                          fontSize: '0.68rem',
-                          padding: '3px 8px',
-                          borderRadius: '8px',
-                          fontWeight: 700,
-                          background: activeThread.status === 'resolved' ? 'rgba(74, 222, 128, 0.15)' : 'rgba(0, 212, 255, 0.15)',
-                          color: activeThread.status === 'resolved' ? '#22c55e' : '#00d4ff',
-                          border: activeThread.status === 'resolved' ? '1px solid rgba(74, 222, 128, 0.3)' : '1px solid rgba(0, 212, 255, 0.3)'
-                        }}
-                      >
-                        {activeThread.status === 'in_progress' ? 'Active' : activeThread.status}
-                      </span>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                        <span
+                          style={{
+                            fontSize: '0.65rem',
+                            padding: '2px 7px',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            background: activeThread.status === 'resolved' ? 'rgba(74, 222, 128, 0.15)' : 'rgba(0, 212, 255, 0.15)',
+                            color: activeThread.status === 'resolved' ? '#22c55e' : '#00d4ff',
+                            border: activeThread.status === 'resolved' ? '1px solid rgba(74, 222, 128, 0.3)' : '1px solid rgba(0, 212, 255, 0.3)'
+                          }}
+                        >
+                          {activeThread.status === 'in_progress' ? 'Active' : activeThread.status}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsCreatingNew(true);
+                            setMobileDrawerOpen(false);
+                            setFeedbackMsg(null);
+                          }}
+                          className="support-quick-compose-btn"
+                          title="Start new message"
+                        >
+                          <i className="fa-solid fa-plus"></i>
+                          <span className="support-quick-compose-label">New</span>
+                        </button>
+                      </div>
                     </div>
 
                     {/* Chat Bubble Scroll Area */}
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {activeThread.messages && activeThread.messages.length > 0 ? (
                         activeThread.messages.map((m, idx) => {
                           const isAdmin = m.sender === 'admin';
@@ -571,7 +649,7 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                               style={{
                                 display: 'flex',
                                 flexDirection: 'column',
-                                maxWidth: '85%',
+                                maxWidth: '88%',
                                 alignSelf: isAdmin ? 'flex-start' : 'flex-end'
                               }}
                             >
@@ -580,8 +658,8 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                                   display: 'flex',
                                   alignItems: 'center',
                                   gap: '6px',
-                                  marginBottom: '4px',
-                                  fontSize: '0.7rem',
+                                  marginBottom: '3px',
+                                  fontSize: '0.68rem',
                                   color: 'var(--text-muted, #9ca3af)'
                                 }}
                               >
@@ -615,17 +693,15 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                               </div>
 
                               <div
+                                className={isAdmin ? 'support-bubble-admin' : 'support-bubble-user'}
                                 style={{
-                                  padding: '12px 16px',
-                                  borderRadius: isAdmin ? '4px 16px 16px 16px' : '16px 4px 16px 16px',
-                                  background: isAdmin ? 'var(--bg-surface-high, #141b29)' : 'var(--bg-surface, #1e2638)',
-                                  border: isAdmin ? '1px solid rgba(0, 212, 255, 0.25)' : '1px solid var(--glass-border, rgba(255, 255, 255, 0.1))',
-                                  color: 'inherit',
+                                  padding: '10px 14px',
+                                  borderRadius: isAdmin ? '4px 14px 14px 14px' : '14px 4px 14px 14px',
                                   fontSize: '0.84rem',
-                                  lineHeight: 1.55,
+                                  lineHeight: 1.5,
                                   whiteSpace: 'pre-wrap',
                                   wordBreak: 'break-word',
-                                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
+                                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)'
                                 }}
                               >
                                 {m.text}
@@ -645,11 +721,11 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                     <form
                       onSubmit={handleSendReply}
                       style={{
-                        padding: '12px 16px',
+                        padding: '10px 14px',
                         borderTop: '1px solid rgba(255, 255, 255, 0.08)',
                         background: 'rgba(0, 0, 0, 0.15)',
                         display: 'flex',
-                        gap: '10px',
+                        gap: '8px',
                         alignItems: 'center',
                         flexShrink: 0
                       }}
@@ -661,18 +737,18 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                         placeholder="Type a message..."
                         disabled={sending}
                         className="support-input-field"
-                        style={{ flex: 1 }}
+                        style={{ flex: 1, minWidth: 0 }}
                       />
                       <button
                         type="submit"
                         disabled={sending || !replyText.trim()}
                         style={{
-                          padding: '10px 18px',
+                          padding: '9px 16px',
                           background: 'linear-gradient(135deg, #00d4ff, #7c5fe6)',
                           border: 'none',
                           borderRadius: '10px',
                           color: '#ffffff',
-                          fontSize: '0.84rem',
+                          fontSize: '0.82rem',
                           fontWeight: 700,
                           cursor: sending || !replyText.trim() ? 'not-allowed' : 'pointer',
                           opacity: sending || !replyText.trim() ? 0.5 : 1,
@@ -687,7 +763,7 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                         ) : (
                           <>
                             <span>Send</span>
-                            <i className="fa-solid fa-paper-plane" style={{ fontSize: '0.75rem' }}></i>
+                            <i className="fa-solid fa-paper-plane" style={{ fontSize: '0.72rem' }}></i>
                           </>
                         )}
                       </button>
@@ -702,48 +778,48 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                       flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      padding: '30px',
+                      padding: '30px 16px',
                       textAlign: 'center'
                     }}
                   >
                     <div
                       style={{
-                        width: '56px',
-                        height: '56px',
-                        borderRadius: '16px',
+                        width: '52px',
+                        height: '52px',
+                        borderRadius: '14px',
                         background: 'rgba(0, 212, 255, 0.1)',
                         border: '1px solid rgba(0, 212, 255, 0.3)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: '#00d4ff',
-                        fontSize: '1.6rem',
-                        marginBottom: '14px'
+                        fontSize: '1.5rem',
+                        marginBottom: '12px'
                       }}
                     >
                       <i className="fa-solid fa-comments"></i>
                     </div>
-                    <h4 style={{ margin: '0 0 6px', fontSize: '1.05rem', fontWeight: 700, color: 'inherit' }}>
-                      Welcome to Customer Support
+                    <h4 style={{ margin: '0 0 6px', fontSize: '1rem', fontWeight: 700, color: 'inherit' }}>
+                      Customer Support
                     </h4>
-                    <p style={{ margin: '0 0 18px', fontSize: '0.82rem', color: 'var(--text-muted, #9ca3af)', maxWidth: '380px' }}>
-                      Have a question about your subscription, payments, or account? Send us a message and our team will get back to you.
+                    <p style={{ margin: '0 0 16px', fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', maxWidth: '340px' }}>
+                      Have a question or need assistance with your account? Send a message and our team will get back to you promptly.
                     </p>
                     <button
                       onClick={() => setIsCreatingNew(true)}
                       style={{
-                        padding: '10px 22px',
+                        padding: '9px 20px',
                         background: 'linear-gradient(135deg, #00d4ff, #7c5fe6)',
                         border: 'none',
                         borderRadius: '10px',
                         color: '#ffffff',
-                        fontSize: '0.85rem',
+                        fontSize: '0.82rem',
                         fontWeight: 700,
                         cursor: 'pointer',
-                        boxShadow: '0 0 20px rgba(0, 212, 255, 0.35)'
+                        boxShadow: '0 0 16px rgba(0, 212, 255, 0.35)'
                       }}
                     >
-                      <i className="fa-solid fa-pen-to-square" style={{ marginRight: '8px' }}></i>
+                      <i className="fa-solid fa-pen-to-square" style={{ marginRight: '6px' }}></i>
                       New Message
                     </button>
                   </div>
@@ -752,62 +828,62 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
             </div>
           )}
 
-          {/* TAB 2: DIRECT CHANNELS (Using Homepage Contact Details) */}
+          {/* TAB 2: DIRECT CHANNELS (Clean action cards, hidden raw phones/emails) */}
           {activeTab === 'contact' && (
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-              <div style={{ marginBottom: '20px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+              <div style={{ marginBottom: '18px' }}>
                 <h4 style={{ margin: '0 0 4px', fontSize: '1rem', fontWeight: 700, color: 'inherit' }}>
                   Direct Support Channels
                 </h4>
                 <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)' }}>
-                  Reach our team directly via WhatsApp, email, or phone.
+                  Reach our team directly via WhatsApp, email, or telephone.
                 </p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
                 {/* WhatsApp Chat card */}
                 <div className="support-channel-card">
                   <div
                     style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '10px',
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '12px',
                       background: 'rgba(34, 197, 94, 0.15)',
                       color: '#22c55e',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '1.2rem',
+                      fontSize: '1.25rem',
                       flexShrink: 0
                     }}
                   >
                     <i className="fa-brands fa-whatsapp"></i>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'inherit' }}>WhatsApp Support</div>
-                    <div style={{ fontSize: '0.82rem', color: '#22c55e', marginTop: '2px', fontWeight: 600, fontFamily: 'JetBrains Mono, monospace' }}>
-                      +254 769 231 760
-                    </div>
-                    <p style={{ fontSize: '0.74rem', color: 'var(--text-muted, #9ca3af)', margin: '4px 0 10px' }}>
-                      Fast reply within minutes • Mon–Sat
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'inherit' }}>WhatsApp Support</div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted, #9ca3af)', margin: '4px 0 12px', lineHeight: 1.45 }}>
+                      Instant messaging with support team • Fast response
                     </p>
                     <a
                       href="https://wa.me/254769231760?text=Hello%20Axis%20Black%20Support"
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{
-                        display: 'inline-block',
-                        padding: '6px 14px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '7px 14px',
                         borderRadius: '8px',
                         background: 'rgba(34, 197, 94, 0.15)',
                         border: '1px solid rgba(34, 197, 94, 0.35)',
                         color: '#22c55e',
-                        fontSize: '0.75rem',
+                        fontSize: '0.76rem',
                         fontWeight: 700,
                         textDecoration: 'none'
                       }}
                     >
-                      Open WhatsApp &rarr;
+                      <span>Open WhatsApp</span>
+                      <i className="fa-solid fa-arrow-up-right-from-square" style={{ fontSize: '0.7rem' }}></i>
                     </a>
                   </div>
                 </div>
@@ -816,88 +892,88 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                 <div className="support-channel-card">
                   <div
                     style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '10px',
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '12px',
                       background: 'rgba(0, 212, 255, 0.15)',
                       color: '#00d4ff',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '1.1rem',
+                      fontSize: '1.15rem',
                       flexShrink: 0
                     }}
                   >
                     <i className="fa-solid fa-envelope"></i>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'inherit' }}>Email Support</div>
-                    <div style={{ fontSize: '0.82rem', color: '#00d4ff', marginTop: '2px', fontWeight: 600 }}>
-                      secherodalvine@gmail.com
-                    </div>
-                    <p style={{ fontSize: '0.74rem', color: 'var(--text-muted, #9ca3af)', margin: '4px 0 10px' }}>
-                      Direct email assistance • Response within business hours
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'inherit' }}>Email Desk</div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted, #9ca3af)', margin: '4px 0 12px', lineHeight: 1.45 }}>
+                      Direct email assistance for billing, receipts, &amp; account queries
                     </p>
                     <a
                       href="mailto:secherodalvine@gmail.com?subject=Axis%20Black%20Support%20Inquiry"
                       style={{
-                        display: 'inline-block',
-                        padding: '6px 14px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '7px 14px',
                         borderRadius: '8px',
                         background: 'rgba(0, 212, 255, 0.15)',
                         border: '1px solid rgba(0, 212, 255, 0.35)',
                         color: '#00d4ff',
-                        fontSize: '0.75rem',
+                        fontSize: '0.76rem',
                         fontWeight: 700,
                         textDecoration: 'none'
                       }}
                     >
-                      Send Email &rarr;
+                      <span>Send Email</span>
+                      <i className="fa-solid fa-paper-plane" style={{ fontSize: '0.7rem' }}></i>
                     </a>
                   </div>
                 </div>
 
-                {/* Direct Phone Line */}
+                {/* Phone & SMS card */}
                 <div className="support-channel-card">
                   <div
                     style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '10px',
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '12px',
                       background: 'rgba(167, 139, 250, 0.15)',
                       color: '#a78bfa',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '1.1rem',
+                      fontSize: '1.15rem',
                       flexShrink: 0
                     }}
                   >
                     <i className="fa-solid fa-phone"></i>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'inherit' }}>Phone &amp; SMS</div>
-                    <div style={{ fontSize: '0.82rem', color: '#a78bfa', marginTop: '2px', fontWeight: 600, fontFamily: 'JetBrains Mono, monospace' }}>
-                      +254 769 231 760
-                    </div>
-                    <p style={{ fontSize: '0.74rem', color: 'var(--text-muted, #9ca3af)', margin: '4px 0 10px' }}>
-                      Direct phone line for immediate support
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'inherit' }}>Phone &amp; SMS</div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted, #9ca3af)', margin: '4px 0 12px', lineHeight: 1.45 }}>
+                      Voice call or text message assistance during operating hours
                     </p>
                     <a
                       href="tel:+254769231760"
                       style={{
-                        display: 'inline-block',
-                        padding: '6px 14px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '7px 14px',
                         borderRadius: '8px',
                         background: 'rgba(167, 139, 250, 0.15)',
                         border: '1px solid rgba(167, 139, 250, 0.35)',
                         color: '#a78bfa',
-                        fontSize: '0.75rem',
+                        fontSize: '0.76rem',
                         fontWeight: 700,
                         textDecoration: 'none'
                       }}
                     >
-                      Call Now &rarr;
+                      <span>Call Support</span>
+                      <i className="fa-solid fa-phone-volume" style={{ fontSize: '0.7rem' }}></i>
                     </a>
                   </div>
                 </div>
@@ -905,15 +981,15 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
             </div>
           )}
 
-          {/* TAB 3: FAQ (Simplified & Streamlined) */}
+          {/* TAB 3: FAQ (Strictly platform-accurate, important topics) */}
           {activeTab === 'faq' && (
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
               <div style={{ marginBottom: '18px' }}>
                 <h4 style={{ margin: '0 0 4px', fontSize: '1rem', fontWeight: 700, color: 'inherit' }}>
                   Frequently Asked Questions
                 </h4>
                 <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)' }}>
-                  Quick answers to common questions.
+                  Important platform guides and support answers.
                 </p>
               </div>
 
@@ -921,19 +997,23 @@ export const CustomerSupportModal: React.FC<CustomerSupportModalProps> = ({
                 {[
                   {
                     q: 'How does upgrading my account benefit my team members?',
-                    a: 'When you upgrade your business to Starter or Pro, all team members assigned to your business profile automatically gain access to the same upgraded features without needing separate subscriptions.'
+                    a: 'When you upgrade your business to Starter or Pro, all team members assigned to your business account automatically gain full access to the upgraded features and higher limits without separate subscriptions.'
                   },
                   {
-                    q: 'How do I receive my payment receipt?',
-                    a: 'Upon successful payment verification, your official payment receipt is immediately emailed to you and saved in your notification drawer.'
+                    q: 'How does payment and plan activation work?',
+                    a: 'Choose your desired tier on the Billing page and complete checkout via M-Pesa STK prompt or Card. Once the payment prompt confirms, your upgraded tier is activated immediately.'
                   },
                   {
-                    q: 'How do M-Pesa payments get verified?',
-                    a: 'After paying to Buy Goods Till 3645270, submit your M-Pesa transaction reference in the billing modal. Your payment is verified and your tier is immediately activated.'
+                    q: 'Where do I find my payment receipts?',
+                    a: 'Upon successful payment verification, your official payment receipt is immediately emailed to your registered address and also saved directly into your notification center.'
                   },
                   {
-                    q: 'How do I contact customer support directly?',
-                    a: 'You can chat with us right here, message us on WhatsApp at +254 769 231 760, or email secherodalvine@gmail.com.'
+                    q: 'How do I invite and manage team members?',
+                    a: 'Navigate to the Team or Settings section, click Add Team Member, enter their email address, and select their role. They will receive an invitation to access your organization.'
+                  },
+                  {
+                    q: 'How quickly does customer support respond to inquiries?',
+                    a: 'Support inquiries submitted via the Messages tab or direct channels are typically attended to within minutes during operating hours.'
                   }
                 ].map((faq, idx) => (
                   <div key={idx} className="support-faq-card">
