@@ -256,7 +256,7 @@ async def create_branch(
     if branches_limit != -1 and existing_count >= branches_limit:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Branch limit reached ({branches_limit} branch max on {sub.get('name', 'Free Tier')}). Upgrade to Starter or Pro for unlimited branch locations."
+            detail=f"Branch limit reached ({branches_limit} branch max). Please upgrade your plan for unlimited branch locations."
         )
 
 
@@ -409,7 +409,7 @@ async def create_role(
     if not sub.get("entitlements", {}).get("team_roles"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Custom team roles and permission controls require Starter or Pro tier. Upgrade to unlock."
+            detail="Custom team roles and permission controls require an upgraded plan. Please upgrade your plan to unlock."
         )
 
     doc = await get_business_doc(owner_id)
@@ -542,7 +542,7 @@ async def create_sub_user(
     if not sub.get("entitlements", {}).get("team_roles"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inviting team members and assigning roles requires Starter or Pro tier. Upgrade to unlock unlimited team collaboration."
+            detail="Inviting team members and assigning roles requires an upgraded plan. Please upgrade your plan to unlock team collaboration."
         )
 
     doc = await get_business_doc(owner_id)

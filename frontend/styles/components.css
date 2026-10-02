@@ -1000,7 +1000,7 @@ body.light-theme .chat-input-area textarea,
   display: flex;
   flex-direction: column;
   gap: 10px;
-  z-index: 200;
+  z-index: 99999;
 }
 
 .toast {
@@ -1240,6 +1240,7 @@ body.light-theme .chat-input-area textarea,
     bottom: calc(16px + var(--safe-area-bottom, 0px)) !important;
     right: 12px !important;
     left: 12px !important;
+    z-index: 99999 !important;
   }
 
   .toast {

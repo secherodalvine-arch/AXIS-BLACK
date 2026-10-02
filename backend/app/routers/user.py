@@ -171,7 +171,7 @@ async def dispatch_business_summary(
     if not sub.get("entitlements", {}).get("business_summary"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Automated Business Summaries are available on Starter and Pro tiers. Upgrade to unlock daily executive reports."
+            detail="Automated Business Summaries require an upgraded plan. Please upgrade your plan to unlock daily executive reports."
         )
 
     override = payload.model_dump(exclude_unset=True) if payload else {}

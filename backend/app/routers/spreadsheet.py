@@ -38,7 +38,7 @@ async def _check_spreadsheet_permission(current_user: dict, write: bool = False)
     if not sub.get("entitlements", {}).get("spreadsheet"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Interactive Spreadsheet is available on Starter and Pro packages. Upgrade to unlock the spreadsheet ledger and inventory workspace."
+            detail="Interactive Spreadsheet requires an upgraded plan. Please upgrade your plan to unlock the spreadsheet ledger and inventory workspace."
         )
 
     if current_user.get("is_sub_user"):

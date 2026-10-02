@@ -1199,7 +1199,7 @@ export const App: React.FC = () => {
       )}
 
       {toastMessage && (
-        <div className="toast-container">
+        <div className="toast-container" style={{ zIndex: 99999 }}>
           <div className="toast">
             <i className="fa-solid fa-circle-check" style={{ color: 'var(--secondary-cyan, #00d4ff)' }}></i>
             <span>{toastMessage}</span>

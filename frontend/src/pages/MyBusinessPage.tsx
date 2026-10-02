@@ -82,6 +82,159 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
   const [editingMember, setEditingMember] = useState<SubUser | null>(null);
   const [editMemberForm, setEditMemberForm] = useState({ name: '', role_id: '', branch_id: '', is_active: true });
 
+  // In-Modal Error & Gateway State (Ensures error messages display on top of modals, not behind them)
+  const [modalError, setModalError] = useState<{
+    message: string;
+    isUpgrade?: boolean;
+    featureName?: string;
+  } | null>(null);
+
+  const isUpgradeMessage = (msg: string) => {
+    if (!msg) return false;
+    const lower = msg.toLowerCase();
+    return lower.includes('starter') || 
+           lower.includes('pro') || 
+           lower.includes('upgrade') || 
+           lower.includes('tier') || 
+           lower.includes('limit reached') || 
+           lower.includes('subscription') ||
+           lower.includes('unlock') ||
+           lower.includes('custom role');
+  };
+
+  const setInModalError = (errMsg: string, featureName: string) => {
+    const isUp = isUpgradeMessage(errMsg);
+    setModalError({
+      message: errMsg,
+      isUpgrade: isUp,
+      featureName
+    });
+  };
+
+  const renderModalErrorBanner = () => {
+    if (!modalError) return null;
+
+    if (modalError.isUpgrade) {
+      return (
+        <div style={{
+          borderRadius: '12px',
+          padding: '14px 16px',
+          marginTop: '14px',
+          marginBottom: '10px',
+          background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(239, 68, 68, 0.12))',
+          border: '1px solid rgba(245, 158, 11, 0.5)',
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: '12px',
+          boxShadow: '0 4px 16px rgba(245, 158, 11, 0.12)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              background: 'rgba(245, 158, 11, 0.25)',
+              color: '#fbbf24',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1rem',
+              flexShrink: 0,
+              marginTop: '1px'
+            }}>
+              <i className="fa-solid fa-crown"></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '3px' }}>
+                Subscription Gateway
+              </div>
+              <div style={{ fontSize: '0.88rem', color: '#f3f4f6', lineHeight: 1.5, fontWeight: 600 }}>
+                {modalError.message}
+              </div>
+              {onOpenUpgrade && (
+                <button
+                  type="button"
+                  onClick={() => onOpenUpgrade(modalError.message, modalError.featureName || 'Workspace Upgrade')}
+                  style={{
+                    marginTop: '10px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'linear-gradient(135deg, #00d4ff, #0099ff)',
+                    border: 'none',
+                    color: '#040d1a',
+                    fontWeight: 800,
+                    fontSize: '0.82rem',
+                    padding: '7px 14px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(0, 212, 255, 0.35)'
+                  }}
+                >
+                  <i className="fa-solid fa-crown" style={{ fontSize: '0.75rem' }}></i>
+                  <span>Upgrade to Unlock</span>
+                  <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.75rem' }}></i>
+                </button>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setModalError(null)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#9ca3af',
+              fontSize: '1.2rem',
+              cursor: 'pointer',
+              padding: '0 4px',
+              lineHeight: 1
+            }}
+            title="Dismiss message"
+          >
+            &times;
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{
+        borderRadius: '12px',
+        padding: '12px 16px',
+        marginTop: '14px',
+        marginBottom: '10px',
+        background: 'rgba(239, 68, 68, 0.14)',
+        border: '1px solid rgba(239, 68, 68, 0.4)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '12px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#ff8e8e', fontSize: '0.86rem', fontWeight: 600 }}>
+          <i className="fa-solid fa-circle-exclamation" style={{ fontSize: '1rem', flexShrink: 0 }}></i>
+          <span>{modalError.message}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setModalError(null)}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: '#9ca3af',
+            fontSize: '1.2rem',
+            cursor: 'pointer',
+            padding: 0,
+            lineHeight: 1
+          }}
+        >
+          &times;
+        </button>
+      </div>
+    );
+  };
+
   const showStatus = (text: string, type: 'success' | 'error' = 'success') => {
     setStatusMsg({ text, type });
     setTimeout(() => setStatusMsg(null), 4000);
@@ -165,6 +318,11 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
   };
 
   const handleSaveBranch = async () => {
+    setModalError(null);
+    if (!branchForm.name.trim()) {
+      setInModalError('Branch name is required', 'Branch Locations');
+      return;
+    }
     try {
       if (editingBranch) {
         const updated = await updateBranchApi(editingBranch.id, branchForm);
@@ -177,12 +335,15 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
       }
       setShowBranchModal(false);
       setEditingBranch(null);
+      setModalError(null);
       setBranchForm({ name: '', location: '', phone: '', email: '', manager_user_id: '', is_active: true });
       if (selectedBranch) {
         getBranchDetailsApi(selectedBranch).then(setSelectedBranchDetails).catch(() => { });
       }
     } catch (err: any) {
-      showStatus(err.message || 'Failed to save branch', 'error');
+      const msg = err.message || 'Failed to save branch';
+      setInModalError(msg, 'Branch Locations');
+      showStatus(msg, 'error');
     }
   };
 
@@ -202,8 +363,9 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
   };
 
   const handleSaveTeamMember = async () => {
+    setModalError(null);
     if (!teamForm.name || !teamForm.email || !teamForm.role_id) {
-      showStatus('Please fill in Name, Email, and Role', 'error');
+      setInModalError('Please fill in Name, Email, and Role', 'Team Collaboration');
       return;
     }
     setTeamSaving(true);
@@ -212,15 +374,19 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
       setTeam(prev => [...prev, created]);
       showStatus(`Team member ${teamForm.name} added! Their temporary password is their email address.`);
       setShowTeamModal(false);
+      setModalError(null);
       setTeamForm({ name: '', email: '', role_id: '', branch_id: '' });
     } catch (err: any) {
-      showStatus(err.message || 'Failed to add team member', 'error');
+      const msg = err.message || 'Failed to add team member';
+      setInModalError(msg, 'Team Collaboration & Roles');
+      showStatus(msg, 'error');
     } finally {
       setTeamSaving(false);
     }
   };
 
   const openEditTeamMember = (member: SubUser) => {
+    setModalError(null);
     setEditingMember(member);
     setEditMemberForm({
       name: member.name,
@@ -233,8 +399,9 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
 
   const handleUpdateTeamMember = async () => {
     if (!editingMember) return;
+    setModalError(null);
     if (!editMemberForm.name.trim()) {
-      showStatus('Member name is required', 'error');
+      setInModalError('Member name is required', 'Team Member Management');
       return;
     }
     setTeamSaving(true);
@@ -249,8 +416,11 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
       showStatus(`Team member ${updated.name || editingMember.name} updated!`);
       setShowEditTeamModal(false);
       setEditingMember(null);
+      setModalError(null);
     } catch (err: any) {
-      showStatus(err.message || 'Failed to update team member', 'error');
+      const msg = err.message || 'Failed to update team member';
+      setInModalError(msg, 'Team Member Management');
+      showStatus(msg, 'error');
     } finally {
       setTeamSaving(false);
     }
@@ -288,8 +458,9 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
   };
 
   const handleSaveRole = async () => {
+    setModalError(null);
     if (!roleForm.role_name || roleForm.permissions.length === 0) {
-      showStatus('Role name and at least one permission required', 'error');
+      setInModalError('Role name and at least one permission required', 'Custom Roles');
       return;
     }
     try {
@@ -304,19 +475,24 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
       }
       setShowRoleModal(false);
       setEditingRole(null);
+      setModalError(null);
       setRoleForm({ role_name: '', permissions: [], description: '', branch_id: '' });
     } catch (err: any) {
-      showStatus(err.message || 'Failed to save role', 'error');
+      const msg = err.message || 'Failed to save role';
+      setInModalError(msg, 'Custom Roles & Privileges');
+      showStatus(msg, 'error');
     }
   };
 
   const openCreateRole = () => {
+    setModalError(null);
     setEditingRole(null);
     setRoleForm({ role_name: '', permissions: ['dashboard', 'inventory', 'transactions'], description: '', branch_id: '' });
     setShowRoleModal(true);
   };
 
   const openEditRole = (role: BusinessRole) => {
+    setModalError(null);
     setEditingRole(role);
     setRoleForm({
       role_name: role.role_name,
@@ -597,7 +773,7 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
                   onClick={() => {
                     if (isBranchLimitReached) {
                       if (onOpenUpgrade) {
-                        onOpenUpgrade('Free tier supports 1 branch. Upgrade to Starter or Pro for unlimited branches and multi-location tracking.', 'Branches');
+                        onOpenUpgrade('Free tier supports 1 branch. Please upgrade your plan for unlimited branches and multi-location tracking.', 'Branches');
                       }
                       return;
                     }
@@ -967,11 +1143,11 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
               Team Management Locked
             </h3>
             <p style={{ fontSize: '0.88rem', color: '#94a3b8', lineHeight: 1.6, marginBottom: '24px' }}>
-              Multi-user team collaboration, staff accounts, branch managers, and granular role assignments are reserved for <strong style={{ color: '#00d4ff' }}>Starter</strong> and <strong style={{ color: '#cebdff' }}>Pro</strong> tiers.
+              Multi-user team collaboration, staff accounts, branch managers, and granular role assignments require an <strong style={{ color: '#00d4ff' }}>upgraded plan</strong>.
             </p>
             <button
               className="action-btn-primary"
-              onClick={() => onOpenUpgrade?.('Team member collaboration is available on Starter and Pro tiers.', 'Team Access')}
+              onClick={() => onOpenUpgrade?.('Team member collaboration requires an upgraded plan. Please upgrade your plan to unlock.', 'Team Access')}
               style={{ margin: '0 auto', gap: '8px', padding: '10px 22px', fontSize: '0.88rem', display: 'inline-flex', alignItems: 'center' }}
             >
               <i className="fa-solid fa-crown"></i> Upgrade to Unlock Team Members
@@ -992,7 +1168,10 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
               <button
                 className="action-btn-primary"
                 style={{ gap: '8px', fontSize: '0.82rem', padding: '8px 16px' }}
-                onClick={() => setShowTeamModal(true)}
+                onClick={() => {
+                  setModalError(null);
+                  setShowTeamModal(true);
+                }}
               >
                 <i className="fa-solid fa-user-plus"></i> Add Team Member
               </button>
@@ -1151,11 +1330,11 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
               Custom Roles Locked
             </h3>
             <p style={{ fontSize: '0.88rem', color: '#94a3b8', lineHeight: 1.6, marginBottom: '24px' }}>
-              Granular permission controls, role templates (Manager, Cashier, Auditor), and access privilege tuning require <strong style={{ color: '#00d4ff' }}>Starter</strong> or <strong style={{ color: '#cebdff' }}>Pro</strong>.
+              Granular permission controls, role templates (Manager, Cashier, Auditor), and access privilege tuning require an <strong style={{ color: '#00d4ff' }}>upgraded plan</strong>.
             </p>
             <button
               className="action-btn-primary"
-              onClick={() => onOpenUpgrade?.('Role-based access control is available on Starter and Pro tiers.', 'Custom Roles')}
+              onClick={() => onOpenUpgrade?.('Role-based access control requires an upgraded plan. Please upgrade your plan to unlock.', 'Custom Roles')}
               style={{ margin: '0 auto', gap: '8px', padding: '10px 22px', fontSize: '0.88rem', display: 'inline-flex', alignItems: 'center' }}
             >
               <i className="fa-solid fa-crown"></i> Upgrade to Unlock Custom Roles
@@ -1250,8 +1429,48 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
           <div className="modal-card glass-card" style={{ width: '520px', maxHeight: '88vh', overflowY: 'auto' }}>
             <div className="modal-header">
               <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{editingBranch ? 'Edit Branch' : 'Add New Branch'}</h3>
-              <button className="modal-close" onClick={() => { setShowBranchModal(false); setEditingBranch(null); }}>×</button>
+              <button className="modal-close" onClick={() => { setShowBranchModal(false); setEditingBranch(null); setModalError(null); }}>×</button>
             </div>
+
+            {renderModalErrorBanner()}
+
+            {isBranchLimitReached && !editingBranch && !modalError && (
+              <div style={{
+                borderRadius: '10px',
+                padding: '12px 14px',
+                marginTop: '12px',
+                background: 'rgba(245, 158, 11, 0.12)',
+                border: '1px solid rgba(245, 158, 11, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '10px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fbbf24', fontSize: '0.82rem' }}>
+                  <i className="fa-solid fa-crown"></i>
+                  <span>Free tier includes 1 active branch. Upgrade for unlimited locations.</span>
+                </div>
+                {onOpenUpgrade && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenUpgrade('Free tier supports 1 branch. Please upgrade your plan for unlimited branches and multi-location tracking.', 'Branch Locations')}
+                    style={{
+                      background: 'linear-gradient(135deg, #00d4ff, #0099ff)',
+                      border: 'none',
+                      color: '#040d1a',
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      padding: '5px 10px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      flexShrink: 0
+                    }}
+                  >
+                    Upgrade
+                  </button>
+                )}
+              </div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '16px 0' }}>
               {[
                 { label: 'Branch Name *', key: 'name', placeholder: 'e.g. Westlands Branch / CBD Store' },
@@ -1326,10 +1545,50 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
           <div className="modal-card glass-card" style={{ width: '520px', maxHeight: '88vh', overflowY: 'auto' }}>
             <div className="modal-header">
               <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Add Team Member</h3>
-              <button className="modal-close" onClick={() => setShowTeamModal(false)}>×</button>
+              <button className="modal-close" onClick={() => { setShowTeamModal(false); setModalError(null); }}>×</button>
             </div>
 
-            <div className="biz-hint-banner-warning" style={{ borderRadius: '10px', padding: '12px 14px', marginTop: '16px', fontSize: '0.82rem' }}>
+            {renderModalErrorBanner()}
+
+            {isFreeTier && !modalError && (
+              <div style={{
+                borderRadius: '10px',
+                padding: '12px 14px',
+                marginTop: '12px',
+                background: 'rgba(245, 158, 11, 0.12)',
+                border: '1px solid rgba(245, 158, 11, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '10px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fbbf24', fontSize: '0.82rem' }}>
+                  <i className="fa-solid fa-crown"></i>
+                  <span>Team collaboration requires an <strong>upgraded plan</strong>.</span>
+                </div>
+                {onOpenUpgrade && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenUpgrade('Inviting team members and assigning roles requires an upgraded plan. Please upgrade your plan to unlock team collaboration.', 'Team Collaboration')}
+                    style={{
+                      background: 'linear-gradient(135deg, #00d4ff, #0099ff)',
+                      border: 'none',
+                      color: '#040d1a',
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      padding: '5px 10px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      flexShrink: 0
+                    }}
+                  >
+                    Upgrade
+                  </button>
+                )}
+              </div>
+            )}
+
+            <div className="biz-hint-banner-warning" style={{ borderRadius: '10px', padding: '12px 14px', marginTop: '12px', fontSize: '0.82rem' }}>
               <i className="fa-solid fa-circle-info" style={{ marginRight: '8px' }}></i>
               Their <strong>temporary password will be their email address</strong>. They'll be required to change it upon first login.
             </div>
@@ -1401,8 +1660,10 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
                 <i className="fa-solid fa-user-pen" style={{ color: 'var(--secondary-cyan, #00d4ff)' }}></i>
                 Edit Team Member: {editingMember.name}
               </h3>
-              <button className="modal-close" onClick={() => { setShowEditTeamModal(false); setEditingMember(null); }}>×</button>
+              <button className="modal-close" onClick={() => { setShowEditTeamModal(false); setEditingMember(null); setModalError(null); }}>×</button>
             </div>
+
+            {renderModalErrorBanner()}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '16px 0' }}>
               <div>
@@ -1505,8 +1766,48 @@ export const MyBusinessPage: React.FC<MyBusinessPageProps> = ({
               <h3 style={{ margin: 0, fontSize: '1.1rem' }}>
                 {editingRole ? 'Edit Role' : 'Create Custom Role'}
               </h3>
-              <button className="modal-close" onClick={() => { setShowRoleModal(false); setEditingRole(null); }}>×</button>
+              <button className="modal-close" onClick={() => { setShowRoleModal(false); setEditingRole(null); setModalError(null); }}>×</button>
             </div>
+
+            {renderModalErrorBanner()}
+
+            {isFreeTier && !modalError && (
+              <div style={{
+                borderRadius: '10px',
+                padding: '12px 14px',
+                marginTop: '12px',
+                background: 'rgba(245, 158, 11, 0.12)',
+                border: '1px solid rgba(245, 158, 11, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '10px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fbbf24', fontSize: '0.82rem' }}>
+                  <i className="fa-solid fa-crown"></i>
+                  <span>Custom team roles require an <strong>upgraded plan</strong>.</span>
+                </div>
+                {onOpenUpgrade && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenUpgrade('Custom team roles and permission controls require an upgraded plan. Please upgrade your plan to unlock.', 'Custom Roles')}
+                    style={{
+                      background: 'linear-gradient(135deg, #00d4ff, #0099ff)',
+                      border: 'none',
+                      color: '#040d1a',
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      padding: '5px 10px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      flexShrink: 0
+                    }}
+                  >
+                    Upgrade
+                  </button>
+                )}
+              </div>
+            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px 0' }}>
               <div>

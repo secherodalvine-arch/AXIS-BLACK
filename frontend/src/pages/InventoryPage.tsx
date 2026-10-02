@@ -61,6 +61,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const [sellingPrice, setSellingPrice] = useState('');
   const [supplier, setSupplier] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [branchFilter, setBranchFilter] = useState<string>('');
   const [branches, setBranches] = useState<any[]>([]);
   const [itemBranchId, setItemBranchId] = useState<string>(currentUser?.branch_id || '');
@@ -177,6 +178,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       branch_id: isSubUserWithBranch ? currentUser?.branch_id : (itemBranchId || (branches[0]?.id || null))
     };
 
+    setCreateError(null);
     try {
       await createInventoryItemApi(newItemData);
       // Re-fetch from backend to get the latest persisted state
@@ -187,26 +189,11 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       setSupplier('');
       setCustomCategory('');
       setIsCustomCategory(false);
-    } catch (err) {
+      setCreateError(null);
+    } catch (err: any) {
       console.error('Failed to save item to backend:', err);
-      // Optimistic local update as fallback
-      const newLocalItem: InventoryItem = {
-        id: itemCode,
-        name,
-        category: finalCategory,
-        stockLevel: parseInt(stockQuantity) || 0,
-        minThreshold: parseInt(reorderPoint) || 50,
-        unitPriceUSD: parseFloat(unitCost) || 100,
-        turnoverRate: '1.8x/mo',
-        status: (parseInt(stockQuantity) || 0) <= (parseInt(reorderPoint) || 50) ? 'Reorder Soon' : 'Optimal'
-      };
-      setItems(prev => [newLocalItem, ...prev]);
-      setIsModalOpen(false);
-      setName('');
-      setCustomSKU('');
-      setSupplier('');
-      setCustomCategory('');
-      setIsCustomCategory(false);
+      const errMsg = err?.message || 'Failed to save inventory item';
+      setCreateError(errMsg);
     } finally {
       setSubmitting(false);
     }
@@ -395,7 +382,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             onClick={() => {
               if (isFreeLimitReached) {
                 if (onOpenUpgrade) {
-                  onOpenUpgrade('Free tier is limited to 2 inventory items. Upgrade to Starter or Pro for unlimited inventory uploads.', 'Inventory Import');
+                  onOpenUpgrade('Free tier is limited to 2 inventory items. Please upgrade your plan for unlimited inventory uploads.', 'Inventory Import');
                 }
                 return;
               }
@@ -412,7 +399,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             onClick={() => {
               if (isFreeLimitReached) {
                 if (onOpenUpgrade) {
-                  onOpenUpgrade('Free tier is limited to 2 inventory items. Upgrade to Starter or Pro for unlimited SKU management.', 'Inventory Engine');
+                  onOpenUpgrade('Free tier is limited to 2 inventory items. Please upgrade your plan for unlimited SKU management.', 'Inventory Engine');
                 }
                 return;
               }
@@ -624,8 +611,124 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               <h3 style={{ margin: 0, color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans', fontSize: '1.25rem', fontWeight: 800 }}>
                 Add New Inventory Item
               </h3>
-              <button className="modal-close" onClick={() => setIsModalOpen(false)} style={{ color: 'var(--text-muted, #9ca3af)', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>&times;</button>
+              <button className="modal-close" onClick={() => { setIsModalOpen(false); setCreateError(null); }} style={{ color: 'var(--text-muted, #9ca3af)', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>&times;</button>
             </div>
+
+            {/* In-Modal Gateway / Error Banner */}
+            {createError && (
+              <div style={{
+                borderRadius: '12px',
+                padding: '12px 16px',
+                marginBottom: '16px',
+                background: (createError.toLowerCase().includes('limit') || createError.toLowerCase().includes('upgrade') || createError.toLowerCase().includes('tier'))
+                  ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(239, 68, 68, 0.12))'
+                  : 'rgba(239, 68, 68, 0.14)',
+                border: (createError.toLowerCase().includes('limit') || createError.toLowerCase().includes('upgrade') || createError.toLowerCase().includes('tier'))
+                  ? '1px solid rgba(245, 158, 11, 0.5)'
+                  : '1px solid rgba(239, 68, 68, 0.4)',
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                gap: '12px',
+                flexShrink: 0
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <div style={{
+                    width: '30px',
+                    height: '30px',
+                    borderRadius: '8px',
+                    background: 'rgba(245, 158, 11, 0.25)',
+                    color: '#fbbf24',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.95rem',
+                    flexShrink: 0,
+                    marginTop: '2px'
+                  }}>
+                    <i className="fa-solid fa-crown"></i>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '2px' }}>
+                      Subscription Requirement
+                    </div>
+                    <div style={{ fontSize: '0.86rem', color: '#f3f4f6', lineHeight: 1.5, fontWeight: 600 }}>
+                      {createError}
+                    </div>
+                    {onOpenUpgrade && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenUpgrade(createError, 'Inventory Engine')}
+                        style={{
+                          marginTop: '8px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          background: 'linear-gradient(135deg, #00d4ff, #0099ff)',
+                          border: 'none',
+                          color: '#040d1a',
+                          fontWeight: 800,
+                          fontSize: '0.8rem',
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <i className="fa-solid fa-crown" style={{ fontSize: '0.75rem' }}></i>
+                        <span>Upgrade to Unlock</span>
+                        <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.75rem' }}></i>
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCreateError(null)}
+                  style={{ background: 'transparent', border: 'none', color: '#9ca3af', fontSize: '1.2rem', cursor: 'pointer', padding: 0 }}
+                >
+                  &times;
+                </button>
+              </div>
+            )}
+
+            {isFreeLimitReached && !createError && (
+              <div style={{
+                borderRadius: '10px',
+                padding: '12px 14px',
+                marginBottom: '16px',
+                background: 'rgba(245, 158, 11, 0.12)',
+                border: '1px solid rgba(245, 158, 11, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '10px',
+                flexShrink: 0
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fbbf24', fontSize: '0.82rem' }}>
+                  <i className="fa-solid fa-crown"></i>
+                  <span>Free tier allows up to 2 items. Upgrade for unlimited inventory.</span>
+                </div>
+                {onOpenUpgrade && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenUpgrade('Free tier is limited to 2 inventory items. Please upgrade your plan for unlimited inventory uploads.', 'Inventory Engine')}
+                    style={{
+                      background: 'linear-gradient(135deg, #00d4ff, #0099ff)',
+                      border: 'none',
+                      color: '#040d1a',
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      padding: '5px 10px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      flexShrink: 0
+                    }}
+                  >
+                    Upgrade
+                  </button>
+                )}
+              </div>
+            )}
             
             <form onSubmit={handleCreateSKU} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
               <div style={{ overflowY: 'auto', flex: 1, paddingRight: '6px', minHeight: 0 }}>
@@ -853,8 +956,78 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             </div>
 
             {editError && (
-              <div style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(255, 142, 142, 0.15)', border: '1px solid #ff8e8e', color: '#ff8e8e', fontSize: '0.82rem', marginBottom: '12px' }}>
-                <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '6px' }}></i> {editError}
+              <div style={{
+                borderRadius: '12px',
+                padding: '12px 16px',
+                marginBottom: '16px',
+                background: (editError.toLowerCase().includes('limit') || editError.toLowerCase().includes('upgrade') || editError.toLowerCase().includes('tier'))
+                  ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(239, 68, 68, 0.12))'
+                  : 'rgba(239, 68, 68, 0.14)',
+                border: (editError.toLowerCase().includes('limit') || editError.toLowerCase().includes('upgrade') || editError.toLowerCase().includes('tier'))
+                  ? '1px solid rgba(245, 158, 11, 0.5)'
+                  : '1px solid rgba(239, 68, 68, 0.4)',
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                gap: '12px',
+                flexShrink: 0
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <div style={{
+                    width: '30px',
+                    height: '30px',
+                    borderRadius: '8px',
+                    background: 'rgba(245, 158, 11, 0.25)',
+                    color: '#fbbf24',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.95rem',
+                    flexShrink: 0,
+                    marginTop: '2px'
+                  }}>
+                    <i className="fa-solid fa-crown"></i>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '2px' }}>
+                      Subscription Requirement
+                    </div>
+                    <div style={{ fontSize: '0.86rem', color: '#f3f4f6', lineHeight: 1.5, fontWeight: 600 }}>
+                      {editError}
+                    </div>
+                    {onOpenUpgrade && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenUpgrade(editError, 'Inventory Engine')}
+                        style={{
+                          marginTop: '8px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          background: 'linear-gradient(135deg, #00d4ff, #0099ff)',
+                          border: 'none',
+                          color: '#040d1a',
+                          fontWeight: 800,
+                          fontSize: '0.8rem',
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <i className="fa-solid fa-crown" style={{ fontSize: '0.75rem' }}></i>
+                        <span>Upgrade to Unlock</span>
+                        <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.75rem' }}></i>
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditError(null)}
+                  style={{ background: 'transparent', border: 'none', color: '#9ca3af', fontSize: '1.2rem', cursor: 'pointer', padding: 0 }}
+                >
+                  &times;
+                </button>
               </div>
             )}
 

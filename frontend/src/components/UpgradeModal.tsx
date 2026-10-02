@@ -239,7 +239,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                 <i className="fa-solid fa-check" style={{ color: '#d97706', fontSize: '0.75rem' }}></i> All in Starter tier
               </li>
               <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <i className="fa-solid fa-bolt" style={{ color: '#d97706', fontSize: '0.75rem' }}></i> <strong>Double Daily Agent Boost</strong>
+                <i className="fa-solid fa-check" style={{ color: '#d97706', fontSize: '0.75rem' }}></i> <strong>Double Daily Agent Boost</strong>
               </li>
               <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <i className="fa-solid fa-check" style={{ color: '#d97706', fontSize: '0.75rem' }}></i> 1,200 AI exchanges/mo

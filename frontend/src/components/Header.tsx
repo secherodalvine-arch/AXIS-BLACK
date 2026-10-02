@@ -299,7 +299,7 @@ export const Header: React.FC<HeaderProps> = ({
                   {matchedInsights.length > 0 && (
                     <div>
                       <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <i className="fa-solid fa-bolt"></i> Insights &amp; Alerts
+                        <i className="fa-solid fa-lightbulb"></i> Insights &amp; Alerts
                       </div>
                       {matchedInsights.map(notif => (
                         <div

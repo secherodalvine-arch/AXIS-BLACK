@@ -84,7 +84,7 @@ async def get_elevenlabs_signed_url(current_user: dict = Depends(get_current_use
     if not sub.get("entitlements", {}).get("voice_agent"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="The Axis Voice Support Agent is an exclusive feature of the Starter and Pro packages. Upgrade to unlock interactive voice intelligence."
+            detail="The Axis Voice Support Agent requires an upgraded plan. Please upgrade your plan to unlock interactive voice intelligence."
         )
 
     voice_usage = sub.get("usage", {}).get("voice_agent", {})
@@ -95,7 +95,7 @@ async def get_elevenlabs_signed_url(current_user: dict = Depends(get_current_use
     can_extend = voice_usage.get("can_extend", False)
 
     if daily_used >= daily_limit:
-        extend_hint = " As a Pro member, you can extend your daily limit by 7 extra queries in Billing." if can_extend else " Upgrade to Pro for higher daily voice exchange capacity."
+        extend_hint = " As a Pro member, you can extend your daily limit by 7 extra queries in Billing." if can_extend else " Please upgrade your plan for higher daily voice exchange capacity."
         raise HTTPException(
             status_code=429,
             detail=f"Daily Voice Agent exchange limit reached ({daily_used}/{daily_limit} on {sub.get('name')}).{extend_hint} Quota resets at midnight UTC."
@@ -104,7 +104,7 @@ async def get_elevenlabs_signed_url(current_user: dict = Depends(get_current_use
     if monthly_used >= monthly_limit:
         raise HTTPException(
             status_code=429,
-            detail=f"Monthly Voice Agent exchange limit reached ({monthly_used}/{monthly_limit} on {sub.get('name')}). Upgrade to Pro for 800 monthly voice exchanges."
+            detail=f"Monthly Voice Agent exchange limit reached ({monthly_used}/{monthly_limit}). Please upgrade your plan for higher monthly voice capacity."
         )
 
     # Record voice usage

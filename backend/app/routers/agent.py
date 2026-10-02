@@ -66,7 +66,7 @@ async def query_axis_agent(
     if monthly_used >= monthly_limit:
         raise HTTPException(
             status_code=429,
-            detail=f"Monthly Axis Agent query limit reached ({monthly_used}/{monthly_limit} on {plan_name}). Upgrade to Starter or Pro for expanded monthly exchanges."
+            detail=f"Monthly Axis Agent query limit reached ({monthly_used}/{monthly_limit}). Please upgrade your plan for expanded monthly exchanges."
         )
 
     metrics = await AxisDataStore.get_dashboard_metrics(user_id)

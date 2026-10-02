@@ -265,7 +265,7 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = (prop
             Voice Support Locked
           </h3>
           <p style={{ fontSize: '0.88rem', color: '#94a3b8', lineHeight: 1.6, marginBottom: '24px' }}>
-            Real-time interactive voice consultation and audio navigation are reserved for <strong style={{ color: '#00d4ff' }}>Starter</strong> and <strong style={{ color: '#cebdff' }}>Pro</strong> tiers.
+            Real-time interactive voice consultation and audio navigation require an <strong style={{ color: '#00d4ff' }}>upgraded plan</strong>.
           </p>
 
           <div style={{
@@ -279,12 +279,12 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = (prop
             color: '#cbd5e1'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <i className="fa-solid fa-bolt" style={{ color: '#00d4ff' }}></i>
-              <span><strong>Starter:</strong> 400 voice exchanges / mo (13 daily)</span>
+              <i className="fa-solid fa-microphone-lines" style={{ color: '#00d4ff' }}></i>
+              <span>Hands-free voice consultation on finances & runway</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <i className="fa-solid fa-crown" style={{ color: '#e8c97a' }}></i>
-              <span><strong>Pro:</strong> 800 voice exchanges / mo (26 daily + extensions)</span>
+              <i className="fa-solid fa-check" style={{ color: '#10b981' }}></i>
+              <span>Upgrade your plan to unlock interactive voice intelligence</span>
             </div>
           </div>
 
@@ -292,7 +292,7 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = (prop
             onClick={() => {
               onClose();
               if (onOpenUpgrade) {
-                onOpenUpgrade('Voice Agent is available on Starter and Pro tiers.', 'Axis Voice Agent');
+                onOpenUpgrade('Voice Agent requires an upgraded plan. Please upgrade your plan to unlock.', 'Axis Voice Agent');
               } else {
                 onNavigate('billing');
               }

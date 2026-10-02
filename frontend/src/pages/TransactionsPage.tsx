@@ -454,7 +454,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
       {/* QUICK LOG DAILY USAGE BAR */}
       <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '1rem', marginBottom: '1.5rem', background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(206, 189, 255, 0.05))', border: '1px solid rgba(0, 212, 255, 0.25)' }}>
         <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.95rem', color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <i className="fa-solid fa-bolt" style={{ color: '#00d4ff' }}></i>
+          <i className="fa-solid fa-receipt" style={{ color: '#00d4ff' }}></i>
           Quick Log Today's Usage / Expense
         </h4>
 

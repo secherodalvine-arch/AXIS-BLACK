@@ -519,7 +519,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({
             <span>
               {chatUsage?.is_extended ? (
                 <span style={{ color: '#00d4ff', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  <i className="fa-solid fa-bolt"></i> Extended
+                  <i className="fa-solid fa-circle-check"></i> Extended
                 </span>
               ) : 'Standard'}
             </span>
@@ -546,7 +546,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({
                 gap: '6px'
               }}
             >
-              <i className="fa-solid fa-bolt"></i> Double Daily Limit (+40)
+              <i className="fa-solid fa-circle-plus"></i> Double Daily Limit (+40)
             </button>
           )}
         </div>
@@ -585,11 +585,11 @@ export const BillingPage: React.FC<BillingPageProps> = ({
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: themeColors.textDim }}>
-            <span>{currentPlanKey === 'free' ? 'Available on Starter & Pro' : `Monthly: ${voiceUsage?.used_month || 0} / ${voiceUsage?.monthly_limit || 400}`}</span>
+            <span>{currentPlanKey === 'free' ? 'Upgrade plan to unlock' : `Monthly: ${voiceUsage?.used_month || 0} / ${voiceUsage?.monthly_limit || 400}`}</span>
             <span>
               {voiceUsage?.is_extended ? (
                 <span style={{ color: '#a78bfa', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  <i className="fa-solid fa-bolt"></i> Extended
+                  <i className="fa-solid fa-circle-check"></i> Extended
                 </span>
               ) : ''}
             </span>
@@ -615,7 +615,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({
                 gap: '6px'
               }}
             >
-              <i className="fa-solid fa-bolt"></i> Extend Daily Quota (+7)
+              <i className="fa-solid fa-circle-plus"></i> Extend Daily Quota (+7)
             </button>
           )}
         </div>
@@ -941,7 +941,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({
                   <span><strong>Priority VIP Customer Support</strong></span>
                 </li>
                 <li style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
-                  <i className="fa-solid fa-bolt" style={{ color: '#d97706', marginTop: '3px' }}></i>
+                  <i className="fa-solid fa-check" style={{ color: '#d97706', marginTop: '3px' }}></i>
                   <span>Axis Agent (1,200/mo, 40 daily max)</span>
                 </li>
                 <li style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
@@ -1067,7 +1067,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({
                 <td style={{ padding: '12px 14px', color: themeColors.textDim }}>No</td>
                 <td style={{ padding: '12px 14px', color: '#d97706', fontWeight: 800 }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                    <i className="fa-solid fa-bolt" style={{ color: '#d97706' }}></i> Double to 80/day
+                    <i className="fa-solid fa-check" style={{ color: '#d97706' }}></i> Double to 80/day
                   </span>
                 </td>
               </tr>
@@ -1083,7 +1083,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({
                 <td style={{ padding: '12px 14px', color: themeColors.textDim }}>No</td>
                 <td style={{ padding: '12px 14px', color: '#d97706', fontWeight: 800 }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                    <i className="fa-solid fa-bolt" style={{ color: '#d97706' }}></i> +7 queries daily
+                    <i className="fa-solid fa-check" style={{ color: '#d97706' }}></i> +7 queries daily
                   </span>
                 </td>
               </tr>
@@ -1306,7 +1306,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({
               <div style={{ marginBottom: '22px' }}>
                 <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: '12px', padding: '14px', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontWeight: 700, fontSize: '0.85rem', marginBottom: '4px' }}>
-                    <i className="fa-solid fa-bolt"></i> Instant M-Pesa STK Prompt
+                    <i className="fa-solid fa-mobile-screen-button"></i> Instant M-Pesa STK Prompt
                   </div>
                   <p style={{ color: themeColors.textMuted, fontSize: '0.8rem', margin: 0, lineHeight: 1.5 }}>
                     Enter your Safaricom phone number. A PIN prompt will pop up on your phone automatically.

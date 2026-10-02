@@ -128,7 +128,7 @@ async def create_inventory_item(
         if len(current_inv) >= inv_limit:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Inventory limit reached ({inv_limit} uploads max on {sub.get('name', 'Free Tier')}). Upgrade to Starter or Pro for unlimited inventory and ledger access."
+                detail=f"Inventory limit reached ({inv_limit} items max). Please upgrade your plan for unlimited inventory and ledger access."
             )
 
     data = payload.model_dump()
@@ -271,7 +271,7 @@ async def import_inventory_csv(
         if len(current_inv) >= inv_limit:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Inventory limit reached ({inv_limit} uploads max on {sub.get('name', 'Free Tier')}). Upgrade to Starter or Pro for bulk CSV import and unlimited inventory."
+                detail=f"Inventory limit reached ({inv_limit} items max). Please upgrade your plan for bulk CSV import and unlimited inventory."
             )
 
     doc = await get_business_doc(owner_id)

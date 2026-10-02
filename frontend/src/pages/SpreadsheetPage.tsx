@@ -100,7 +100,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', textAlign: 'left', marginBottom: '32px' }}>
             <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
               <div style={{ color: '#34d399', fontWeight: 700, fontSize: '0.85rem', marginBottom: '4px' }}>
-                <i className="fa-solid fa-bolt" style={{ marginRight: '6px' }}></i> Two-Way Live Sync
+                <i className="fa-solid fa-arrows-rotate" style={{ marginRight: '6px' }}></i> Two-Way Live Sync
               </div>
               <div style={{ color: '#94a3b8', fontSize: '0.78rem', lineHeight: 1.4 }}>
                 Instant real-time sync with transactions ledger and warehouse inventory items.
@@ -125,7 +125,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
           </div>
 
           <button
-            onClick={() => onOpenUpgrade?.("Interactive Spreadsheet is available on Starter and Pro tiers.", "Spreadsheet Engine")}
+            onClick={() => onOpenUpgrade?.("Interactive Spreadsheet requires an upgraded plan. Please upgrade your plan to unlock.", "Spreadsheet Engine")}
             style={{
               padding: '13px 32px',
               borderRadius: '12px',
@@ -722,7 +722,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
       id: 'tab-scratchpad',
       title: 'Business Scratchpad',
       sheetType: 'custom',
-      icon: 'fa-bolt',
+      icon: 'fa-table-cells',
       columns: cols,
       rows: rows,
       saveTarget: 'workbook',
@@ -1867,7 +1867,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                 <div className="template-desc">Draft financial sandbox &amp; scenario models. Test pricing, math, and projections without altering official accounting or stock records.</div>
                 <div className="sheet-card-action-row">
                   <button className="sheet-card-btn" onClick={openScratchpadWorkbook}>
-                    <i className="fa-solid fa-bolt"></i> Open Scratchpad
+                    <i className="fa-solid fa-table-cells"></i> Open Scratchpad
                   </button>
                 </div>
               </div>
