@@ -568,3 +568,38 @@ class AxisDataStore:
                 item["read"] = True
         db_manager.save_memory_store()
         return True
+
+    # ── Real Administrator Notifications Storage ──
+    @staticmethod
+    async def record_admin_notification(
+        title: str,
+        message: str,
+        notif_type: str = "info",
+        meta: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Records a real-time administrative notification in the admin_notifications collection.
+        Types: 'info', 'success', 'warning', 'support'.
+        """
+        import uuid
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        doc = {
+            "id": f"anotif-{uuid.uuid4().hex[:12]}",
+            "title": title,
+            "message": message,
+            "type": notif_type,
+            "read": False,
+            "meta": meta or {},
+            "timestamp": now_iso
+        }
+        try:
+            if db_manager.is_connected and db_manager.db is not None:
+                await db_manager.db.admin_notifications.insert_one(doc)
+            if "admin_notifications" not in db_manager.memory_store:
+                db_manager.memory_store["admin_notifications"] = []
+            db_manager.memory_store["admin_notifications"].insert(0, doc)
+            db_manager.save_memory_store()
+        except Exception as e:
+            logger.warning(f"Could not record admin notification: {e}")
+        return {k: v for k, v in doc.items() if k != "_id"}
+

@@ -179,6 +179,18 @@ async def register(payload: RegisterRequest):
     except Exception:
         pass
 
+    # Record real admin notification
+    try:
+        from app.database import AxisDataStore
+        await AxisDataStore.record_admin_notification(
+            title="New User Registration",
+            message=f"{payload.name.strip()} ({email_lower}) created a business account.",
+            notif_type="info",
+            meta={"user_id": user_id, "email": email_lower, "name": payload.name.strip()}
+        )
+    except Exception:
+        pass
+
     return RegisterResponse(
         message=f"Account created! A verification email has been sent to {email_lower}. Please verify your email before signing in.",
         email=email_lower,
@@ -256,6 +268,17 @@ async def _do_verify_email(token: str) -> tuple[bool, str, str]:
         )
     except Exception as e:
         logger.warning(f"Failed to send welcome email to {email}: {e}")
+
+    try:
+        from app.database import AxisDataStore
+        await AxisDataStore.record_admin_notification(
+            title="User Email Verified",
+            message=f"{user.get('name', 'User') if user else email} ({email}) successfully verified their email.",
+            notif_type="success",
+            meta={"email": email}
+        )
+    except Exception:
+        pass
 
     return True, "Email verified successfully! You can now sign in to your Axis Black account.", email
 

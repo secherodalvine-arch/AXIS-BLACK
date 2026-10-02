@@ -920,6 +920,16 @@ async def verify_payment(
             ip="127.0.0.1"
         )
 
+        try:
+            await AxisDataStore.record_admin_notification(
+                title=f"{plan['name']} Subscription Activated",
+                message=f"User {current_user.get('name', 'Owner')} ({payment.get('user_email', '')}) activated {plan['name']} (KES {payment.get('amount_kes', 0):,}) via {mode_label}.",
+                notif_type="success",
+                meta={"user_id": user_id, "plan": plan_key, "amount_kes": payment.get("amount_kes"), "ref": ref}
+            )
+        except Exception:
+            pass
+
         sub = await get_user_subscription(user_id)
         return {
             "status": "success",
@@ -1067,6 +1077,16 @@ async def submit_till_payment(
     }
     pid = await _insert_payment(doc)
 
+    try:
+        await AxisDataStore.record_admin_notification(
+            title="Manual M-Pesa Till Submission",
+            message=f"{user_name} ({user_email}) submitted Till reference {ref} for {plan['name']} (KES {amount_kes:,}). Review required.",
+            notif_type="warning",
+            meta={"payment_id": pid, "reference": ref, "plan": plan_key, "amount_kes": amount_kes}
+        )
+    except Exception:
+        pass
+
     return {
         "status": "success",
         "payment_id": pid,
@@ -1112,6 +1132,16 @@ async def paystack_webhook(request: Request, background_tasks: BackgroundTasks):
                     "payment_mode": mode_label,
                     "updated_at": _now().isoformat(),
                 })
+
+                try:
+                    await AxisDataStore.record_admin_notification(
+                        title=f"{plan['name']} Subscription Activated",
+                        message=f"User {payment.get('user_name', 'Customer')} ({payment.get('user_email', '')}) activated {plan['name']} (KES {payment.get('amount_kes', 0):,}) via Paystack Webhook ({mode_label}).",
+                        notif_type="success",
+                        meta={"payment_id": str(payment["_id"]), "reference": ref, "plan": plan_key}
+                    )
+                except Exception:
+                    pass
 
     return {"received": True}
 
@@ -1348,6 +1378,16 @@ async def approve_admin_payment(
         "approved_by": current_admin.get("email"),
         "updated_at": _now().isoformat(),
     })
+
+    try:
+        await AxisDataStore.record_admin_notification(
+            title=f"Till Payment Approved: {plan['name']}",
+            message=f"Admin {current_admin.get('email')} approved {plan['name']} for {payment.get('user_email')} (Ref: {payment.get('reference')}).",
+            notif_type="success",
+            meta={"payment_id": payment_id, "approved_by": current_admin.get("email"), "plan": plan_key}
+        )
+    except Exception:
+        pass
 
     return {
         "status": "success",

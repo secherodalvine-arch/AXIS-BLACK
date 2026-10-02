@@ -55,35 +55,21 @@ async def send_support_message(payload: SupportMessageRequest):
     try:
         if db_manager.is_connected and db_manager.db is not None:
             await db_manager.db.support_threads.insert_one(thread_doc)
-            # Create admin notification
-            await db_manager.db.admin_notifications.insert_one({
-                "id": f"notif-{uuid.uuid4().hex[:10]}",
-                "title": f"New Support Ticket: {name}",
-                "message": f"[{label.upper()}] {subject}: {message[:90]}",
-                "type": "support",
-                "timestamp": now_iso,
-                "read": False,
-                "link": f"/messages?thread={thread_id}"
-            })
         else:
             if "support_threads" not in db_manager.memory_store:
                 db_manager.memory_store["support_threads"] = {}
             db_manager.memory_store["support_threads"][thread_id] = thread_doc
-            
-            if "admin_notifications" not in db_manager.memory_store:
-                db_manager.memory_store["admin_notifications"] = []
-            db_manager.memory_store["admin_notifications"].insert(0, {
-                "id": f"notif-{uuid.uuid4().hex[:10]}",
-                "title": f"New Support Ticket: {name}",
-                "message": f"[{label.upper()}] {subject}: {message[:90]}",
-                "type": "support",
-                "timestamp": now_iso,
-                "read": False,
-                "link": f"/messages?thread={thread_id}"
-            })
             db_manager.save_memory_store()
+
+        from app.database import AxisDataStore
+        await AxisDataStore.record_admin_notification(
+            title=f"New Support Inquiry: {name}",
+            message=f"[{label.upper()}] {subject}: {message[:90]}",
+            notif_type="support",
+            meta={"thread_id": thread_id, "email": email, "subject": subject, "link": f"/messages?thread={thread_id}"}
+        )
     except Exception as e:
-        logger.warning(f"Could not persist support ticket locally: {e}")
+        logger.warning(f"Could not persist support ticket: {e}")
 
     try:
         sent = send_support_message_email(

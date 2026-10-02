@@ -54,16 +54,7 @@ export function Messages() {
   const [broadcastType, setBroadcastType] = useState('info');
   const [broadcastTarget, setBroadcastTarget] = useState('all');
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
-  const [broadcastHistory, setBroadcastHistory] = useState<any[]>([
-    {
-      id: 'b-01',
-      title: 'Scheduled Financial Platform Maintenance',
-      message: 'Platform telemetry will run with low latency during database index optimization.',
-      type: 'info',
-      dispatched: 14,
-      time: 'Earlier today'
-    }
-  ]);
+  const [broadcastHistory, setBroadcastHistory] = useState<any[]>([]);
 
   const fetchThreads = async () => {
     setLoadingThreads(true);
@@ -84,8 +75,18 @@ export function Messages() {
     }
   };
 
+  const fetchBroadcasts = async () => {
+    try {
+      const res = await api.get('/messages/broadcasts');
+      setBroadcastHistory(res.data.data || []);
+    } catch {
+      // non-blocking
+    }
+  };
+
   useEffect(() => {
     fetchThreads();
+    fetchBroadcasts();
   }, []);
 
   const handleSendReply = async (e: React.FormEvent) => {
@@ -175,17 +176,7 @@ export function Messages() {
 
       const count = res.data.dispatched_to || 0;
       toast({ type: 'success', message: `Broadcast successfully delivered to ${count} users` });
-      setBroadcastHistory(prev => [
-        {
-          id: `b-${Date.now()}`,
-          title: broadcastTitle,
-          message: broadcastMessage,
-          type: broadcastType,
-          dispatched: count,
-          time: 'Just now'
-        },
-        ...prev
-      ]);
+      fetchBroadcasts();
       setBroadcastTitle('');
       setBroadcastMessage('');
     } catch (e: any) {
@@ -548,23 +539,33 @@ export function Messages() {
           <div className="p-6 rounded-2xl bg-navy-900 border border-white/8 shadow-xl">
             <h3 className="text-sm font-bold text-white mb-3">Broadcast Transmission Log</h3>
             <div className="space-y-3">
-              {broadcastHistory.map((item) => (
-                <div key={item.id} className="p-3.5 rounded-xl bg-white/3 border border-white/6 text-xs space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-white flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${
-                        item.type === 'warning' ? 'bg-rose-400' : item.type === 'success' ? 'bg-cyan-400' : 'bg-lilac-400'
-                      }`} />
-                      {item.title}
-                    </span>
-                    <span className="text-[10px] text-slate-500 font-mono">{item.time}</span>
-                  </div>
-                  <p className="text-slate-300 text-[11px]">{item.message}</p>
-                  <div className="text-[10px] text-cyan-400/90 font-mono pt-1">
-                    Dispatched to {item.dispatched} recipients
-                  </div>
+              {broadcastHistory.length === 0 ? (
+                <div className="text-center py-10 text-slate-500 text-xs flex flex-col items-center gap-2">
+                  <Bell size={24} className="text-slate-600 mb-1" />
+                  <span>No broadcast announcements sent yet</span>
+                  <span className="text-[10px] text-slate-600">Dispatched global alerts and notices will appear here</span>
                 </div>
-              ))}
+              ) : (
+                broadcastHistory.map((item) => (
+                  <div key={item.id} className="p-3.5 rounded-xl bg-white/3 border border-white/6 text-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-white flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${
+                          item.type === 'warning' ? 'bg-rose-400' : item.type === 'success' ? 'bg-cyan-400' : 'bg-lilac-400'
+                        }`} />
+                        {item.title}
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-mono">
+                        {item.timestamp ? fmtDateTime(item.timestamp) : (item.time || 'Recently')}
+                      </span>
+                    </div>
+                    <p className="text-slate-300 text-[11px]">{item.message}</p>
+                    <div className="text-[10px] text-cyan-400/90 font-mono pt-1">
+                      Dispatched to {item.dispatched} recipients
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

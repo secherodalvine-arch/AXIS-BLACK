@@ -233,7 +233,7 @@ export function AdminLayout() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
-  const [unreadNotifCount, setUnreadNotifCount] = useState(2);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 

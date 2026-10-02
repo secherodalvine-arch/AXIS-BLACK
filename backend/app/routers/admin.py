@@ -1050,6 +1050,16 @@ async def execute_user_action(
                 break
         db_manager.save_memory_store()
 
+    try:
+        await AxisDataStore.record_admin_notification(
+            title=f"User Account Updated: {action.title()}",
+            message=f"Admin {admin.get('name', 'Admin')} performed '{action}' on user {user_id}.",
+            notif_type="warning" if action in ("delete", "block", "suspend") else "info",
+            meta={"user_id": user_id, "action": action, "admin": admin.get("email")}
+        )
+    except Exception:
+        pass
+
     return {"success": True, "message": f"Action '{action}' applied successfully"}
 
 
@@ -1170,7 +1180,7 @@ async def send_broadcast_message(
     body: BroadcastMsgReq,
     admin: Dict[str, Any] = Depends(get_current_admin)
 ):
-    """Dispatches a system notification to all users or target audience."""
+    """Dispatches a system notification to all users or target audience and archives in real broadcast log."""
     dispatched_count = 0
     all_uids = []
     if db_manager.is_connected and db_manager.db is not None:
@@ -1192,64 +1202,69 @@ async def send_broadcast_message(
         )
         dispatched_count += 1
 
-    return {"success": True, "dispatched_to": dispatched_count}
+    # Record real transmission record in broadcast_history
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    record = {
+        "id": f"bc-{uuid.uuid4().hex[:10]}",
+        "title": body.title,
+        "message": body.message,
+        "type": body.type,
+        "dispatched": dispatched_count,
+        "admin_name": admin.get("name", "Admin"),
+        "timestamp": now_iso
+    }
+    if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.broadcast_history.insert_one(record)
+    else:
+        if "broadcast_history" not in db_manager.memory_store:
+            db_manager.memory_store["broadcast_history"] = []
+        db_manager.memory_store["broadcast_history"].insert(0, record)
+        db_manager.save_memory_store()
+
+    # Log to real administrative alerts
+    await AxisDataStore.record_admin_notification(
+        title=f"Broadcast Dispatched: {body.title}",
+        message=f"Dispatched to {dispatched_count} user accounts by {admin.get('name', 'Admin')}.",
+        notif_type="info",
+        meta={"broadcast_id": record["id"], "dispatched": dispatched_count}
+    )
+
+    return {"success": True, "dispatched_to": dispatched_count, "broadcast": clean_mongo_doc(record)}
+
+@router.get("/messages/broadcasts")
+async def get_broadcast_history(
+    limit: int = 50,
+    admin: Dict[str, Any] = Depends(get_current_admin)
+):
+    """Returns actual broadcast transmission history without mockups."""
+    records = []
+    if db_manager.is_connected and db_manager.db is not None:
+        docs = await db_manager.db.broadcast_history.find().sort("timestamp", -1).to_list(length=limit)
+        records = [clean_mongo_doc(d) for d in docs]
+    else:
+        records = [clean_mongo_doc(d) for d in db_manager.memory_store.get("broadcast_history", [])[:limit]]
+    return {"success": True, "data": records}
 
 @router.get("/admin-notifications")
 async def get_admin_notifications(
-    limit: int = 40,
+    limit: int = 50,
     admin: Dict[str, Any] = Depends(get_current_admin)
 ):
-    """Returns recent administrative alerts (e.g. new signups, suspicious logins, payment events)."""
+    """Returns real administrative alerts (e.g. signups, payments, customer support, error events)."""
+    # Clean up any legacy mockup seed items
+    legacy_fake_ids = ["notif-01", "notif-02", "notif-03", "notif-04"]
     notifs = []
     if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.admin_notifications.delete_many({"id": {"$in": legacy_fake_ids}})
         docs = await db_manager.db.admin_notifications.find().sort("timestamp", -1).to_list(length=limit)
         notifs = [clean_mongo_doc(d) for d in docs]
     else:
-        notifs = [clean_mongo_doc(d) for d in db_manager.memory_store.get("admin_notifications", [])[:limit]]
-
-    # Seed initial real alerts if none exist
-    if not notifs:
-        now_dt = datetime.datetime.now(datetime.timezone.utc)
-        seeds = [
-            {
-                "id": "notif-01",
-                "title": "Pro Plan Subscription Activated",
-                "message": "User apex_capital ($99.00 USD/mo) upgraded to Pro Tier via IntaSend.",
-                "type": "success",
-                "timestamp": (now_dt - datetime.timedelta(minutes=14)).isoformat(),
-                "read": False
-            },
-            {
-                "id": "notif-02",
-                "title": "New User Account Registration",
-                "message": "Founder Marcus Sterling (marcus@vanguard.co) created a business account.",
-                "type": "info",
-                "timestamp": (now_dt - datetime.timedelta(hours=1, minutes=20)).isoformat(),
-                "read": False
-            },
-            {
-                "id": "notif-03",
-                "title": "IntaSend Webhook Verified",
-                "message": "Payment webhook signature verified for transaction TX-8921-USD.",
-                "type": "success",
-                "timestamp": (now_dt - datetime.timedelta(hours=3)).isoformat(),
-                "read": True
-            },
-            {
-                "id": "notif-04",
-                "title": "Homepage Traffic Spike Detected",
-                "message": "Over 240 unique visitors recorded on the landing page in the past 4 hours.",
-                "type": "warning",
-                "timestamp": (now_dt - datetime.timedelta(hours=5)).isoformat(),
-                "read": True
-            }
-        ]
-        if db_manager.is_connected and db_manager.db is not None:
-            await db_manager.db.admin_notifications.insert_many(seeds)
-        else:
-            db_manager.memory_store["admin_notifications"] = seeds
+        all_notifs = db_manager.memory_store.get("admin_notifications", [])
+        cleaned = [n for n in all_notifs if n.get("id") not in legacy_fake_ids]
+        if len(cleaned) != len(all_notifs):
+            db_manager.memory_store["admin_notifications"] = cleaned
             db_manager.save_memory_store()
-        notifs = seeds
+        notifs = [clean_mongo_doc(d) for d in cleaned[:limit]]
 
     unread_count = len([n for n in notifs if not n.get("read")])
     return {"success": True, "data": notifs, "unread": unread_count}
@@ -1260,10 +1275,13 @@ async def mark_admin_notification_read(
     admin: Dict[str, Any] = Depends(get_current_admin)
 ):
     if db_manager.is_connected and db_manager.db is not None:
-        await db_manager.db.admin_notifications.update_one({"id": notif_id}, {"$set": {"read": True}})
+        await db_manager.db.admin_notifications.update_one(
+            {"$or": [{"id": notif_id}, {"_id": notif_id}]},
+            {"$set": {"read": True}}
+        )
     else:
         for n in db_manager.memory_store.get("admin_notifications", []):
-            if n.get("id") == notif_id:
+            if n.get("id") == notif_id or str(n.get("_id", "")) == notif_id:
                 n["read"] = True
                 break
         db_manager.save_memory_store()
@@ -1285,10 +1303,11 @@ async def delete_admin_notification(
     admin: Dict[str, Any] = Depends(get_current_admin)
 ):
     if db_manager.is_connected and db_manager.db is not None:
-        await db_manager.db.admin_notifications.delete_one({"id": notif_id})
+        await db_manager.db.admin_notifications.delete_one({"$or": [{"id": notif_id}, {"_id": notif_id}]})
     else:
         db_manager.memory_store["admin_notifications"] = [
-            n for n in db_manager.memory_store.get("admin_notifications", []) if n.get("id") != notif_id
+            n for n in db_manager.memory_store.get("admin_notifications", [])
+            if n.get("id") != notif_id and str(n.get("_id", "")) != notif_id
         ]
         db_manager.save_memory_store()
     return {"success": True, "message": "Notification deleted"}
@@ -1350,7 +1369,10 @@ async def get_system_logs(
     logs = []
     total = 0
 
+    # Purge legacy fake seed logs if present
+    legacy_log_ids = ["log-001", "log-002", "log-003", "log-004", "log-005"]
     if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.system_logs.delete_many({"id": {"$in": legacy_log_ids}})
         q: Dict[str, Any] = {}
         if level:
             q["level"] = level.upper()
@@ -1365,7 +1387,11 @@ async def get_system_logs(
         logs = [clean_mongo_doc(d) for d in docs]
     else:
         all_l = db_manager.memory_store.get("system_logs", [])
-        filtered = all_l
+        cleaned_l = [l for l in all_l if l.get("id") not in legacy_log_ids]
+        if len(cleaned_l) != len(all_l):
+            db_manager.memory_store["system_logs"] = cleaned_l
+            db_manager.save_memory_store()
+        filtered = cleaned_l
         if level:
             filtered = [l for l in filtered if l.get("level", "").upper() == level.upper()]
         if service:
@@ -1381,78 +1407,8 @@ async def get_system_logs(
         total = len(filtered)
         logs = filtered[skip:skip + limit]
 
-    # Seed initial realistic error & telemetry logs if collection is empty
-    if total == 0 and not level and not service and not search:
-        now_dt = datetime.datetime.now(datetime.timezone.utc)
-        seeds = [
-            {
-                "id": "log-001",
-                "timestamp": (now_dt - datetime.timedelta(minutes=8)).isoformat(),
-                "level": "INFO",
-                "service": "IntaSend Gateway",
-                "event": "Webhook Handshake Verified",
-                "message": "Payment webhook signature confirmed for customer checkout txn_091.",
-                "path": "/api/payments/webhook",
-                "status_code": 200,
-                "resolved": True
-            },
-            {
-                "id": "log-002",
-                "timestamp": (now_dt - datetime.timedelta(minutes=42)).isoformat(),
-                "level": "WARNING",
-                "service": "Frontend Client",
-                "event": "Slow Network Request",
-                "message": "Client network latency exceeded 1,400ms during spreadsheet cell recalculation.",
-                "path": "/spreadsheet",
-                "details": {"client_ua": "Mozilla/5.0 (Windows NT 10.0; Win64)", "screen": "1920x1080"},
-                "status_code": 200,
-                "resolved": False
-            },
-            {
-                "id": "log-003",
-                "timestamp": (now_dt - datetime.timedelta(hours=2, minutes=15)).isoformat(),
-                "level": "ERROR",
-                "service": "Email Service",
-                "event": "SMTP Rate Throttled",
-                "message": "SMTP provider returned 421 4.7.0 temporary rate limit during batch notification dispatch.",
-                "path": "/api/support/message",
-                "status_code": 421,
-                "stack_trace": "smtplib.SMTPResponseException: (421, b'4.7.0 Try again later, closing connection.')\n  File 'email_service.py', line 74, in send_via_smtp",
-                "resolved": False
-            },
-            {
-                "id": "log-004",
-                "timestamp": (now_dt - datetime.timedelta(hours=4)).isoformat(),
-                "level": "CRITICAL",
-                "service": "Gemini AI Engine",
-                "event": "Quota Limit Exceeded",
-                "message": "Google GenAI API responded with ResourceExhausted (429): Quota exceeded for gemini-2.5-flash.",
-                "path": "/api/agent/query",
-                "status_code": 429,
-                "stack_trace": "google.genai.errors.APIError: 429 ResourceExhausted: Quota exceeded for quota metric 'GenerateContent requests per minute'",
-                "resolved": False
-            },
-            {
-                "id": "log-005",
-                "timestamp": (now_dt - datetime.timedelta(hours=7)).isoformat(),
-                "level": "ERROR",
-                "service": "Backend API",
-                "event": "Invalid Auth Bearer Token",
-                "message": "Malformed JWT signature received from unverified client IP.",
-                "path": "/api/user/profile",
-                "status_code": 401,
-                "resolved": True
-            }
-        ]
-        if db_manager.is_connected and db_manager.db is not None:
-            await db_manager.db.system_logs.insert_many(seeds)
-        else:
-            db_manager.memory_store["system_logs"] = seeds
-            db_manager.save_memory_store()
-        logs = seeds
-        total = len(seeds)
-
     return clean_mongo_doc({"success": True, "data": logs, "total": total, "page": page, "limit": limit})
+
 
 @router.post("/logs/capture")
 async def capture_system_log(body: SystemLogCaptureReq, request: Request):
@@ -1484,34 +1440,22 @@ async def capture_system_log(body: SystemLogCaptureReq, request: Request):
 
     if db_manager.is_connected and db_manager.db is not None:
         await db_manager.db.system_logs.insert_one(log_doc)
-        if body.level.upper() in ("ERROR", "CRITICAL"):
-            # Trigger admin alert
-            await db_manager.db.admin_notifications.insert_one({
-                "id": f"notif-{uuid.uuid4().hex[:10]}",
-                "title": f"System Alert: {body.service}",
-                "message": f"[{body.level.upper()}] {body.message[:100]}",
-                "type": "warning",
-                "timestamp": now_iso,
-                "read": False,
-                "link": "/logs"
-            })
     else:
         if "system_logs" not in db_manager.memory_store:
             db_manager.memory_store["system_logs"] = []
         db_manager.memory_store["system_logs"].insert(0, log_doc)
-        if body.level.upper() in ("ERROR", "CRITICAL"):
-            if "admin_notifications" not in db_manager.memory_store:
-                db_manager.memory_store["admin_notifications"] = []
-            db_manager.memory_store["admin_notifications"].insert(0, {
-                "id": f"notif-{uuid.uuid4().hex[:10]}",
-                "title": f"System Alert: {body.service}",
-                "message": f"[{body.level.upper()}] {body.message[:100]}",
-                "type": "warning",
-                "timestamp": now_iso,
-                "read": False,
-                "link": "/logs"
-            })
         db_manager.save_memory_store()
+
+    if body.level.upper() in ("ERROR", "CRITICAL"):
+        try:
+            await AxisDataStore.record_admin_notification(
+                title=f"System Alert: {body.service}",
+                message=f"[{body.level.upper()}] {body.message[:100]}",
+                notif_type="warning",
+                meta={"service": body.service, "level": body.level.upper(), "link": "/logs"}
+            )
+        except Exception:
+            pass
 
     return {"success": True, "id": log_id}
 
@@ -1617,7 +1561,10 @@ async def get_support_threads(
     threads = []
     total = 0
 
+    # Purge legacy fake seed threads if present
+    legacy_thread_ids = ["th-cust-101", "th-cust-102", "th-cust-103"]
     if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.support_threads.delete_many({"id": {"$in": legacy_thread_ids}})
         q: Dict[str, Any] = {}
         if status:
             q["status"] = status
@@ -1630,7 +1577,11 @@ async def get_support_threads(
     else:
         store = db_manager.memory_store.get("support_threads", {})
         all_t = list(store.values()) if isinstance(store, dict) else store
-        filtered = all_t
+        cleaned_t = [t for t in all_t if t.get("id") not in legacy_thread_ids]
+        if len(cleaned_t) != len(all_t):
+            db_manager.memory_store["support_threads"] = {t["id"]: t for t in cleaned_t}
+            db_manager.save_memory_store()
+        filtered = cleaned_t
         if status:
             filtered = [t for t in filtered if t.get("status") == status]
         if search:
@@ -1645,91 +1596,8 @@ async def get_support_threads(
         total = len(filtered)
         threads = filtered[skip:skip + limit]
 
-    # Seed initial realistic user support conversations if empty
-    if total == 0 and not status and not search:
-        now_dt = datetime.datetime.now(datetime.timezone.utc)
-        seeds = [
-            {
-                "id": "th-cust-101",
-                "user_name": "Elena Rostova",
-                "user_email": "elena.r@novacrest.io",
-                "subject": "Question regarding Spreadsheet Formula Sync",
-                "label": "support",
-                "status": "open",
-                "messages": [
-                    {
-                        "id": "msg-001",
-                        "sender": "user",
-                        "name": "Elena Rostova",
-                        "text": "Hello Axis Support team, when uploading our inventory sheet with SUMIFS formulas, does the live recalculation sync with the transactions ledger automatically?",
-                        "timestamp": (now_dt - datetime.timedelta(hours=2, minutes=10)).isoformat()
-                    }
-                ],
-                "created_at": (now_dt - datetime.timedelta(hours=2, minutes=10)).isoformat(),
-                "updated_at": (now_dt - datetime.timedelta(hours=2, minutes=10)).isoformat()
-            },
-            {
-                "id": "th-cust-102",
-                "user_name": "David Kim",
-                "user_email": "david@apexholdings.org",
-                "subject": "Billing Receipt and Invoice Download for Starter Plan",
-                "label": "billing",
-                "status": "in_progress",
-                "messages": [
-                    {
-                        "id": "msg-002",
-                        "sender": "user",
-                        "name": "David Kim",
-                        "text": "Could you provide our company tax ID on the official invoice for our Starter package payment? We need it for quarterly accounting.",
-                        "timestamp": (now_dt - datetime.timedelta(hours=5)).isoformat()
-                    },
-                    {
-                        "id": "msg-003",
-                        "sender": "admin",
-                        "name": "Superadmin",
-                        "text": "Hi David, absolutely! We've updated your organization tax ID under Settings > My Business. Your revised invoice PDF is now ready in the Billing tab.",
-                        "timestamp": (now_dt - datetime.timedelta(hours=4, minutes=15)).isoformat()
-                    }
-                ],
-                "created_at": (now_dt - datetime.timedelta(hours=5)).isoformat(),
-                "updated_at": (now_dt - datetime.timedelta(hours=4, minutes=15)).isoformat()
-            },
-            {
-                "id": "th-cust-103",
-                "user_name": "Amara Diallo",
-                "user_email": "amara@sahelventures.com",
-                "subject": "Multi-Branch Cash Flow Reconciliation Feedback",
-                "label": "feedback",
-                "status": "resolved",
-                "messages": [
-                    {
-                        "id": "msg-004",
-                        "sender": "user",
-                        "name": "Amara Diallo",
-                        "text": "The multi-branch reconciliation feature is incredible! It saved us over 12 hours this month across our West Africa branches.",
-                        "timestamp": (now_dt - datetime.timedelta(days=1)).isoformat()
-                    },
-                    {
-                        "id": "msg-005",
-                        "sender": "admin",
-                        "name": "Superadmin",
-                        "text": "Thank you Amara! Thrilled to hear that. We are rolling out custom branch currency auto-conversions next week as well!",
-                        "timestamp": (now_dt - datetime.timedelta(hours=22)).isoformat()
-                    }
-                ],
-                "created_at": (now_dt - datetime.timedelta(days=1)).isoformat(),
-                "updated_at": (now_dt - datetime.timedelta(hours=22)).isoformat()
-            }
-        ]
-        if db_manager.is_connected and db_manager.db is not None:
-            await db_manager.db.support_threads.insert_many(seeds)
-        else:
-            db_manager.memory_store["support_threads"] = {s["id"]: s for s in seeds}
-            db_manager.save_memory_store()
-        threads = seeds
-        total = len(seeds)
-
     return clean_mongo_doc({"success": True, "data": threads, "total": total, "page": page, "limit": limit})
+
 
 @router.get("/support/threads/{thread_id}")
 async def get_support_thread_detail(
@@ -1932,19 +1800,27 @@ async def get_homepage_traffic_metrics(admin: Dict[str, Any] = Depends(get_curre
             top_referrers[ref] = top_referrers.get(ref, 0) + 1
         recent_visits = hp_events[:10]
 
-    # Provide sensible baseline if fresh dev database
-    if total_views == 0:
-        total_views = 428
-        unique_visitors = 312
-        device_breakdown = {"Desktop": 265, "Mobile": 142, "Tablet": 21}
-        top_referrers = {"Direct": 194, "https://google.com": 132, "https://x.com": 58, "https://linkedin.com": 44}
+    # Calculate real conversion rate based on user registrations vs unique landing visitors
+    total_users = 0
+    if db_manager.is_connected and db_manager.db is not None:
+        try:
+            total_users = await db_manager.db.users.count_documents({})
+        except Exception:
+            total_users = 0
+    else:
+        total_users = len(db_manager.memory_store.get("users", {}))
+
+    conversion_rate = "0.0%"
+    if unique_visitors > 0 and total_users > 0:
+        cr = min(100.0, (total_users / unique_visitors) * 100.0)
+        conversion_rate = f"{cr:.1f}%"
 
     return clean_mongo_doc({
         "success": True,
         "data": {
             "total_views": total_views,
             "unique_visitors": unique_visitors,
-            "conversion_rate": "14.2%",
+            "conversion_rate": conversion_rate,
             "device_breakdown": device_breakdown,
             "top_referrers": top_referrers,
             "recent_visits": recent_visits

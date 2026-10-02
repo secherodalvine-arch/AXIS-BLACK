@@ -285,7 +285,7 @@ export function Analytics() {
 
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
-                Conversion Rate: {homepageData.conversion_rate || '14.2%'}
+                Conversion Rate: {homepageData.conversion_rate || '0.0%'}
               </span>
             </div>
           </div>

@@ -90,27 +90,17 @@ async def global_exception_handler(request: Request, exc: Exception):
     try:
         if db_manager.is_connected and db_manager.db is not None:
             await db_manager.db.system_logs.insert_one(log_doc)
-            await db_manager.db.admin_notifications.insert_one({
-                "id": f"notif-{uuid.uuid4().hex[:10]}",
-                "title": "Critical Backend Exception",
-                "message": f"[500] {str(exc)[:90]} at {request.url.path}",
-                "type": "warning",
-                "timestamp": now_iso,
-                "read": False,
-                "link": "/logs"
-            })
         else:
             db_manager.memory_store.setdefault("system_logs", []).insert(0, log_doc)
-            db_manager.memory_store.setdefault("admin_notifications", []).insert(0, {
-                "id": f"notif-{uuid.uuid4().hex[:10]}",
-                "title": "Critical Backend Exception",
-                "message": f"[500] {str(exc)[:90]} at {request.url.path}",
-                "type": "warning",
-                "timestamp": now_iso,
-                "read": False,
-                "link": "/logs"
-            })
             db_manager.save_memory_store()
+
+        from app.database import AxisDataStore
+        await AxisDataStore.record_admin_notification(
+            title="Critical Server Exception",
+            message=f"[500] {str(exc)[:90]} at {request.url.path}",
+            notif_type="warning",
+            meta={"path": request.url.path, "error_id": error_id, "link": "/logs"}
+        )
     except Exception:
         pass
 
