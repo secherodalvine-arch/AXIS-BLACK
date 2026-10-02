@@ -5,6 +5,7 @@ import { Sidebar } from './components/Sidebar';
 import { Header, SystemNotification } from './components/Header';
 import { NewTransactionModal } from './components/NewTransactionModal';
 import { AxisVoiceSupportAgent } from './components/AxisVoiceSupportAgent';
+import { CustomerSupportModal } from './components/CustomerSupportModal';
 import { UpgradeModal } from './components/UpgradeModal';
 import { formatCurrency } from './utils/currencyUtils';
 
@@ -236,6 +237,8 @@ export const App: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVoiceAgentOpen, setIsVoiceAgentOpen] = useState(false);
+  const [isCustomerSupportOpen, setIsCustomerSupportOpen] = useState(false);
+  const [supportInitialTopic, setSupportInitialTopic] = useState<string | undefined>(undefined);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Subscription & Tier entitlement states
@@ -479,7 +482,7 @@ export const App: React.FC = () => {
         title: sn.title,
         message: sn.message,
         time: sn.time || new Date().toISOString(),
-        type: sn.type === 'role_assigned' ? 'info' : (sn.type === 'branch_created' ? 'success' : 'info'),
+        type: sn.type === 'warning' ? 'warning' : (sn.type === 'success' || sn.type === 'branch_created' || sn.meta?.receipt_number ? 'success' : 'info'),
         read: sn.read || false
       });
     });
@@ -617,7 +620,7 @@ export const App: React.FC = () => {
             try {
               const dismissedPopups = JSON.parse(localStorage.getItem('axis_dismissed_popups') || '[]');
               const pendingPopup = serverNotifs.find((sn: any) => 
-                (sn.type === 'role_assigned' || sn.type === 'branch_created') && 
+                (sn.type === 'role_assigned' || sn.type === 'branch_created' || sn.type === 'success' || sn.meta?.receipt_number || sn.title?.toLowerCase().includes('receipt')) && 
                 !sn.read && 
                 !dismissedPopups.includes(sn.id)
               );
@@ -971,6 +974,10 @@ export const App: React.FC = () => {
             onTimeframeChange={setTimeframe}
             onOpenNewTxnModal={() => setIsModalOpen(true)}
             onOpenVoiceAgent={() => setIsVoiceAgentOpen(true)}
+            onOpenCustomerSupport={() => {
+              setIsCustomerSupportOpen(true);
+              setSupportInitialTopic(undefined);
+            }}
             onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
             onSearchChange={setSearchQuery}
             onLogout={handleLogout}
@@ -1143,6 +1150,14 @@ export const App: React.FC = () => {
           showToast(`Navigated to ${tab.toUpperCase()} via Voice Support`);
         }}
         onOpenUpgrade={openUpgradeModal}
+      />
+
+      <CustomerSupportModal
+        isOpen={isCustomerSupportOpen}
+        onClose={() => setIsCustomerSupportOpen(false)}
+        userEmail={user?.email || ''}
+        userName={user?.name || ''}
+        initialTopic={supportInitialTopic}
       />
 
       <UpgradeModal

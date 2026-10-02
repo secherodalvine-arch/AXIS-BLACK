@@ -30,6 +30,8 @@ interface HeaderProps {
   onTimeframeChange?: (tf: Timeframe) => void;
   onOpenNewTxnModal?: () => void;
   onOpenVoiceAgent?: () => void;
+  onOpenCustomerSupport?: () => void;
+  supportUnreadCount?: number;
   onToggleMobileMenu: () => void;
   onSearchChange: (query: string) => void;
   onLogout?: () => void;
@@ -59,6 +61,8 @@ export const Header: React.FC<HeaderProps> = ({
   onTimeframeChange: _onTimeframeChange,
   onOpenNewTxnModal: _onOpenNewTxnModal,
   onOpenVoiceAgent,
+  onOpenCustomerSupport,
+  supportUnreadCount = 0,
   onToggleMobileMenu,
   onSearchChange,
   onLogout,
@@ -323,8 +327,75 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* 2. AXIS VOICE ICON, 3. NOTIFICATION BELL, 4. USER PROFILE */}
+      {/* 2. CUSTOMER SUPPORT CONCIERGE, AXIS VOICE, 3. NOTIFICATION BELL, 4. USER PROFILE */}
       <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'nowrap', flexShrink: 0 }}>
+        {onOpenCustomerSupport && (
+          <button 
+            className="icon-btn support-header-btn" 
+            onClick={onOpenCustomerSupport}
+            style={{
+              height: '38px',
+              padding: '0 12px 0 8px',
+              borderRadius: '10px',
+              background: 'var(--header-btn-bg, #141418)',
+              border: '1px solid var(--header-btn-border, rgba(0, 212, 255, 0.35))',
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              flexShrink: 0,
+              boxShadow: '0 0 10px rgba(0, 212, 255, 0.12)',
+              transition: 'all 0.2s ease'
+            }}
+            title="Customer Support Concierge (Online)"
+          >
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: '7px',
+                background: 'linear-gradient(135deg, #00d4ff, #7c5fe6)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.75rem',
+                color: '#fff'
+              }}>
+                <i className="fa-solid fa-headset"></i>
+              </div>
+              <span style={{
+                position: 'absolute',
+                bottom: '-2px',
+                right: '-2px',
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                background: '#4ade80',
+                border: '1.5px solid #141418',
+                boxShadow: '0 0 6px #4ade80'
+              }} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: 1.1 }}>
+              <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-main, #ffffff)' }}>Support</span>
+              <span style={{ fontSize: '0.62rem', color: '#4ade80', fontWeight: 600 }}>Online</span>
+            </div>
+            {supportUnreadCount > 0 && (
+              <span style={{
+                fontSize: '0.62rem',
+                fontWeight: 800,
+                background: '#00d4ff',
+                color: '#000000',
+                padding: '1px 6px',
+                borderRadius: '10px',
+                marginLeft: '2px'
+              }}>
+                {supportUnreadCount}
+              </span>
+            )}
+          </button>
+        )}
+
         {onOpenVoiceAgent && (
           <button 
             className="icon-btn voice-icon-btn" 

@@ -1,3 +1,4 @@
+from typing import Optional, Any
 from pydantic import BaseModel, Field
 
 
@@ -12,3 +13,8 @@ class SupportMessageRequest(BaseModel):
 class SupportMessageResponse(BaseModel):
     message: str
     label: str
+    data: Optional[Any] = None
+
+
+class SupportReplyRequest(BaseModel):
+    reply: str = Field(..., min_length=1, max_length=4000)

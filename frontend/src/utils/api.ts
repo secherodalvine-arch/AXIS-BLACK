@@ -362,17 +362,53 @@ export const getVoiceSignedUrlApi = async (): Promise<{ status: string; signed_u
   return await request<any>('/voice/signed-url');
 };
 
-// ── Support & Contact API ──
+// ── Support & Customer Concierge API ──
+export interface SupportMessageItem {
+  id: string;
+  sender: 'user' | 'admin';
+  name: string;
+  text: string;
+  timestamp: string;
+}
+
+export interface SupportThread {
+  id: string;
+  user_id?: string;
+  user_name: string;
+  user_email: string;
+  subject: string;
+  label: string;
+  status: 'open' | 'in_progress' | 'resolved';
+  messages: SupportMessageItem[];
+  created_at: string;
+  updated_at: string;
+}
+
 export const sendSupportMessageApi = async (payload: {
   name: string;
   email: string;
   message: string;
   subject?: string;
   label?: string;
-}): Promise<{ message: string; label: string }> => {
-  return await request<{ message: string; label: string }>('/support/message', {
+}): Promise<{ message: string; label: string; data?: SupportThread }> => {
+  return await request<{ message: string; label: string; data?: SupportThread }>('/support/message', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+};
+
+export const getMySupportThreadsApi = async (): Promise<{ success: boolean; data: SupportThread[] }> => {
+  return await request<{ success: boolean; data: SupportThread[] }>('/support/my-threads');
+};
+
+export const getSupportThreadDetailApi = async (threadId: string): Promise<{ success: boolean; data: SupportThread }> => {
+  return await request<{ success: boolean; data: SupportThread }>(`/support/threads/${threadId}`);
+};
+
+export const replySupportThreadApi = async (threadId: string, reply: string): Promise<{ success: boolean; data: SupportMessageItem; message?: string }> => {
+  return await request<{ success: boolean; data: SupportMessageItem; message?: string }>(`/support/threads/${threadId}/reply`, {
+    method: 'POST',
+    body: JSON.stringify({ reply }),
   });
 };
 

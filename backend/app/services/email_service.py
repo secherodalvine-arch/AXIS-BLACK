@@ -857,3 +857,167 @@ def send_support_message_email(
         reply_to=email,
     )
 
+
+def send_upgrade_receipt_email(
+    to_email: str,
+    user_name: str,
+    plan_name: str,
+    plan_key: str,
+    amount_kes: int,
+    reference: str,
+    receipt_number: str,
+    payment_mode: str,
+    paid_at: str,
+    expires_at: str,
+) -> bool:
+    """
+    Sends a subscription upgrade confirmation and official payment receipt email.
+    Dispatched immediately after payment activation (STK push, Till approval, Paystack card/webhook, or admin assignment).
+    """
+    to_email = to_email.strip().lower()
+    frontend_url = getattr(settings, "FRONTEND_URL", "https://axisblack.io").rstrip("/")
+    duration_label = "1 Month Access" if "starter" in plan_key.lower() else "3 Months Access" if "pro" in plan_key.lower() else "Custom Subscription"
+
+    subject = f"Subscription Activated — {plan_name} | Axis Black Receipt #{receipt_number}"
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{subject}</title>
+  <style>{_EMAIL_BASE_STYLE}
+    .receipt-box {{
+      background: rgba(0, 212, 255, 0.04);
+      border: 1px solid rgba(0, 212, 255, 0.22);
+      border-radius: 14px;
+      padding: 24px;
+      margin: 24px 0;
+    }}
+    .receipt-table {{
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }}
+    .receipt-table td {{
+      padding: 9px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }}
+    .receipt-table tr:last-child td {{
+      border-bottom: none;
+    }}
+    .receipt-label {{
+      color: #94a3b8;
+      font-weight: 500;
+    }}
+    .receipt-val {{
+      font-weight: 700;
+      color: #e2e8f0;
+      text-align: right;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }}
+    .receipt-val-code {{
+      font-family: 'Courier New', monospace;
+      letter-spacing: 0.5px;
+    }}
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="header">
+        <div class="brand">
+          <span class="brand-name">AXIS<span>BLACK</span></span>
+        </div>
+        <h1 class="header-title">Subscription Activated!</h1>
+        <p class="header-sub">Your payment has been confirmed and plan entitlements are live</p>
+      </div>
+      <div class="body">
+        <p>Dear <strong>{user_name}</strong>,</p>
+        <p>Thank you for choosing Axis Black. Your subscription upgrade to <strong>{plan_name}</strong> ({duration_label}) has been completed successfully. Your business workspace, financial models, advanced metrics, and AI capabilities are now active.</p>
+
+        <div class="receipt-box">
+          <p style="margin: 0 0 16px 0; font-size: 12px; font-weight: 800; letter-spacing: 1.5px; color: #00d4ff; text-transform: uppercase;">
+            Official Payment Receipt
+          </p>
+          <table class="receipt-table">
+            <tr>
+              <td class="receipt-label">Subscription Tier</td>
+              <td class="receipt-val"><strong style="color: #ffffff;">{plan_name}</strong></td>
+            </tr>
+            <tr>
+              <td class="receipt-label">Amount Paid</td>
+              <td class="receipt-val"><span style="color: #4ade80; font-size: 15px; font-weight: 800;">KES {amount_kes:,}</span></td>
+            </tr>
+            <tr>
+              <td class="receipt-label">Payment Mode</td>
+              <td class="receipt-val">{payment_mode}</td>
+            </tr>
+            <tr>
+              <td class="receipt-label">Receipt Number</td>
+              <td class="receipt-val receipt-val-code" style="color: #00d4ff;">{receipt_number}</td>
+            </tr>
+            <tr>
+              <td class="receipt-label">Transaction Ref</td>
+              <td class="receipt-val receipt-val-code">{reference}</td>
+            </tr>
+            <tr>
+              <td class="receipt-label">Payment Date</td>
+              <td class="receipt-val">{paid_at}</td>
+            </tr>
+            <tr>
+              <td class="receipt-label">Access Expiration</td>
+              <td class="receipt-val" style="color: #fbbf24;">{expires_at}</td>
+            </tr>
+          </table>
+        </div>
+
+        <p style="font-size: 13px; color: #94a3b8; line-height: 1.6;">
+          Your team members attached to your business profile also now have full access to upgraded collaborative tools and permissions.
+        </p>
+
+        <div class="btn-wrap">
+          <a href="{frontend_url}" class="btn">Launch Workspace Dashboard</a>
+        </div>
+
+        <hr class="divider">
+        <p style="font-size: 12px; color: #64748b; margin-bottom: 4px;">
+          Need assistance or custom enterprise billing? Contact our concierge team at <a href="mailto:nairobi@axisblack.io" style="color: #00d4ff; text-decoration: none;">nairobi@axisblack.io</a>.
+        </p>
+        <p style="font-size: 11px; color: #475569;">
+          This is an automated transaction confirmation.
+        </p>
+      </div>
+      <div class="footer">
+        <strong>Axis Black Intelligence</strong> &bull; Financial Workspace &bull; Nairobi, Kenya
+      </div>
+    </div>
+  </div>
+</body>
+</html>"""
+
+    text_content = (
+        f"Axis Black — {plan_name} Subscription Activated\\n\\n"
+        f"Hi {user_name},\\n\\n"
+        f"Thank you for upgrading! Your {plan_name} subscription is now live.\\n\\n"
+        f"PAYMENT RECEIPT DETAILS:\\n"
+        f"  Tier:           {plan_name} ({duration_label})\\n"
+        f"  Amount:         KES {amount_kes:,}\\n"
+        f"  Payment Mode:   {payment_mode}\\n"
+        f"  Receipt No.:    {receipt_number}\\n"
+        f"  Reference:      {reference}\\n"
+        f"  Date:           {paid_at}\\n"
+        f"  Valid Until:    {expires_at}\\n\\n"
+        f"Launch Workspace: {frontend_url}\\n"
+        f"Customer Support: nairobi@axisblack.io\\n"
+    )
+
+    return send_email_notification(
+        to_email=to_email,
+        subject=subject,
+        body_html=html,
+        body_text=text_content,
+        reply_to="nairobi@axisblack.io",
+    )
+
+

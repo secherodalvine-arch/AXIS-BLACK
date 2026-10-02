@@ -15,6 +15,7 @@ import json
 import uuid
 import hmac
 import hashlib
+import logging
 import datetime
 from typing import Optional, List, Dict, Any
 
@@ -27,6 +28,9 @@ from app.config import settings
 from app.database import db_manager, AxisDataStore
 from app.auth.dependencies import get_current_user
 from app.routers.admin import get_current_admin
+from app.services.email_service import send_upgrade_receipt_email
+
+logger = logging.getLogger("axisblack.payments")
 
 router = APIRouter(prefix="/api/payments", tags=["Payment Engine & Billing"])
 
@@ -168,6 +172,69 @@ def _month_str() -> str:
 def _receipt_number(ref: str) -> str:
     token = (ref or uuid.uuid4().hex[:8]).replace("-", "").upper()
     return f"AXIS-REC-{token[-8:]}"
+
+
+async def _dispatch_upgrade_receipt_and_notification(
+    user_id: str,
+    user_email: str,
+    user_name: str,
+    plan_key: str,
+    amount_kes: int,
+    reference: str,
+    receipt_number: str,
+    payment_mode: str,
+    paid_at: str,
+    expires_at: str,
+):
+    """
+    Sends both an in-app notification to the user and an email receipt with full payment details.
+    """
+    plan = PLANS.get(plan_key, PLANS.get("starter", {}))
+    plan_name = plan.get("name", plan_key.capitalize())
+
+    # 1. In-App Notification for user
+    try:
+        if user_id:
+            exp_date_label = expires_at.split("T")[0] if "T" in str(expires_at) else str(expires_at)
+            await AxisDataStore.add_notification(
+                recipient_id=user_id,
+                title=f"Payment Receipt: {plan_name} Active",
+                message=f"Your {plan_name} subscription has been activated! Receipt #{receipt_number} for KES {amount_kes:,} via {payment_mode}. Access valid until {exp_date_label}.",
+                notif_type="success",
+                meta={
+                    "plan": plan_key,
+                    "plan_name": plan_name,
+                    "receipt_number": receipt_number,
+                    "amount_kes": amount_kes,
+                    "reference": reference,
+                    "payment_mode": payment_mode,
+                    "paid_at": paid_at,
+                    "expires_at": expires_at,
+                }
+            )
+            logger.info(f"Recorded in-app upgrade notification for user {user_id} ({plan_name})")
+    except Exception as e:
+        logger.warning(f"Could not record user in-app upgrade notification: {e}")
+
+    # 2. Official Email Receipt
+    try:
+        if user_email and "@" in user_email:
+            send_upgrade_receipt_email(
+                to_email=user_email,
+                user_name=user_name or "Valued Client",
+                plan_name=plan_name,
+                plan_key=plan_key,
+                amount_kes=amount_kes,
+                reference=reference,
+                receipt_number=receipt_number,
+                payment_mode=payment_mode,
+                paid_at=paid_at,
+                expires_at=expires_at,
+            )
+            logger.info(f"Dispatched upgrade receipt email to {user_email} for receipt {receipt_number}")
+    except Exception as e:
+        logger.warning(f"Could not dispatch upgrade email receipt to {user_email}: {e}")
+
 
 # ── Pydantic Request / Response Schemas ────────────────────────────────────────
 class InitiatePaymentReq(BaseModel):
@@ -930,6 +997,20 @@ async def verify_payment(
         except Exception:
             pass
 
+        # Dispatch user in-app notification & official email receipt
+        await _dispatch_upgrade_receipt_and_notification(
+            user_id=user_id,
+            user_email=payment.get("user_email") or current_user.get("email", ""),
+            user_name=payment.get("user_name") or current_user.get("name", "Valued Client"),
+            plan_key=plan_key,
+            amount_kes=int(payment.get("amount_kes", 0)),
+            reference=ref,
+            receipt_number=receipt_no,
+            payment_mode=mode_label,
+            paid_at=paid_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
+            expires_at=expires_at.strftime("%Y-%m-%d"),
+        )
+
         sub = await get_user_subscription(user_id)
         return {
             "status": "success",
@@ -1142,6 +1223,20 @@ async def paystack_webhook(request: Request, background_tasks: BackgroundTasks):
                     )
                 except Exception:
                     pass
+
+                # Dispatch user in-app notification & official email receipt
+                await _dispatch_upgrade_receipt_and_notification(
+                    user_id=payment.get("user_id", ""),
+                    user_email=payment.get("user_email", ""),
+                    user_name=payment.get("user_name", "Valued Client"),
+                    plan_key=plan_key,
+                    amount_kes=int(payment.get("amount_kes", 0)),
+                    reference=ref,
+                    receipt_number=receipt_no,
+                    payment_mode=mode_label,
+                    paid_at=datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+                    expires_at=expires_at.strftime("%Y-%m-%d"),
+                )
 
     return {"received": True}
 
@@ -1389,6 +1484,20 @@ async def approve_admin_payment(
     except Exception:
         pass
 
+    # Dispatch user in-app notification & official email receipt
+    await _dispatch_upgrade_receipt_and_notification(
+        user_id=payment.get("user_id", ""),
+        user_email=payment.get("user_email", ""),
+        user_name=payment.get("user_name", "Valued Client"),
+        plan_key=plan_key,
+        amount_kes=int(payment.get("amount_kes", 0)),
+        reference=payment.get("reference", ""),
+        receipt_number=receipt_no,
+        payment_mode="M-Pesa Till",
+        paid_at=paid_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
+        expires_at=expires_at.strftime("%Y-%m-%d"),
+    )
+
     return {
         "status": "success",
         "message": f"Payment approved. {plan['name']} plan activated for {payment.get('user_email')} until {expires_at.strftime('%Y-%m-%d')}."
@@ -1484,6 +1593,21 @@ async def assign_user_plan(
         "updated_at": _now().isoformat(),
     }
     pid = await _insert_payment(doc)
+
+    # Dispatch user in-app notification & official email receipt
+    await _dispatch_upgrade_receipt_and_notification(
+        user_id=target_uid,
+        user_email=user.get("email", ""),
+        user_name=user.get("name", "Valued Client"),
+        plan_key=plan_key,
+        amount_kes=int(plan["amount_kes"]),
+        reference=ref,
+        receipt_number=doc["receipt_number"],
+        payment_mode="Admin Assignment",
+        paid_at=datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        expires_at=expires_at.strftime("%Y-%m-%d"),
+    )
+
     return {
         "status": "success",
         "payment_id": pid,
