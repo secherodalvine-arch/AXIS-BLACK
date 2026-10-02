@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Bot, Sparkles, Cpu, Zap, Activity, MessageSquare,
-  Shield, CheckCircle, BarChart3, TrendingUp, Lightbulb,
-  Send, RefreshCw, Copy, Check, Info, ArrowUpRight
+  Bot, Sparkles, Send, Copy, Check, Plus, Trash2,
+  Clock, MessageSquare, PanelLeftClose, PanelLeftOpen,
+  ArrowUpRight, RefreshCw, X
 } from 'lucide-react';
 import api from '@/api/client';
 import { useToastStore } from '@/store';
+import { fmtRelative } from '@/utils/formatDate';
 
 interface ChatMessage {
   id: string;
@@ -15,12 +16,14 @@ interface ChatMessage {
   metrics?: any;
 }
 
-const ADVISORS = [
-  { name: 'Financial Advisor', skill: 'financial_advisor.md', queries: 142, accuracy: '99.4%', status: 'Active', latency: '420ms', color: '#06b6d4' },
-  { name: 'Inventory & Supply Advisor', skill: 'inventory_advisor.md', queries: 88, accuracy: '98.9%', status: 'Active', latency: '380ms', color: '#8b5cf6' },
-  { name: 'Operations & Branch Advisor', skill: 'operations_advisor.md', queries: 64, accuracy: '99.1%', status: 'Active', latency: '410ms', color: '#10b981' },
-  { name: 'Growth & ARR Forecast Advisor', skill: 'growth_advisor.md', queries: 53, accuracy: '98.5%', status: 'Active', latency: '490ms', color: '#f59e0b' },
-];
+interface ChatSession {
+  id: string;
+  title: string;
+  timestamp: string;
+  messages: ChatMessage[];
+}
+
+const STORAGE_KEY = 'axis_admin_chat_sessions';
 
 const PROMPT_SUGGESTIONS = [
   "Summarize active platform traffic and user signups",
@@ -30,25 +33,59 @@ const PROMPT_SUGGESTIONS = [
   "Are there any payment or API anomalies detected recently?"
 ];
 
+const createDefaultSession = (): ChatSession => ({
+  id: `session-${Date.now()}`,
+  title: 'New Advisory Chat',
+  timestamp: new Date().toISOString(),
+  messages: []
+});
+
+const loadInitialSessions = (): ChatSession[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load admin chat sessions from storage:', e);
+  }
+  return [createDefaultSession()];
+};
+
 export function AdminAgent() {
   const { toast } = useToastStore();
-  const [model] = useState('Gemini 2.5 Flash / Pro Multimodal');
-  const [activeTab, setActiveTab] = useState<'chat' | 'architecture'>('chat');
+  const [sessions, setSessions] = useState<ChatSession[]>(loadInitialSessions);
+  const [activeSessionId, setActiveSessionId] = useState<string>(() => {
+    const initial = loadInitialSessions();
+    return initial[0]?.id || `session-${Date.now()}`;
+  });
 
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [inputQuery, setInputQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [
-    {
-      id: 'welcome-01',
-      sender: 'agent',
-      text: "### Welcome to Axis Admin Strategic Agent\n\nI am your **executive platform advisor**, grounded in real-time telemetry across **active users, subscription MRR, feature engagement, and operational error logs**.\n\nAsk me about:\n- **Traffic & Visitors**: Page views, landing conversions, device breakdown\n- **Platform Usage**: Spreadsheet adoption, inventory tracking, ledger volume\n- **User Retention**: Data-backed strategies to lower churn based on active telemetry\n- **Revenue Telemetry**: MRR, ARR, and plan distribution\n\n*Note: Axis Admin Agent operates in strict **READ-ONLY** mode to safeguard the production database.*",
-      timestamp: new Date().toISOString()
-    }
-  ]);
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Sync sessions to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    } catch (e) {
+      console.error('Failed to save admin chat sessions to storage:', e);
+    }
+  }, [sessions]);
+
+  // Current active session
+  const activeSession = sessions.find(s => s.id === activeSessionId) || sessions[0] || createDefaultSession();
+  const activeMessages = activeSession ? activeSession.messages : [];
+
+  // Filter history to display sessions with messages or user exchanges
+  const historySessions = sessions.filter(s => s.messages && s.messages.length > 0);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -56,26 +93,71 @@ export function AdminAgent() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, loading]);
+  }, [activeMessages.length, loading]);
+
+  const handleCreateNewChat = () => {
+    const newSession = createDefaultSession();
+    setSessions(prev => [newSession, ...prev]);
+    setActiveSessionId(newSession.id);
+    setInputQuery('');
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
+
+  const handleSelectSession = (sessionId: string) => {
+    setActiveSessionId(sessionId);
+  };
+
+  const handleDeleteSession = (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation();
+    setSessions(prev => {
+      const remaining = prev.filter(s => s.id !== sessionId);
+      if (remaining.length === 0) {
+        const fresh = createDefaultSession();
+        setActiveSessionId(fresh.id);
+        return [fresh];
+      }
+      if (activeSessionId === sessionId) {
+        setActiveSessionId(remaining[0].id);
+      }
+      return remaining;
+    });
+    toast({ type: 'info', message: 'Chat session removed' });
+  };
 
   const handleSendMessage = async (queryText?: string) => {
     const q = (queryText || inputQuery).trim();
     if (!q || loading) return;
 
-    const userMsgId = `usr-${Date.now()}`;
+    const nowIso = new Date().toISOString();
     const userMsg: ChatMessage = {
-      id: userMsgId,
+      id: `usr-${Date.now()}`,
       sender: 'user',
       text: q,
-      timestamp: new Date().toISOString()
+      timestamp: nowIso
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    // Update active session with user message and dynamic title if first message
+    setSessions(prev => prev.map(s => {
+      if (s.id === activeSessionId) {
+        const isGenericTitle = s.title === 'New Advisory Chat' || s.title === 'New Chat';
+        const newTitle = isGenericTitle ? (q.length > 35 ? q.slice(0, 35) + '...' : q) : s.title;
+        return {
+          ...s,
+          title: newTitle,
+          timestamp: nowIso,
+          messages: [...s.messages, userMsg]
+        };
+      }
+      return s;
+    }));
+
     setInputQuery('');
     setLoading(true);
 
     try {
-      const historyPayload = messages.slice(-4).map(m => ({
+      const historyPayload = activeMessages.slice(-6).map(m => ({
         role: m.sender === 'user' ? 'user' : 'model',
         text: m.text
       }));
@@ -96,15 +178,32 @@ export function AdminAgent() {
         metrics
       };
 
-      setMessages(prev => [...prev, agentMsg]);
+      setSessions(prev => prev.map(s => {
+        if (s.id === activeSessionId) {
+          return {
+            ...s,
+            timestamp: new Date().toISOString(),
+            messages: [...s.messages, agentMsg]
+          };
+        }
+        return s;
+      }));
     } catch (err: any) {
       const errorMsg: ChatMessage = {
         id: `agt-err-${Date.now()}`,
         sender: 'agent',
-        text: "I encountered a temporary telemetry connection timeout. Please verify that backend services are active.",
+        text: "I encountered a telemetry connection issue. Please verify backend connectivity.",
         timestamp: new Date().toISOString()
       };
-      setMessages(prev => [...prev, errorMsg]);
+      setSessions(prev => prev.map(s => {
+        if (s.id === activeSessionId) {
+          return {
+            ...s,
+            messages: [...s.messages, errorMsg]
+          };
+        }
+        return s;
+      }));
     } finally {
       setLoading(false);
     }
@@ -117,61 +216,57 @@ export function AdminAgent() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleClearChat = () => {
-    setMessages([
-      {
-        id: `welcome-${Date.now()}`,
-        sender: 'agent',
-        text: "Conversation cleared. Ready for your executive platform inquiries.",
-        timestamp: new Date().toISOString()
+  const handleClearCurrentChat = () => {
+    setSessions(prev => prev.map(s => {
+      if (s.id === activeSessionId) {
+        return {
+          ...s,
+          messages: []
+        };
       }
-    ]);
+      return s;
+    }));
+    toast({ type: 'info', message: 'Current chat history cleared' });
   };
 
-  // Simple Markdown Renderer
+  // Markdown rendering
   const renderMarkdown = (text: string) => {
     const lines = text.split('\n');
     return lines.map((line, idx) => {
-      // Header 3
       if (line.startsWith('### ')) {
         return (
-          <h4 key={idx} className="text-sm font-bold text-cyan-400 mt-2.5 mb-1 flex items-center gap-1.5">
+          <h4 key={idx} className="text-xs sm:text-sm font-bold text-cyan-400 mt-2.5 mb-1 flex items-center gap-1.5">
             <Sparkles size={13} /> {line.replace('### ', '')}
           </h4>
         );
       }
-      // Header 2 or 1
       if (line.startsWith('## ') || line.startsWith('# ')) {
         return (
-          <h3 key={idx} className="text-sm font-extrabold text-white mt-3 mb-1">
+          <h3 key={idx} className="text-xs sm:text-sm font-extrabold text-white mt-3 mb-1">
             {line.replace(/^#+\s/, '')}
           </h3>
         );
       }
-      // Bullet list item
       if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
         const clean = line.trim().replace(/^[-*]\s+/, '');
         return (
-          <div key={idx} className="flex items-start gap-2 ml-2 my-1 text-slate-200">
+          <div key={idx} className="flex items-start gap-2 ml-1 sm:ml-2 my-1 text-slate-200">
             <span className="text-cyan-400 font-bold">•</span>
             <div>{renderBoldParts(clean)}</div>
           </div>
         );
       }
-      // Numbered list item
       if (line.trim().match(/^\d+\.\s/)) {
         return (
-          <div key={idx} className="flex items-start gap-2 ml-2 my-1 text-slate-200">
+          <div key={idx} className="flex items-start gap-2 ml-1 sm:ml-2 my-1 text-slate-200">
             <span className="text-cyan-400 font-bold text-xs">{line.trim().split('.')[0]}.</span>
             <div>{renderBoldParts(line.trim().replace(/^\d+\.\s+/, ''))}</div>
           </div>
         );
       }
-      // Empty line spacer
       if (!line.trim()) {
         return <div key={idx} className="h-1.5" />;
       }
-      // Standard paragraph
       return <p key={idx} className="my-1 leading-relaxed text-slate-200">{renderBoldParts(line)}</p>;
     });
   };
@@ -190,147 +285,252 @@ export function AdminAgent() {
   };
 
   return (
-    <div className="space-y-6 animate-fade max-w-6xl mx-auto">
-      {/* Title */}
+    <div className="space-y-4 animate-fade max-w-7xl mx-auto">
+      {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
-            <Bot size={24} className="text-cyan-400" /> Admin Agent &amp; Autonomous Advisors
+            <Bot size={24} className="text-cyan-400" /> Admin Strategic Agent
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Real-time platform intelligence, telemetry synthesis, and autonomous advisory engines
+            Real-time platform telemetry synthesis, user retention heuristics, and operational analysis
           </p>
         </div>
 
-        {/* View Toggle Tabs */}
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-navy-900 border border-white/8">
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setActiveTab('chat')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-              activeTab === 'chat'
-                ? 'bg-gradient-to-r from-cyan-500/20 to-lilac-500/10 text-cyan-300 border border-cyan-500/30'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            onClick={() => setSidebarOpen(prev => !prev)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-navy-900 border border-white/10 text-xs text-slate-300 hover:text-white transition-colors"
+            title={sidebarOpen ? "Hide session history" : "Show session history"}
           >
-            <MessageSquare size={13} />
-            <span>Admin Strategic Agent</span>
+            {sidebarOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
+            <span className="hidden sm:inline">{sidebarOpen ? 'Collapse' : 'Chat History'}</span>
           </button>
+
           <button
-            onClick={() => setActiveTab('architecture')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-              activeTab === 'architecture'
-                ? 'bg-gradient-to-r from-cyan-500/20 to-lilac-500/10 text-cyan-300 border border-cyan-500/30'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            onClick={handleCreateNewChat}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-xs text-cyan-300 font-medium transition-colors"
           >
-            <Cpu size={13} />
-            <span>Advisory Architecture</span>
+            <Plus size={14} />
+            <span>New Chat</span>
           </button>
         </div>
       </div>
 
-      {/* CHAT TAB (Default view: Executive Admin Strategic Agent) */}
-      {activeTab === 'chat' && (
-        <div className="space-y-4">
-          {/* Read-Only Status & Engine Indicator */}
-          <div className="p-3.5 rounded-2xl bg-navy-900 border border-white/8 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs shadow-lg">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center">
-                <Sparkles size={16} />
+      {/* Main Container: Sidebar + Chat Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[calc(100vh-210px)] min-h-[580px]">
+        {/* SIDEBAR: CHAT SESSIONS */}
+        {sidebarOpen && (
+          <div className="lg:col-span-3 rounded-2xl bg-navy-900 border border-white/8 shadow-xl flex flex-col overflow-hidden transition-all">
+            {/* Sidebar Header */}
+            <div className="p-3.5 border-b border-white/8 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider">
+                <Clock size={14} className="text-cyan-400" />
+                <span>Sessions ({historySessions.length})</span>
               </div>
-              <div>
-                <span className="font-bold text-white">Axis Admin Platform Advisor</span>
-                <span className="text-slate-400 ml-2">Grounded in live telemetry • Read-Only Mode</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 text-[11px]">
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Gemini 2.5 Flash Active
-              </span>
               <button
-                onClick={handleClearChat}
-                className="text-slate-400 hover:text-white transition-colors"
-                title="Clear conversation"
+                onClick={handleCreateNewChat}
+                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
+                title="Create New Session"
               >
-                Clear
+                <Plus size={14} />
               </button>
             </div>
-          </div>
 
-          {/* Chat Container */}
-          <div className="rounded-2xl bg-navy-900 border border-white/8 shadow-2xl flex flex-col h-[580px] overflow-hidden">
-            {/* Messages Scroll Area */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-              {messages.map((m) => {
-                const isUser = m.sender === 'user';
-                return (
-                  <div
-                    key={m.id}
-                    className={`flex items-start gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
-                  >
-                    {!isUser && (
-                      <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-lilac-500 text-black font-extrabold text-xs flex items-center justify-center shrink-0 shadow-md shadow-cyan-500/20 mt-1">
-                        AX
-                      </div>
-                    )}
-
+            {/* Sessions List */}
+            <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5 custom-scrollbar">
+              {historySessions.length === 0 ? (
+                <div className="p-4 text-center">
+                  <MessageSquare size={24} className="mx-auto text-slate-600 mb-2" />
+                  <p className="text-xs text-slate-400">No session history yet.</p>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Your conversation history will appear here as you ask queries.
+                  </p>
+                </div>
+              ) : (
+                historySessions.map(s => {
+                  const isActive = s.id === activeSessionId;
+                  return (
                     <div
-                      className={`max-w-[85%] sm:max-w-[78%] rounded-2xl p-4 text-xs ${
-                        isUser
-                          ? 'bg-gradient-to-r from-cyan-500 to-lilac-500 text-black font-medium shadow-md shadow-cyan-500/20'
-                          : 'bg-navy-950/80 border border-white/8 text-slate-200 shadow-md'
+                      key={s.id}
+                      onClick={() => handleSelectSession(s.id)}
+                      className={`group relative flex items-center justify-between p-2.5 rounded-xl cursor-pointer text-xs transition-all ${
+                        isActive
+                          ? 'bg-cyan-500/15 border border-cyan-500/35 text-white shadow-sm'
+                          : 'bg-navy-950/40 hover:bg-white/5 border border-transparent text-slate-300 hover:text-white'
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-4 mb-1.5 opacity-80 text-[10px]">
-                        <span className="font-bold">{isUser ? 'Administrator' : 'Axis Strategic Agent'}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono">
-                            {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      <div className="flex items-center gap-2.5 overflow-hidden flex-1 mr-2">
+                        <MessageSquare
+                          size={14}
+                          className={isActive ? 'text-cyan-400 shrink-0' : 'text-slate-500 shrink-0'}
+                        />
+                        <div className="overflow-hidden">
+                          <p className="font-medium truncate text-xs">
+                            {s.title}
+                          </p>
+                          <span className="text-[10px] text-slate-500 block mt-0.5">
+                            {fmtRelative(s.timestamp)}
                           </span>
-                          {!isUser && (
-                            <button
-                              onClick={() => handleCopyText(m.id, m.text)}
-                              title="Copy response"
-                              className="hover:text-cyan-300 transition-colors"
-                            >
-                              {copiedId === m.id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                            </button>
-                          )}
                         </div>
                       </div>
 
-                      <div className="space-y-1">
-                        {isUser ? <p className="leading-relaxed">{m.text}</p> : renderMarkdown(m.text)}
+                      <button
+                        onClick={(e) => handleDeleteSession(e, s.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-white/10 text-slate-400 hover:text-red-400 transition-all shrink-0"
+                        title="Delete Session"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* MAIN CHAT AREA */}
+        <div className={`${sidebarOpen ? 'lg:col-span-9' : 'lg:col-span-12'} rounded-2xl bg-navy-900 border border-white/8 shadow-2xl flex flex-col overflow-hidden transition-all`}>
+          {/* Chat Header Bar */}
+          <div className="px-4 py-3 border-b border-white/8 bg-navy-950/60 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-lilac-500 text-black font-extrabold text-xs flex items-center justify-center shrink-0 shadow-md shadow-cyan-500/20">
+                AX
+              </div>
+              <div className="overflow-hidden">
+                <h2 className="text-xs sm:text-sm font-bold text-white truncate">
+                  {activeSession.title}
+                </h2>
+                <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Real-time platform telemetry active</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              {activeMessages.length > 0 && (
+                <button
+                  onClick={handleClearCurrentChat}
+                  className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[11px] text-slate-400 hover:text-white transition-colors"
+                  title="Clear messages in current chat"
+                >
+                  Clear Chat
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Messages Scroll View */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 custom-scrollbar">
+            {/* If no messages yet in active session, show compact welcome banner + prompt chips */}
+            {activeMessages.length === 0 && (
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-lilac-500 text-black font-extrabold text-xs flex items-center justify-center shrink-0 shadow-md shadow-cyan-500/20 mt-1">
+                  AX
+                </div>
+                <div className="max-w-[90%] sm:max-w-[80%] rounded-2xl p-4 text-xs bg-navy-950/80 border border-white/8 text-slate-200 shadow-md">
+                  <div className="flex items-center justify-between gap-4 mb-2 text-[10px] opacity-80">
+                    <span className="font-bold text-cyan-400">Axis Strategic Agent</span>
+                    <span className="font-mono">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                  <p className="leading-relaxed">
+                    Welcome back, Administrator. I am your platform strategic intelligence advisor. How can I assist you with platform telemetry, subscriptions, or system operations today?
+                  </p>
+
+                  <div className="mt-3.5 pt-3 border-t border-white/5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                      Suggested Inquiries:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {PROMPT_SUGGESTIONS.map((sug, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handleSendMessage(sug)}
+                          className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-cyan-500/15 border border-white/8 hover:border-cyan-500/30 text-[11px] text-slate-300 hover:text-cyan-300 transition-all text-left flex items-center gap-1.5"
+                        >
+                          <span>{sug}</span>
+                          <ArrowUpRight size={10} className="text-slate-500 shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Conversation Messages */}
+            {activeMessages.map((m) => {
+              const isUser = m.sender === 'user';
+              return (
+                <div
+                  key={m.id}
+                  className={`flex items-start gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
+                >
+                  {!isUser && (
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-lilac-500 text-black font-extrabold text-xs flex items-center justify-center shrink-0 shadow-md shadow-cyan-500/20 mt-1">
+                      AX
+                    </div>
+                  )}
+
+                  <div
+                    className={`max-w-[88%] sm:max-w-[78%] rounded-2xl p-4 text-xs ${
+                      isUser
+                        ? 'bg-gradient-to-r from-cyan-500 to-lilac-500 text-black font-medium shadow-md shadow-cyan-500/20'
+                        : 'bg-navy-950/80 border border-white/8 text-slate-200 shadow-md'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-4 mb-1.5 opacity-80 text-[10px]">
+                      <span className="font-bold">{isUser ? 'Administrator' : 'Axis Strategic Agent'}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono">
+                          {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        {!isUser && (
+                          <button
+                            onClick={() => handleCopyText(m.id, m.text)}
+                            title="Copy response"
+                            className="hover:text-cyan-300 transition-colors p-0.5"
+                          >
+                            {copiedId === m.id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                          </button>
+                        )}
                       </div>
                     </div>
 
-                    {isUser && (
-                      <div className="w-8 h-8 rounded-xl bg-white/10 text-white font-bold text-xs flex items-center justify-center shrink-0 mt-1">
-                        ADM
-                      </div>
-                    )}
+                    <div className="space-y-1">
+                      {isUser ? <p className="leading-relaxed whitespace-pre-wrap">{m.text}</p> : renderMarkdown(m.text)}
+                    </div>
                   </div>
-                );
-              })}
 
-              {loading && (
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-lilac-500 text-black font-extrabold text-xs flex items-center justify-center shrink-0 animate-pulse">
-                    AX
-                  </div>
-                  <div className="p-4 rounded-2xl bg-navy-950/80 border border-white/8 text-xs text-cyan-300 flex items-center gap-2.5">
-                    <div className="w-3.5 h-3.5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-                    <span>Analyzing live platform telemetry, retention heuristics, and database snapshots...</span>
-                  </div>
+                  {isUser && (
+                    <div className="w-8 h-8 rounded-xl bg-white/10 text-white font-bold text-xs flex items-center justify-center shrink-0 mt-1">
+                      ADM
+                    </div>
+                  )}
                 </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
+              );
+            })}
 
-            {/* Prompt Suggestions */}
-            <div className="px-4 py-2.5 border-t border-white/5 bg-navy-950/40 flex items-center gap-2 overflow-x-auto">
+            {/* Loading Indicator */}
+            {loading && (
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-lilac-500 text-black font-extrabold text-xs flex items-center justify-center shrink-0 animate-pulse">
+                  AX
+                </div>
+                <div className="p-3.5 rounded-2xl bg-navy-950/80 border border-white/8 text-xs text-cyan-300 flex items-center gap-2.5">
+                  <div className="w-3.5 h-3.5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                  <span>Axis Agent is analyzing telemetry...</span>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Quick Prompts Bar (when active messages exist) */}
+          {activeMessages.length > 0 && (
+            <div className="px-4 py-2 border-t border-white/5 bg-navy-950/40 flex items-center gap-2 overflow-x-auto custom-scrollbar">
               <span className="text-[10px] text-slate-500 font-bold uppercase shrink-0">Prompts:</span>
               {PROMPT_SUGGESTIONS.map((s, i) => (
                 <button
@@ -344,118 +544,47 @@ export function AdminAgent() {
                 </button>
               ))}
             </div>
+          )}
 
-            {/* Input Composer */}
-            <div className="p-3 sm:p-4 border-t border-white/8 bg-navy-950/80">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSendMessage();
-                }}
-                className="flex items-center gap-2"
-              >
-                <input
-                  type="text"
+          {/* Input Area */}
+          <div className="p-3 sm:p-4 border-t border-white/8 bg-navy-950/90">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendMessage();
+              }}
+              className="flex items-end gap-2"
+            >
+              <div className="flex-1 relative">
+                <textarea
+                  ref={textareaRef}
+                  rows={2}
                   value={inputQuery}
                   onChange={(e) => setInputQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
                   placeholder="Ask about traffic, users, ARR, platform usage, retention strategies, or system errors..."
                   disabled={loading}
-                  className="flex-1 bg-navy-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition-colors"
+                  className="w-full resize-none bg-navy-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition-colors"
                 />
-                <button
-                  type="submit"
-                  disabled={loading || !inputQuery.trim()}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-lilac-500 hover:opacity-95 text-black font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all disabled:opacity-40 shadow-lg shadow-cyan-500/20 shrink-0"
-                >
-                  <Send size={14} />
-                  <span className="hidden sm:inline">Consult Agent</span>
-                </button>
-              </form>
-            </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || !inputQuery.trim()}
+                className="h-[48px] px-5 rounded-xl bg-gradient-to-r from-cyan-500 to-lilac-500 hover:opacity-95 text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all disabled:opacity-40 shadow-lg shadow-cyan-500/20 shrink-0"
+              >
+                <Send size={15} />
+                <span className="hidden sm:inline">Send</span>
+              </button>
+            </form>
           </div>
         </div>
-      )}
-
-      {/* ARCHITECTURE TAB & CARDS (Intact as requested!) */}
-      {(activeTab === 'architecture' || activeTab === 'chat') && (
-        <div className={`space-y-6 ${activeTab === 'chat' ? 'pt-4 border-t border-white/8' : ''}`}>
-          {/* Section Header */}
-          <div>
-            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2.5">
-              <Cpu size={20} className="text-cyan-400" /> Axis Autonomous AI Advisors
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Execution status, skill models, latency, and conversation metrics across advisory engines
-            </p>
-          </div>
-
-          {/* Model Spec Card */}
-          <div className="p-5 rounded-2xl bg-navy-900 border border-white/8 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center shrink-0">
-                <Sparkles size={24} />
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">Underlying Engine</div>
-                <div className="text-lg font-bold text-white">{model}</div>
-                <div className="text-xs text-slate-400">Autonomous subagent execution with live ledger &amp; catalog grounding</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Operational
-              </span>
-            </div>
-          </div>
-
-          {/* Advisors Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {ADVISORS.map((adv) => (
-              <div key={adv.name} className="p-5 rounded-2xl bg-navy-900 border border-white/8 shadow-xl space-y-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-bold text-white text-sm">{adv.name}</h3>
-                    <div className="text-[11px] text-slate-500 font-mono mt-0.5">{adv.skill}</div>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 text-[10px] font-bold uppercase">
-                    {adv.status}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5 text-center text-xs">
-                  <div className="p-2.5 rounded-xl bg-white/2">
-                    <div className="text-[10px] text-slate-500">Invocations</div>
-                    <div className="font-bold text-white mt-0.5">{adv.queries}</div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-white/2">
-                    <div className="text-[10px] text-slate-500">Avg Latency</div>
-                    <div className="font-bold text-cyan-300 mt-0.5">{adv.latency}</div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-white/2">
-                    <div className="text-[10px] text-slate-500">Accuracy</div>
-                    <div className="font-bold text-emerald-400 mt-0.5">{adv.accuracy}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Advisory Capabilities Overview */}
-          <div className="p-5 rounded-2xl bg-navy-900 border border-white/8 shadow-xl space-y-3">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Lightbulb size={16} className="text-amber-400" /> Active Autonomous Capabilities
-            </h3>
-            <ul className="text-xs text-slate-300 space-y-2 list-disc list-inside">
-              <li><strong>Autonomous Anomaly Scanning:</strong> Proactively alerts users about runaway overhead and anomalous expenses.</li>
-              <li><strong>Inventory Reorder Heuristics:</strong> Calculates stock velocity and signals stockouts before critical depletion.</li>
-              <li><strong>Multi-Branch Reconciliation:</strong> Evaluates branch performance differentials and highlights high-growth units.</li>
-              <li><strong>Voice Synthesizer:</strong> Integrates ElevenLabs natural conversational voice interaction for real-time executive voice debriefs.</li>
-            </ul>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

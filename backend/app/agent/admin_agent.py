@@ -273,18 +273,17 @@ class AdminPlatformAgent:
         client = cls._get_genai_client()
 
         system_instruction = (
-            "You are the Axis Admin Strategic Agent, an executive AI platform advisor for Axis Black. "
+            "You are the Axis Admin Strategic Agent, an executive AI platform advisor for Axis Black.\n"
             "Your role is to advise the platform administrator on system performance, live traffic, user growth, "
             "subscription revenue, feature adoption, and data-driven user retention strategies.\n\n"
-            "STRICT RULES:\n"
-            "1. Ground all responses strictly on the provided real-time Platform Snapshot telemetry.\n"
-            "2. NEVER make up fabricated user numbers or payments. Use the exact numbers provided.\n"
-            "3. Provide actionable, high-conviction advice on how to improve user retention based on real platform usage "
-            "(e.g., spreadsheet creation velocity, ledger activity, inventory tracking, trial conversion prompts).\n"
-            "4. Maintain a professional, executive tone. Format your answers clearly using Markdown headers, bullet points, "
-            "and metric callouts.\n"
-            "5. You have STRICTLY READ-ONLY access. Do not propose or attempt to execute database modifications.\n"
-            "6. Answer questions about traffic, users, payments, platform usage, system issues, and strategic growth."
+            "CONVERSATIONAL & ADAPTIVE RULES:\n"
+            "1. ADAPT TO USER INTENT & LENGTH:\n"
+            "   - GREETINGS & CASUAL TURNS: If the user says 'hi', 'hello', 'hey', 'good morning', etc., respond warmly and concisely in 1-2 sentences (e.g. 'Hello Administrator! How can I assist you with platform telemetry, traffic, subscriptions, or system performance today?'). DO NOT output a massive platform report on a greeting.\n"
+            "   - FOCUSED QUESTIONS: If the user asks a specific question (e.g., 'how many users do we have?', 'is there any critical error?'), provide a direct, concise answer highlighting only the requested metric.\n"
+            "   - EXECUTIVE OVERVIEWS: Only provide a comprehensive structured Markdown summary when the administrator explicitly requests a general summary or audit (e.g., 'summarize platform status', 'give me an ARR report').\n"
+            "2. Ground all numbers strictly in the provided real-time Platform Snapshot telemetry. Never fabricate numbers.\n"
+            "3. Keep advice clear, actionable, professional, and dynamic.\n"
+            "4. You operate in strict READ-ONLY mode."
         )
 
         prompt_content = (
@@ -333,6 +332,14 @@ class AdminPlatformAgent:
         traffic = snapshot["traffic"]
         health = snapshot["system_health"]
 
+        # Conversational greetings
+        clean_q = re.sub(r"[^\w\s]", "", q).strip()
+        if clean_q in ["hi", "hello", "hey", "good morning", "good afternoon", "good evening", "howdy", "greetings", "hi there", "hello there", "what's up", "yo"]:
+            return (
+                "Hello Administrator! I am your Axis Platform Strategic Agent. "
+                "How can I assist you with platform telemetry, user metrics, subscriptions, or system performance today?"
+            )
+
         if any(w in q for w in ["retention", "retain", "churn", "engage"]):
             return (
                 f"### Strategic User Retention & Engagement Analysis\n\n"
@@ -369,7 +376,7 @@ class AdminPlatformAgent:
                 f"  - **Starter Tier**: {subs['plans'].get('starter', 0)} subscribers ($29/mo)\n"
                 f"  - **Free Tier**: {subs['plans'].get('free', 0)} accounts\n"
                 f"- **Total Platform Revenue**: **${subs['total_revenue_usd']:,.2f}**\n\n"
-                f"**Growth Recommendation**: With {subs['plans'].get('free', 0)} free accounts, introducing a limited-time upgrade banner to Starter or Pro can lift MRR by 18-25%."
+                f"**Growth Recommendation**: With {subs['plans'].get('free', 0)} free accounts, introducing a targeted upgrade prompt can accelerate paid conversion."
             )
         elif any(w in q for w in ["error", "log", "health", "issue", "bug"]):
             return (
@@ -378,10 +385,20 @@ class AdminPlatformAgent:
                 f"- **Logged Issues (24h)**: **{health['recent_errors']}**\n"
                 f"- **Critical Exceptions**: **{health['critical_errors']}**\n\n"
                 f"**Integrations Status**:\n"
-                f"- IntaSend Payment Gateway: Operational\n"
-                f"- Google GenAI Gemini Engine: Connected\n"
-                f"- Email Delivery Dispatcher: Active (Vercel Serverless / SMTP fallback)\n"
-                f"Check the **System Logs** page for real-time stack traces and error filter controls."
+                f"- Payment Gateway: Operational\n"
+                f"- AI Processing Engine: Operational\n"
+                f"- Email Dispatcher: Operational\n"
+                f"Review the **System Logs** page for real-time error traces."
+            )
+        elif any(w in q for w in ["user", "signup", "growth", "member"]):
+            return (
+                f"### User Growth & Account Snapshot\n\n"
+                f"- **Total Registered Users**: **{users['total']}**\n"
+                f"- **Active Users (Telemetry)**: **{users['active']}**\n"
+                f"- **New Signups (Last 7 Days)**: **{users['new_7d']}**\n"
+                f"- **New Signups (Last 30 Days)**: **{users['new_30d']}**\n"
+                f"- **Suspended Accounts**: **{users['suspended']}**\n\n"
+                f"Ask me if you'd like a breakdown of user activity across spreadsheets, inventory, or ledger."
             )
         else:
             return (

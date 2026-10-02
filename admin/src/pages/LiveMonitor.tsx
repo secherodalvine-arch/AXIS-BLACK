@@ -72,10 +72,8 @@ export function LiveMonitor() {
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === 'traffic_event') {
-          const email = (msg.user_email || '').toLowerCase();
-          const name = (msg.user_name || '').toLowerCase();
           const page = (msg.page || '').toLowerCase();
-          if (page.startsWith('/admin') || email.includes('admin') || name.includes('admin')) {
+          if (page.startsWith('/admin')) {
             return;
           }
           setIncomingEvents((prev) => [msg, ...prev].slice(0, 30));
@@ -104,21 +102,10 @@ export function LiveMonitor() {
     };
   }, [admin?.id, token, fetchSessions]);
 
-  // Strictly filter out any admin accounts or admin platform navigation
+  // Display user platform sessions
   const userSessions = sessions.filter(s => {
-    const email = (s.user_email || '').toLowerCase();
-    const name = (s.user_name || '').toLowerCase();
     const page = (s.current_page || s.page || '').toLowerCase();
-    const uid = (s.user_id || '').toLowerCase();
-    const ident = (s.identifier || '').toLowerCase();
-    return (
-      !page.startsWith('/admin') &&
-      !page.startsWith('/api/admin') &&
-      !email.includes('admin') &&
-      !name.includes('admin') &&
-      !uid.startsWith('admin-') &&
-      !ident.includes('admin')
-    );
+    return !page.startsWith('/admin') && !page.startsWith('/api/admin');
   });
 
   return (
@@ -136,7 +123,7 @@ export function LiveMonitor() {
 
         <div className="flex items-center gap-3">
           <span className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
-            <Shield size={12} /> User End Sessions Only
+            <Shield size={12} /> Live Real-Time Stream
           </span>
 
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-navy-900 border border-white/10 text-xs">

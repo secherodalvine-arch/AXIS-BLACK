@@ -207,70 +207,19 @@ async def ensure_default_admin():
                 }
                 db_manager.save_memory_store()
                 logger.info(f"Initialized local memory root admin from backend .env: {default_email}")
-        # Purge any admin traffic accidentally recorded in telemetry collections
-        await purge_admin_traffic()
     except Exception as e:
         logger.warning(f"Could not bootstrap default admin: {e}")
 
-# ── User Platform Traffic Isolation Helpers (Strictly Exclude Admin Platform) ──
 def get_user_traffic_mongo_filter() -> Dict[str, Any]:
-    """MongoDB query filter that excludes administrator accounts, admin emails, and admin routes."""
+    """Simple filter to exclude admin paths from public user analytics."""
     return {
-        "page": {"$not": {"$regex": r"^/admin", "$options": "i"}},
-        "current_page": {"$not": {"$regex": r"^/admin", "$options": "i"}},
-        "user_name": {"$nin": ["Axis Administrator", "superadmin", "Admin", "admin"]},
-        "user_email": {"$not": {"$regex": r"(admin@|superadmin)", "$options": "i"}},
-        "user_id": {"$not": {"$regex": r"^admin-", "$options": "i"}},
-        "identifier": {"$not": {"$regex": r"admin", "$options": "i"}}
+        "page": {"$not": {"$regex": r"^/admin", "$options": "i"}}
     }
 
 def is_admin_session_dict(s: Dict[str, Any]) -> bool:
-    """Returns True if a session/event dictionary represents admin platform traffic."""
+    """Returns True if a session/event represents an admin platform page."""
     p = str(s.get("page") or s.get("current_page") or "").lower()
-    email = str(s.get("user_email") or "").lower()
-    name = str(s.get("user_name") or "").lower()
-    uid = str(s.get("user_id") or "").lower()
-    ident = str(s.get("identifier") or "").lower()
-    return (
-        p.startswith("/admin")
-        or p.startswith("/api/admin")
-        or "superadmin" in email
-        or "admin@" in email
-        or "superadmin" in name
-        or name in ("axis administrator", "superadmin", "admin")
-        or uid.startswith("admin-")
-        or "admin" in ident
-    )
-
-async def purge_admin_traffic():
-    """Removes admin sessions and admin events from user traffic telemetry."""
-    admin_match = {
-        "$or": [
-            {"page": {"$regex": r"^/admin", "$options": "i"}},
-            {"current_page": {"$regex": r"^/admin", "$options": "i"}},
-            {"user_name": {"$in": ["Axis Administrator", "superadmin", "Admin", "admin"]}},
-            {"user_email": {"$regex": r"(admin@|superadmin)", "$options": "i"}},
-            {"user_id": {"$regex": r"^admin-", "$options": "i"}},
-            {"identifier": {"$regex": r"admin", "$options": "i"}}
-        ]
-    }
-    if db_manager.is_connected and db_manager.db is not None:
-        try:
-            await db_manager.db.live_sessions.delete_many(admin_match)
-            await db_manager.db.traffic_events.delete_many(admin_match)
-        except Exception as e:
-            logger.warning(f"Could not purge admin traffic from db: {e}")
-    else:
-        if "live_sessions" in db_manager.memory_store:
-            db_manager.memory_store["live_sessions"] = {
-                k: s for k, s in db_manager.memory_store["live_sessions"].items()
-                if not is_admin_session_dict(s)
-            }
-        if "traffic_events" in db_manager.memory_store:
-            db_manager.memory_store["traffic_events"] = [
-                e for e in db_manager.memory_store["traffic_events"]
-                if not is_admin_session_dict(e)
-            ]
+    return p.startswith("/admin") or p.startswith("/api/admin")
 
 
 # ── Authentication Dependency ──
@@ -720,8 +669,7 @@ async def capture_traffic_compat(
 
 @router.get("/live-sessions")
 async def get_live_sessions(admin: Dict[str, Any] = Depends(get_current_admin)):
-    """Returns sessions active within the last 15 minutes, deduplicated per client/IP, strictly excluding admin sessions."""
-    await purge_admin_traffic()
+    """Returns sessions active within the last 15 minutes, deduplicated per client/IP."""
     cutoff = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=15)).isoformat()
     sessions = []
     admin_filter = get_user_traffic_mongo_filter()
@@ -895,7 +843,6 @@ async def get_platform_analytics(
     days: int = 30,
     admin: Dict[str, Any] = Depends(get_current_admin)
 ):
-    await purge_admin_traffic()
     now = datetime.datetime.now(datetime.timezone.utc)
     start_date = (now - datetime.timedelta(days=days)).isoformat()
 
@@ -1843,9 +1790,8 @@ async def get_homepage_traffic_metrics(admin: Dict[str, Any] = Depends(get_curre
     """
     Returns dedicated analytics and telemetry breakdown for the Axis Black landing homepage
     and public landing routes, showing complete client device details, browsers, OS footprints,
-    screen resolutions, local device clocks, and recent visitor logs. Strictly excludes admin traffic.
+    screen resolutions, local device clocks, and recent visitor logs.
     """
-    await purge_admin_traffic()
     total_views = 0
     unique_visitors = 0
     device_breakdown = {"Desktop": 0, "Mobile": 0, "Tablet": 0}
@@ -1856,16 +1802,13 @@ async def get_homepage_traffic_metrics(admin: Dict[str, Any] = Depends(get_curre
     top_referrers: Dict[str, int] = {}
     recent_visits = []
 
-    admin_filter = get_user_traffic_mongo_filter()
-    hp_match = {
+    hp_query = {
         "$or": [
             {"event": {"$in": ["homepage_visit", "cta_click"]}},
             {"page": {"$in": ["/", "/home", "", "/landing", "/features", "/pricing", "/security", "/contact"]}},
-            {"page": {"$regex": r"^/(home|features|pricing|security|contact|landing)?(\?.*)?$", "$options": "i"}},
-            {"current_page": {"$regex": r"^/(home|features|pricing|security|contact|landing)?(\?.*)?$", "$options": "i"}}
+            {"page": {"$regex": r"^/(home|features|pricing|security|contact|landing)?(\?.*)?$", "$options": "i"}}
         ]
     }
-    hp_query = {"$and": [admin_filter, hp_match]}
 
     if db_manager.is_connected and db_manager.db is not None:
         try:

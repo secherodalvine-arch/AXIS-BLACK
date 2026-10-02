@@ -87,25 +87,12 @@ let lastCapturedTimestamp = 0;
  */
 export const captureEvent = async (payload: Partial<CapturePayload>) => {
   try {
-    const user = getStoredUser();
-
-    // ── Exclude Admin Accounts and Admin Platform Paths from Traffic ──
-    const userRole = (user?.role || '').toLowerCase();
-    const userEmail = (user?.email || '').toLowerCase();
-    const userName = (user?.full_name || user?.name || '').toLowerCase();
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-
-    if (
-      userRole === 'admin' ||
-      userRole === 'superadmin' ||
-      userEmail.includes('admin') ||
-      userName.includes('admin') ||
-      currentPath.startsWith('/admin')
-    ) {
-      // Never capture admin platform traffic
+    if (currentPath.startsWith('/admin')) {
       return;
     }
 
+    const user = getStoredUser();
     const visitorId = getOrCreateVisitorId();
     const now = Date.now();
     const currentPage = payload.page || (typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/');
