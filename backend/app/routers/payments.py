@@ -308,39 +308,89 @@ async def _update_payment(pid: str, update_fields: dict):
         db_manager.memory_store["payments"][pid].update(update_fields)
         db_manager.save_memory_store()
 
+def _parse_expiry(exp: Any) -> Optional[datetime.datetime]:
+    """Parses an expiry stored as ISO string OR datetime into an aware UTC datetime."""
+    if not exp:
+        return None
+    try:
+        if isinstance(exp, str):
+            exp_dt = datetime.datetime.fromisoformat(exp.strip().replace("Z", "+00:00"))
+        elif isinstance(exp, datetime.datetime):
+            exp_dt = exp
+        else:
+            return None
+    except Exception:
+        return None
+    if exp_dt.tzinfo is None:
+        exp_dt = exp_dt.replace(tzinfo=datetime.timezone.utc)
+    return exp_dt
+
+
+async def _resolve_user_identifiers(user_id: str) -> List[str]:
+    """
+    Returns every identifier a payment may have been recorded under for this user
+    (user_id, id, Mongo _id, email) so admin-assigned plans are always matched.
+    """
+    ids = {str(user_id)} if user_id else set()
+    user = None
+    try:
+        if db_manager.is_connected and db_manager.db is not None:
+            user = await db_manager.db.users.find_one(
+                {"$or": [{"user_id": user_id}, {"id": user_id}, {"email": user_id}]}
+            )
+        else:
+            for u in db_manager.memory_store.get("users", {}).values():
+                if user_id in (u.get("user_id"), u.get("id"), u.get("email")):
+                    user = u
+                    break
+    except Exception as e:
+        logger.warning(f"Could not resolve alternate identifiers for {user_id}: {e}")
+    if user:
+        for key in ("user_id", "id", "_id", "email"):
+            val = user.get(key)
+            if val:
+                ids.add(str(val))
+    return list(ids)
+
+
 async def _get_active_paid_payment(user_id: str) -> Optional[dict]:
+    """
+    Finds the user's best currently-active paid plan (self-paid, M-Pesa, card OR admin-assigned).
+    Expiry is evaluated in Python because it may be stored as an ISO string or a datetime,
+    and a Mongo `$gt` datetime comparison never matches ISO-string values.
+    """
     now = _now()
+    identifiers = await _resolve_user_identifiers(user_id)
+    if not identifiers:
+        return None
+
     if db_manager.is_connected and db_manager.db is not None:
-        doc = await db_manager.db.payments.find_one(
-            {
-                "user_id": user_id,
-                "status": "paid",
-                "expires_at": {"$gt": now},
-            },
-            sort=[("created_at", -1)]
-        )
-        if doc:
-            doc["_id"] = str(doc["_id"])
-            return doc
-        return None
+        cursor = db_manager.db.payments.find({
+            "status": {"$in": ["paid", "PAID", "success"]},
+            "$or": [{"user_id": {"$in": identifiers}}, {"user_email": {"$in": identifiers}}],
+        })
+        docs = await cursor.to_list(length=500)
+        for d in docs:
+            d["_id"] = str(d["_id"])
     else:
-        candidates = []
-        for p in db_manager.memory_store.get("payments", {}).values():
-            if p.get("user_id") == user_id and p.get("status") == "paid":
-                exp = p.get("expires_at")
-                if exp:
-                    if isinstance(exp, str):
-                        exp_dt = datetime.datetime.fromisoformat(exp.replace("Z", "+00:00"))
-                    else:
-                        exp_dt = exp
-                    if exp_dt.tzinfo is None:
-                        exp_dt = exp_dt.replace(tzinfo=datetime.timezone.utc)
-                    if exp_dt > now:
-                        candidates.append((p.get("created_at", ""), p))
-        if candidates:
-            candidates.sort(key=lambda c: c[0], reverse=True)
-            return dict(candidates[0][1])
+        docs = [
+            dict(p) for p in db_manager.memory_store.get("payments", {}).values()
+            if str(p.get("status", "")).lower() in ("paid", "success")
+            and (p.get("user_id") in identifiers or p.get("user_email") in identifiers)
+        ]
+
+    tier_rank = {"free": 0, "starter": 1, "pro": 2}
+    candidates = []
+    for p in docs:
+        exp_dt = _parse_expiry(p.get("expires_at"))
+        if exp_dt and exp_dt > now and p.get("plan") in ("starter", "pro"):
+            candidates.append((tier_rank.get(p.get("plan"), 0), exp_dt, p))
+
+    if not candidates:
         return None
+    # Highest tier first, then furthest expiry
+    candidates.sort(key=lambda c: (c[0], c[1]), reverse=True)
+    return dict(candidates[0][2])
 
 
 # ── Telemetry & Usage Tracking ────────────────────────────────────────────────
@@ -470,9 +520,11 @@ async def get_user_subscription(user_id: str) -> dict:
 
     return {
         "plan": plan_key,
+        "plan_key": plan_key,
         "name": plan_info["name"],
+        "plan_name": plan_info["name"],
         "is_active": is_active or plan_key == "free",
-        "is_paid": plan_key in ("starter", "pro"),
+        "is_paid": is_active and plan_key in ("starter", "pro"),
         "expires_at": expires_at,
         "days_left": days_left,
         "receipt_number": receipt_no,
