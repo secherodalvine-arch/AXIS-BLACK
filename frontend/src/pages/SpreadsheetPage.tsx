@@ -80,8 +80,22 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   subscription,
   onOpenUpgrade
 }) => {
-  // If user is on Free tier, render upgrade showcase
-  if (subscription && !subscription.entitlements?.spreadsheet) {
+  // Guard: deny access while subscription is loading (null) OR if the plan has no spreadsheet entitlement.
+  // Using !subscription?.entitlements?.spreadsheet means: null (loading), free plan, or expired plan all
+  // show the upgrade wall — only a confirmed paid entitlement passes through.
+  if (!subscription?.entitlements?.spreadsheet) {
+    // While we're still fetching subscription data show a subtle loading shimmer
+    // so the full spreadsheet never flashes to a free user during the network delay.
+    if (!subscription) {
+      return (
+        <div className="tab-view active" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+          <div style={{ textAlign: 'center', color: 'var(--text-muted, #94a3b8)' }}>
+            <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '2rem', marginBottom: '12px', display: 'block', color: '#00d4ff', opacity: 0.7 }} />
+            <div style={{ fontSize: '0.9rem' }}>Checking subscription…</div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="tab-view active" style={{ maxWidth: '850px', margin: '40px auto', textAlign: 'center' }}>
         <div className="glass-card" style={{ padding: '48px 36px', borderRadius: '24px', border: '1px solid rgba(16, 124, 65, 0.4)', background: 'linear-gradient(145deg, rgba(16, 124, 65, 0.08), rgba(14, 20, 32, 0.95))' }}>
@@ -246,23 +260,24 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   const [rowHeights, setRowHeights] = useState<Record<number, number>>({});
 
   // ── History Tracking ──
+  // Only real workbooks the user has actually opened are stored here.
+  // We intentionally start with an empty list — no fake placeholder entries.
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>(() => {
     try {
       const saved = localStorage.getItem('axis_sheets_history');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          return parsed.map((item, idx) => ({
+          // Filter out any legacy fake seed entries that may have been stored before this fix
+          const real = parsed.filter((item: any) => item.id !== 'h-ledger' && item.id !== 'h-inventory');
+          return real.map((item: any, idx: number) => ({
             ...item,
             timestamp: item.timestamp || (Date.now() - (idx + 1) * 3600000)
           }));
         }
       }
     } catch {}
-    return [
-      { id: 'h-ledger', title: 'Ledger & Cashflow Records', sheetType: 'ledger', recordCount: 0, lastModified: '1h ago', timestamp: Date.now() - 3600000, month: 'All' },
-      { id: 'h-inventory', title: 'Inventory & Stock Catalog', sheetType: 'inventory', recordCount: 0, lastModified: '2h ago', timestamp: Date.now() - 7200000, month: 'All' }
-    ];
+    return []; // Start truly empty — history is earned by opening workbooks
   });
   const [historySearch, setHistorySearch] = useState('');
   const [selectedHistoryIds, setSelectedHistoryIds] = useState<Set<string>>(new Set());
@@ -696,14 +711,15 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   const openScratchpadWorkbook = async () => {
     setIsLoading(true);
     let rows: any[] = [];
+    const sym = getCurrencySymbol(currency);
     let cols = generateBlankColumns(26).slice(0, 8);
-    cols[0].label = 'Item / Code';
+    cols[0].label = 'Item / Description';
     cols[1].label = 'Category';
-    cols[2].label = 'Units';
+    cols[2].label = 'Quantity';
     cols[2].type = 'number';
-    cols[3].label = 'Unit Rate ($)';
+    cols[3].label = `Unit Price (${sym})`;
     cols[3].type = 'currency';
-    cols[4].label = 'Total ($)';
+    cols[4].label = `Total (${sym})`;
     cols[4].type = 'formula';
 
     try {
@@ -715,16 +731,9 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
       }
     } catch {}
 
+    // Start with clean empty rows — no fake demo data
     if (rows.length === 0) {
-      rows = [
-        { _id: 'sc-1', col_A: 'Cloud Server Clusters', col_B: 'Infrastructure', col_C: 4, col_D: 850, col_E: '=C1*D1' },
-        { _id: 'sc-2', col_A: 'Enterprise Software Licenses', col_B: 'Software', col_C: 12, col_D: 45, col_E: '=C2*D2' },
-        { _id: 'sc-3', col_A: 'Ad Campaign & Growth', col_B: 'Marketing', col_C: 1, col_D: 3500, col_E: '=C3*D3' },
-        { _id: 'sc-4', col_A: 'Logistics Courier Contract', col_B: 'Operations', col_C: 25, col_D: 60, col_E: '=C4*D4' }
-      ];
-      while (rows.length < 60) {
-        rows.push({ _id: `sc-${rows.length + 1}`, col_A: '', col_B: '', col_C: 0, col_D: 0, col_E: '' });
-      }
+      rows = generateCleanRows(cols, 60);
     }
 
     const scratchTab: WorksheetTab = {
@@ -2061,7 +2070,10 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                       <td colSpan={7}>
                         <div className="sheet-history-empty">
                           <i className="fa-solid fa-folder-open"></i>
-                          <div>No recent workbooks found.</div>
+                          <div style={{ fontWeight: 600, marginBottom: '6px' }}>No workbooks opened yet</div>
+                          <div style={{ fontSize: '0.8rem', opacity: 0.7, maxWidth: '340px', margin: '0 auto', lineHeight: 1.5 }}>
+                            Your history is empty. Open an Inventory sheet, Ledger, or Scratchpad above — it will appear here so you can reopen it quickly next time.
+                          </div>
                         </div>
                       </td>
                     </tr>

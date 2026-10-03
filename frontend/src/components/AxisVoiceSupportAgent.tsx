@@ -191,7 +191,9 @@ export const AxisVoiceSupportAgent: React.FC<AxisVoiceSupportAgentProps> = (prop
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  const isVoiceLocked = Boolean(subscription && !subscription.entitlements?.voice_agent);
+  // Deny by default: null (loading) OR no voice_agent entitlement both lock the feature.
+  // Only a confirmed paid entitlement unlocks it.
+  const isVoiceLocked = !subscription?.entitlements?.voice_agent;
 
   useEffect(() => {
     if (!isOpen) return;
