@@ -1,8 +1,16 @@
 import React, { useState, useRef } from 'react';
 import { Transaction, Currency } from '../types';
-import { formatCurrency } from '../utils/currencyUtils';
+import { formatCurrency, getCurrencySymbol, toDisplayAmount, fromDisplayAmount } from '../utils/currencyUtils';
 import { formatRelativeTime, fmtDate, getLocalDateString } from '../utils/dateUtils';
 import { importTransactionsCsvApi, getBranchesApi, updateTransactionApi, deleteTransactionApi } from '../utils/api';
+import {
+  ALL_LEDGER_CATEGORIES,
+  LEDGER_MONEY_OUT_CATEGORIES,
+  CategoryOption,
+  getLedgerCategories,
+  getDefaultLedgerCategory,
+  categoryOptionLabel
+} from '../utils/categories';
 
 interface TransactionsLedgerProps {
   transactions: Transaction[];
@@ -36,7 +44,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
   const [editError, setEditError] = useState<string | null>(null);
   const [editCounterparty, setEditCounterparty] = useState('');
   const [editType, setEditType] = useState<'Expense' | 'Revenue'>('Expense');
-  const [editCategory, setEditCategory] = useState('Operations & Logistics');
+  const [editCategory, setEditCategory] = useState('Other Expenses');
   const [editAccountType, setEditAccountType] = useState<string>('Expense');
   const [editAmount, setEditAmount] = useState('');
   const [editDate, setEditDate] = useState('');
@@ -75,12 +83,14 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
   };
 
   const handleOpenEdit = (t: Transaction) => {
+    const txnType = t.type || (t.amount >= 0 ? 'Revenue' : 'Expense');
     setEditingTxn(t);
     setEditCounterparty(t.counterparty || '');
-    setEditType(t.type || (t.amount >= 0 ? 'Revenue' : 'Expense'));
-    setEditCategory(t.category || 'Operations & Logistics');
+    setEditType(txnType);
+    setEditCategory(t.category || getDefaultLedgerCategory(txnType));
     setEditAccountType(t.accountType || (t.type === 'Revenue' ? 'Revenue' : 'Expense'));
-    setEditAmount(Math.abs(t.amount).toString());
+    // Show the amount in the user's chosen currency (stored internally in USD)
+    setEditAmount(toDisplayAmount(Math.abs(t.amount), currency).toString());
     setEditDate(t.date || '');
     setEditStatus((t.status as any) || 'Cleared');
     setEditNotes(t.notes || '');
@@ -100,7 +110,9 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
     setIsSavingEdit(true);
     setEditError(null);
     try {
-      const finalAmt = editType === 'Expense' ? -Math.abs(numAmt) : Math.abs(numAmt);
+      // The amount is typed in the user's chosen currency; money is stored in USD
+      const amountUSD = fromDisplayAmount(numAmt, currency);
+      const finalAmt = editType === 'Expense' ? -Math.abs(amountUSD) : Math.abs(amountUSD);
       await updateTransactionApi(editingTxn.id, {
         counterparty: editCounterparty,
         type: editType,
@@ -135,15 +147,15 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
   };
 
 
-  // Daily Budget & Usage State
-  const [dailyBudgetLimit, setDailyBudgetLimit] = useState<number>(25000);
+  // Daily Budget & Usage State (limit is kept in USD like all other money; ~KSh 26,000 by default)
+  const [dailyBudgetLimit, setDailyBudgetLimit] = useState<number>(200);
   const [isEditingBudget, setIsEditingBudget] = useState(false);
-  const [budgetInput, setBudgetInput] = useState<string>('25000');
+  const [budgetInput, setBudgetInput] = useState<string>('');
 
   // Quick Usage Input State
   const [quickCounterparty, setQuickCounterparty] = useState('');
   const [quickAmount, setQuickAmount] = useState('');
-  const [quickCategory, setQuickCategory] = useState('Operations & Logistics');
+  const [quickCategory, setQuickCategory] = useState('Other Expenses');
 
   // Calculate Used Today (Sum of expense transactions logged today)
   const todayLocalStr = getLocalDateString();
@@ -159,7 +171,8 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
     e.preventDefault();
     const val = parseFloat(budgetInput);
     if (!isNaN(val) && val > 0) {
-      setDailyBudgetLimit(val);
+      // Typed in the user's chosen currency; kept in USD like all other money
+      setDailyBudgetLimit(fromDisplayAmount(val, currency));
     }
     setIsEditingBudget(false);
   };
@@ -177,7 +190,8 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
         accountType: 'Expense',
         date: todayLocalStr,
         status: 'Cleared',
-        amount: -Math.abs(amt),
+        // Typed in the user's chosen currency; money is stored in USD
+        amount: -Math.abs(fromDisplayAmount(amt, currency)),
         notes: 'Logged via Daily Usage Tracker'
       });
     }
@@ -202,18 +216,28 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
 
   const availableCategories = Array.from(new Set([
     'ALL',
-    'Revenue & Sales',
-    'Software & Subscriptions',
-    'Cloud & Infrastructure',
-    'Payroll & Compensation',
-    'Marketing & Growth',
-    'Operations & Logistics',
-    'Office & Facilities',
-    'Professional Services',
-    'Equipment & Assets',
-    'Treasury & Capital',
+    ...ALL_LEDGER_CATEGORIES.map(c => c.value),
     ...transactions.map(t => t.category).filter(Boolean)
   ]));
+
+  // Category choices inside the edit form: depends on money in / out, and always keeps the entry's current category
+  const editCategoryOptions: CategoryOption[] = (() => {
+    const list = getLedgerCategories(editType);
+    if (editCategory && !list.some(c => c.value === editCategory)) {
+      return [{ value: editCategory, hint: 'current category' }, ...list];
+    }
+    return list;
+  })();
+
+  const handleEditTypeChange = (newType: 'Expense' | 'Revenue') => {
+    setEditType(newType);
+    const newList = getLedgerCategories(newType);
+    const otherList = getLedgerCategories(newType === 'Revenue' ? 'Expense' : 'Revenue');
+    // If the current category belongs to the other type's list, switch to a sensible default
+    if (!newList.some(c => c.value === editCategory) && otherList.some(c => c.value === editCategory)) {
+      setEditCategory(getDefaultLedgerCategory(newType));
+    }
+  };
 
   const effectiveSearch = (searchTerm || searchQuery).toLowerCase();
 
@@ -371,7 +395,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: 'var(--text-muted, #9ca3af)' }}>DAILY BUDGET LIMIT</span>
             <button 
-              onClick={() => { setIsEditingBudget(!isEditingBudget); setBudgetInput(dailyBudgetLimit.toString()); }}
+              onClick={() => { setIsEditingBudget(!isEditingBudget); setBudgetInput(toDisplayAmount(dailyBudgetLimit, currency).toString()); }}
               style={{ background: 'none', border: 'none', color: '#00d4ff', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'JetBrains Mono' }}
             >
               <i className="fa-solid fa-pen-to-square"></i> {isEditingBudget ? 'Cancel' : 'Set Limit'}
@@ -460,7 +484,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
 
         <form onSubmit={handleQuickLogUsage} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', alignItems: 'end' }}>
           <div>
-            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600 }}>Item / Supplier</label>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600 }}>What did you spend on?</label>
             <input 
               type="text" 
               className="input-text" 
@@ -480,17 +504,14 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
               onChange={(e) => setQuickCategory(e.target.value)}
               style={{ background: 'var(--search-bg, #141418)', color: 'var(--text-main, #fff)', border: '1px solid var(--search-border, rgba(255,255,255,0.15))', padding: '8px 12px', fontSize: '0.85rem' }}
             >
-              <option value="Operations & Logistics" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Operations & Logistics</option>
-              <option value="Cloud & Infrastructure" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Cloud & Infrastructure</option>
-              <option value="Software & Subscriptions" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Software & Subscriptions</option>
-              <option value="Marketing & Growth" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Marketing & Growth</option>
-              <option value="Office & Facilities" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Office & Facilities</option>
-              <option value="Professional Services" style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>Professional Services</option>
+              {LEDGER_MONEY_OUT_CATEGORIES.map(c => (
+                <option key={c.value} value={c.value} style={{ background: 'var(--dropdown-bg, #141418)', color: 'var(--text-main, #ffffff)' }}>{categoryOptionLabel(c)}</option>
+              ))}
             </select>
           </div>
 
           <div>
-            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600 }}>Amount ({currency})</label>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600 }}>Amount ({getCurrencySymbol(currency)})</label>
             <input 
               type="number" 
               step="0.01"
@@ -556,13 +577,13 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
           <table className="data-table">
             <thead>
               <tr>
-                <th>Ref Code</th>
+                <th>Reference No.</th>
                 <th>Date</th>
-                <th>Description / Entity</th>
-                <th>Account & Category</th>
+                <th>What it was for</th>
+                <th>Type & Category</th>
                 <th className="text-right">Money In (+)</th>
                 <th className="text-right">Money Out (-)</th>
-                <th className="text-right">Running Balance</th>
+                <th className="text-right">Balance</th>
                 <th>Status</th>
                 <th style={{ textAlign: 'center', width: '90px' }}>Actions</th>
               </tr>
@@ -680,7 +701,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
             <div className="modal-header" style={{ borderBottom: '1px solid var(--header-border, rgba(255, 255, 255, 0.1))', paddingBottom: '12px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ margin: 0, color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans', fontSize: '1.25rem', fontWeight: 800 }}>
-                  Edit Ledger Entry
+                  Edit Entry
                 </h3>
                 <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#00d4ff' }}>
                   {editingTxn.id}
@@ -700,12 +721,12 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
                 {/* Transaction Type Radio Selector */}
                 <div className="form-group" style={{ marginBottom: '14px' }}>
                   <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
-                    Transaction Flow Type
+                    Is money coming in or going out?
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     <button
                       type="button"
-                      onClick={() => setEditType('Revenue')}
+                      onClick={() => handleEditTypeChange('Revenue')}
                       style={{
                         padding: '10px',
                         borderRadius: '10px',
@@ -720,11 +741,11 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
                         gap: '6px'
                       }}
                     >
-                      <i className="fa-solid fa-arrow-down-left"></i> Money In (Revenue)
+                      <i className="fa-solid fa-arrow-down-left"></i> Money In (I received)
                     </button>
                     <button
                       type="button"
-                      onClick={() => setEditType('Expense')}
+                      onClick={() => handleEditTypeChange('Expense')}
                       style={{
                         padding: '10px',
                         borderRadius: '10px',
@@ -739,14 +760,14 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
                         gap: '6px'
                       }}
                     >
-                      <i className="fa-solid fa-arrow-up-right"></i> Money Out (Expense)
+                      <i className="fa-solid fa-arrow-up-right"></i> Money Out (I spent)
                     </button>
                   </div>
                 </div>
 
                 <div className="form-group" style={{ marginBottom: '14px' }}>
                   <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
-                    Description / Counterparty *
+                    What is this for? *
                   </label>
                   <input
                     type="text"
@@ -761,7 +782,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
                   <div className="form-group">
                     <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
-                      Amount ({currency}) *
+                      Amount ({getCurrencySymbol(currency)}) *
                     </label>
                     <input
                       type="number"
@@ -792,7 +813,7 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
                   <div className="form-group">
                     <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
-                      Category
+                      Category - type of income / expense
                     </label>
                     <select
                       className="select-text"
@@ -800,22 +821,15 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
                       onChange={e => setEditCategory(e.target.value)}
                       style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #fff)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', padding: '10px' }}
                     >
-                      <option value="Operations & Logistics">Operations & Logistics</option>
-                      <option value="Revenue & Sales">Revenue & Sales</option>
-                      <option value="Software & Subscriptions">Software & Subscriptions</option>
-                      <option value="Cloud & Infrastructure">Cloud & Infrastructure</option>
-                      <option value="Payroll & Compensation">Payroll & Compensation</option>
-                      <option value="Marketing & Growth">Marketing & Growth</option>
-                      <option value="Office & Facilities">Office & Facilities</option>
-                      <option value="Professional Services">Professional Services</option>
-                      <option value="Equipment & Assets">Equipment & Assets</option>
-                      <option value="Treasury & Capital">Treasury & Capital</option>
+                      {editCategoryOptions.map(c => (
+                        <option key={c.value} value={c.value}>{categoryOptionLabel(c)}</option>
+                      ))}
                     </select>
                   </div>
 
                   <div className="form-group">
                     <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
-                      Account Ledger
+                      Paid through / where the money is
                     </label>
                     <select
                       className="select-text"
@@ -823,12 +837,12 @@ export const TransactionsLedger: React.FC<TransactionsLedgerProps> = ({
                       onChange={e => setEditAccountType(e.target.value)}
                       style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #fff)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', padding: '10px' }}
                     >
-                      <option value="Cash">Cash Account</option>
-                      <option value="Bank">Bank Account</option>
-                      <option value="Accounts Receivable">Accounts Receivable</option>
-                      <option value="Accounts Payable">Accounts Payable</option>
-                      <option value="Revenue">Sales & Revenue</option>
-                      <option value="Expense">Operating Expense</option>
+                      <option value="Cash">Cash (money in hand)</option>
+                      <option value="Bank">Bank or Mobile Money (M-Pesa)</option>
+                      <option value="Accounts Receivable">Customer owes me (not paid yet)</option>
+                      <option value="Accounts Payable">I owe a supplier (not paid yet)</option>
+                      <option value="Revenue">Sales / income record</option>
+                      <option value="Expense">Business expense record</option>
                     </select>
                   </div>
                 </div>

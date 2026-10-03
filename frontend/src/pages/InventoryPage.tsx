@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Currency, UserSubscription } from '../types';
-import { formatCurrency } from '../utils/currencyUtils';
+import { formatCurrency, getCurrencySymbol, toDisplayAmount, fromDisplayAmount, parseMoneyInput } from '../utils/currencyUtils';
 import { 
   getInventoryApi, 
   createInventoryItemApi, 
@@ -11,6 +11,7 @@ import {
   getStoredUser 
 } from '../utils/api';
 import { generateSmartItemCode } from '../utils/skuUtils';
+import { INVENTORY_CATEGORIES, CUSTOM_CATEGORY_VALUE, DEFAULT_INVENTORY_CATEGORY, categoryOptionLabel, isPresetCategory } from '../utils/categories';
 
 interface InventoryViewProps {
   currency?: Currency;
@@ -28,10 +29,230 @@ interface InventoryItem {
   unitPriceUSD: number;
   sellingPriceUSD?: number;
   supplier?: string;
-  turnoverRate: string;
-  status: 'Optimal' | 'Reorder Soon' | 'Surge Buffer';
+  status: 'In Stock' | 'Running Low' | 'Out of Stock';
   branch_id?: string;
 }
+
+// ── Shared form pieces (kept OUTSIDE the page component so inputs never lose focus while typing) ──
+const FIELD_LABEL: React.CSSProperties = { fontSize: '0.82rem', color: 'var(--text-main, #e5e7eb)', fontWeight: 600, display: 'block', marginBottom: '6px' };
+const FIELD_HINT: React.CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted, #9ca3af)', marginTop: '5px', lineHeight: 1.4 };
+const FIELD_INPUT: React.CSSProperties = { background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' };
+
+const isUpgradeMessage = (msg?: string | null): boolean => {
+  const m = (msg || '').toLowerCase();
+  return m.includes('limit') || m.includes('upgrade') || m.includes('tier') || m.includes('plan');
+};
+
+const sanitizeMoneyText = (v: string): string => {
+  let s = v.replace(/[^0-9.]/g, '');
+  const firstDot = s.indexOf('.');
+  if (firstDot !== -1) s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, '');
+  return s;
+};
+const sanitizeWholeNumber = (v: string): string => v.replace(/[^0-9]/g, '');
+
+interface ItemFormFieldsProps {
+  currency: Currency;
+  showItemCode: boolean;
+  name: string;
+  setName: (v: string) => void;
+  itemCode?: string;
+  setItemCode?: (v: string) => void;
+  category: string;
+  isCustomCategory: boolean;
+  onCategoryChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  customCategory: string;
+  setCustomCategory: (v: string) => void;
+  stockLabel: string;
+  stockQuantity: string;
+  setStockQuantity: (v: string) => void;
+  reorderPoint: string;
+  setReorderPoint: (v: string) => void;
+  unitCost: string;
+  setUnitCost: (v: string) => void;
+  sellingPrice: string;
+  setSellingPrice: (v: string) => void;
+  supplier: string;
+  setSupplier: (v: string) => void;
+}
+
+const ItemFormFields: React.FC<ItemFormFieldsProps> = (p) => {
+  const symbol = getCurrencySymbol(p.currency);
+  const selectedPreset = INVENTORY_CATEGORIES.find(c => c.value === p.category);
+
+  const cost = parseMoneyInput(p.unitCost);
+  const price = parseMoneyInput(p.sellingPrice);
+  const showProfit = p.unitCost.trim() !== '' && p.sellingPrice.trim() !== '' && !isNaN(cost) && !isNaN(price);
+  const profit = showProfit ? price - cost : 0;
+  const money = (n: number) => `${symbol} ${Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+
+  return (
+    <>
+      <div className="form-row">
+        <div className="form-group" style={{ flex: 1.3 }}>
+          <label style={FIELD_LABEL}>Item Name *</label>
+          <input
+            type="text"
+            className="input-text"
+            placeholder="e.g. Rio Carnival Short Wig, Shea Butter Lotion 200ml"
+            value={p.name}
+            onChange={(e) => p.setName(e.target.value)}
+            required
+            style={FIELD_INPUT}
+          />
+        </div>
+
+        {p.showItemCode && (
+          <div className="form-group" style={{ flex: 1 }}>
+            <label style={FIELD_LABEL}>
+              Item Code <span style={{ color: '#9ca3af', fontWeight: 400 }}>(optional)</span>
+            </label>
+            <input
+              type="text"
+              className="input-text"
+              placeholder="Leave empty, we will make one"
+              value={p.itemCode || ''}
+              onChange={(e) => p.setItemCode && p.setItemCode(e.target.value)}
+              style={FIELD_INPUT}
+            />
+            <div style={FIELD_HINT}>A short name to find this item quickly, e.g. HAIR-1042</div>
+          </div>
+        )}
+      </div>
+
+      <div className="form-row">
+        <div className="form-group">
+          <label style={FIELD_LABEL}>What type of item is it?</label>
+          <select
+            className="select-text"
+            value={p.isCustomCategory ? CUSTOM_CATEGORY_VALUE : p.category}
+            onChange={p.onCategoryChange}
+            style={FIELD_INPUT}
+          >
+            {INVENTORY_CATEGORIES.map(c => (
+              <option key={c.value} value={c.value}>{categoryOptionLabel(c)}</option>
+            ))}
+            <option value={CUSTOM_CATEGORY_VALUE}>+ My item is not listed — type my own</option>
+          </select>
+          {selectedPreset && !p.isCustomCategory && (
+            <div style={FIELD_HINT}>Good for: {selectedPreset.hint}</div>
+          )}
+        </div>
+
+        <div className="form-group">
+          <label style={FIELD_LABEL}>{p.stockLabel}</label>
+          <input
+            type="text"
+            inputMode="numeric"
+            className="input-text"
+            placeholder="e.g. 20"
+            value={p.stockQuantity}
+            onChange={(e) => p.setStockQuantity(sanitizeWholeNumber(e.target.value))}
+            required
+            style={FIELD_INPUT}
+          />
+          <div style={FIELD_HINT}>Number of pieces / packs you have available</div>
+        </div>
+      </div>
+
+      {p.isCustomCategory && (
+        <div className="form-group" style={{ marginTop: '-4px' }}>
+          <label style={{ ...FIELD_LABEL, color: '#00d4ff' }}>Type your own category name</label>
+          <input
+            type="text"
+            className="input-text"
+            placeholder="e.g. Wigs, Lotions, Baby Items, Phone Cases"
+            value={p.customCategory}
+            onChange={(e) => p.setCustomCategory(e.target.value)}
+            required
+            style={{ ...FIELD_INPUT, border: '1px solid #00d4ff', padding: '10px' }}
+          />
+        </div>
+      )}
+
+      <div className="form-row">
+        <div className="form-group">
+          <label style={FIELD_LABEL}>Buying Cost — for ONE item ({symbol}) *</label>
+          <input
+            type="text"
+            inputMode="decimal"
+            className="input-text"
+            placeholder="e.g. 200"
+            value={p.unitCost}
+            onChange={(e) => p.setUnitCost(sanitizeMoneyText(e.target.value))}
+            required
+            style={FIELD_INPUT}
+          />
+          <div style={FIELD_HINT}>What YOU pay to get one item</div>
+        </div>
+
+        <div className="form-group">
+          <label style={FIELD_LABEL}>Selling Price — for ONE item ({symbol}) *</label>
+          <input
+            type="text"
+            inputMode="decimal"
+            className="input-text"
+            placeholder="e.g. 350"
+            value={p.sellingPrice}
+            onChange={(e) => p.setSellingPrice(sanitizeMoneyText(e.target.value))}
+            required
+            style={FIELD_INPUT}
+          />
+          <div style={FIELD_HINT}>What your CUSTOMER pays you for one item</div>
+        </div>
+      </div>
+
+      {showProfit && (
+        <div style={{
+          margin: '-4px 0 14px 0',
+          padding: '8px 12px',
+          borderRadius: '8px',
+          fontSize: '0.8rem',
+          fontWeight: 600,
+          background: profit >= 0 ? 'rgba(74, 222, 128, 0.1)' : 'rgba(248, 113, 113, 0.12)',
+          border: `1px solid ${profit >= 0 ? 'rgba(74, 222, 128, 0.35)' : 'rgba(248, 113, 113, 0.4)'}`,
+          color: profit >= 0 ? '#4ade80' : '#f87171'
+        }}>
+          {profit >= 0
+            ? `You make ${money(profit)} profit on each item you sell.`
+            : `Careful: you lose ${money(profit)} on each item you sell.`}
+        </div>
+      )}
+
+      <div className="form-row">
+        <div className="form-group">
+          <label style={FIELD_LABEL}>
+            Warn me when stock is low <span style={{ color: '#9ca3af', fontWeight: 400 }}>(optional)</span>
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            className="input-text"
+            placeholder="e.g. 5"
+            value={p.reorderPoint}
+            onChange={(e) => p.setReorderPoint(sanitizeWholeNumber(e.target.value))}
+            style={FIELD_INPUT}
+          />
+          <div style={FIELD_HINT}>You will see a “Running Low” warning when you have this many or fewer left</div>
+        </div>
+
+        <div className="form-group">
+          <label style={FIELD_LABEL}>
+            Supplier — who you buy from <span style={{ color: '#9ca3af', fontWeight: 400 }}>(optional)</span>
+          </label>
+          <input
+            type="text"
+            className="input-text"
+            placeholder="e.g. Mama Njeri Wholesalers"
+            value={p.supplier}
+            onChange={(e) => p.setSupplier(e.target.value)}
+            style={FIELD_INPUT}
+          />
+        </div>
+      </div>
+    </>
+  );
+};
 
 export const InventoryView: React.FC<InventoryViewProps> = ({ 
   currency = 'USD', 
@@ -52,7 +273,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   // Form State (New SKU)
   const [name, setName] = useState('');
   const [customSKU, setCustomSKU] = useState('');
-  const [category, setCategory] = useState('Hardware & Devices');
+  const [category, setCategory] = useState(DEFAULT_INVENTORY_CATEGORY);
   const [customCategory, setCustomCategory] = useState('');
   const [isCustomCategory, setIsCustomCategory] = useState(false);
   const [stockQuantity, setStockQuantity] = useState('');
@@ -73,7 +294,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editName, setEditName] = useState('');
-  const [editCategory, setEditCategory] = useState('Hardware & Devices');
+  const [editCategory, setEditCategory] = useState(DEFAULT_INVENTORY_CATEGORY);
   const [editCustomCategory, setEditCustomCategory] = useState('');
   const [isEditCustomCategory, setIsEditCustomCategory] = useState(false);
   const [editStockQuantity, setEditStockQuantity] = useState('');
@@ -91,19 +312,23 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
     getInventoryApi(activeBranch)
       .then((data) => {
         if (data && data.length) {
-          const mapped: InventoryItem[] = data.map((d: any) => ({
-            id: d.sku || d.id || `ITEM-${Math.floor(1000 + Math.random() * 9000)}`,
-            name: d.name || 'Inventory Item',
-            category: d.category || 'Inventory',
-            stockLevel: Number(d.stock_quantity ?? d.stockLevel ?? 0),
-            minThreshold: Number(d.reorder_point ?? d.minThreshold ?? 50),
-            unitPriceUSD: Number(d.unit_cost ?? d.unitPriceUSD ?? 100),
-            sellingPriceUSD: Number(d.selling_price ?? (d.unit_cost ? d.unit_cost * 1.5 : 150)),
-            supplier: d.supplier || 'Primary Supplier',
-            turnoverRate: d.velocity || '1.8x/mo',
-            status: Number(d.stock_quantity ?? d.stockLevel ?? 0) <= Number(d.reorder_point ?? d.minThreshold ?? 50) ? 'Reorder Soon' : 'Optimal',
-            branch_id: d.branch_id
-          }));
+          // Prices are stored in USD. Never invent prices for items that have none.
+          const mapped: InventoryItem[] = data.map((d: any) => {
+            const stock = Number(d.stock_quantity ?? d.stockLevel ?? 0) || 0;
+            const minStock = Number(d.reorder_point ?? d.minThreshold ?? 5) || 0;
+            return {
+              id: d.sku || d.id || `ITEM-${Math.floor(1000 + Math.random() * 9000)}`,
+              name: d.name || 'Unnamed Item',
+              category: d.category || 'Other Items',
+              stockLevel: stock,
+              minThreshold: minStock,
+              unitPriceUSD: Number(d.unit_cost ?? d.unitPriceUSD ?? 0) || 0,
+              sellingPriceUSD: Number(d.selling_price ?? d.sellingPriceUSD ?? 0) || 0,
+              supplier: d.supplier || '',
+              status: stock <= 0 ? 'Out of Stock' : stock <= minStock ? 'Running Low' : 'In Stock',
+              branch_id: d.branch_id
+            };
+          });
           setItems(mapped);
         } else {
           setItems([]);
@@ -161,20 +386,29 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
 
   const handleCreateSKU = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name) return;
+    if (!name.trim()) return;
+
+    const costTyped = parseMoneyInput(unitCost);
+    const priceTyped = parseMoneyInput(sellingPrice);
+    if (isNaN(costTyped) || costTyped < 0 || isNaN(priceTyped) || priceTyped < 0) {
+      setCreateError('Please type the buying cost and the selling price as numbers, for example 200.');
+      return;
+    }
+
     setSubmitting(true);
 
-    const finalCategory = isCustomCategory ? (customCategory.trim() || 'Inventory') : category;
+    const finalCategory = isCustomCategory ? (customCategory.trim() || 'Other Items') : category;
     const itemCode = customSKU.trim() || generateSmartItemCode(finalCategory, name);
     const newItemData = {
       sku: itemCode,
-      name,
+      name: name.trim(),
       category: finalCategory,
-      stock_quantity: parseInt(stockQuantity) || 0,
-      reorder_point: parseInt(reorderPoint) || 50,
-      unit_cost: parseFloat(unitCost) || 100,
-      selling_price: parseFloat(sellingPrice) || 200,
-      supplier: supplier || 'Primary Supplier',
+      stock_quantity: Math.max(0, parseInt(stockQuantity) || 0),
+      reorder_point: reorderPoint.trim() === '' ? 5 : Math.max(0, parseInt(reorderPoint) || 0),
+      // What the user typed is in their chosen currency; money is stored in USD
+      unit_cost: fromDisplayAmount(costTyped, currency),
+      selling_price: fromDisplayAmount(priceTyped, currency),
+      supplier: supplier.trim(),
       branch_id: isSubUserWithBranch ? currentUser?.branch_id : (itemBranchId || (branches[0]?.id || null))
     };
 
@@ -183,10 +417,15 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       await createInventoryItemApi(newItemData);
       // Re-fetch from backend to get the latest persisted state
       fetchInventory();
+      window.dispatchEvent(new CustomEvent('axis-data-updated'));
       setIsModalOpen(false);
       setName('');
       setCustomSKU('');
       setSupplier('');
+      setStockQuantity('');
+      setReorderPoint('');
+      setUnitCost('');
+      setSellingPrice('');
       setCustomCategory('');
       setIsCustomCategory(false);
       setCreateError(null);
@@ -202,26 +441,20 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const handleOpenEdit = (item: InventoryItem) => {
     setEditingItem(item);
     setEditName(item.name);
-    const standardCategories = [
-      'Hardware & Devices',
-      'Finished Goods & Products',
-      'Raw Materials & Parts',
-      'Office Equipment & Facilities',
-      'Packaging & Logistics'
-    ];
-    if (standardCategories.includes(item.category)) {
+    if (isPresetCategory(item.category, INVENTORY_CATEGORIES)) {
       setEditCategory(item.category);
       setIsEditCustomCategory(false);
       setEditCustomCategory('');
     } else {
-      setEditCategory('__CUSTOM__');
+      setEditCategory(CUSTOM_CATEGORY_VALUE);
       setIsEditCustomCategory(true);
       setEditCustomCategory(item.category);
     }
     setEditStockQuantity(item.stockLevel.toString());
     setEditReorderPoint(item.minThreshold.toString());
-    setEditUnitCost(item.unitPriceUSD.toString());
-    setEditSellingPrice((item.sellingPriceUSD || (item.unitPriceUSD * 1.5)).toString());
+    // Show prices in the user's chosen currency (stored internally in USD)
+    setEditUnitCost(toDisplayAmount(item.unitPriceUSD, currency).toString());
+    setEditSellingPrice(toDisplayAmount(item.sellingPriceUSD || 0, currency).toString());
     setEditSupplier(item.supplier || '');
     setEditBranchId(item.branch_id || '');
     setEditError(null);
@@ -242,18 +475,27 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingItem) return;
+
+    const costTyped = parseMoneyInput(editUnitCost);
+    const priceTyped = parseMoneyInput(editSellingPrice);
+    if (isNaN(costTyped) || costTyped < 0 || isNaN(priceTyped) || priceTyped < 0) {
+      setEditError('Please type the buying cost and the selling price as numbers, for example 200.');
+      return;
+    }
+
     setIsSavingEdit(true);
     setEditError(null);
 
-    const finalCategory = isEditCustomCategory ? (editCustomCategory.trim() || 'Inventory') : editCategory;
+    const finalCategory = isEditCustomCategory ? (editCustomCategory.trim() || 'Other Items') : editCategory;
     const updates = {
-      name: editName,
+      name: editName.trim(),
       category: finalCategory,
-      stock_quantity: parseInt(editStockQuantity) || 0,
-      reorder_point: parseInt(editReorderPoint) || 50,
-      unit_cost: parseFloat(editUnitCost) || 0,
-      selling_price: parseFloat(editSellingPrice) || 0,
-      supplier: editSupplier || 'Global Supplier',
+      stock_quantity: Math.max(0, parseInt(editStockQuantity) || 0),
+      reorder_point: editReorderPoint.trim() === '' ? 5 : Math.max(0, parseInt(editReorderPoint) || 0),
+      // What the user typed is in their chosen currency; money is stored in USD
+      unit_cost: fromDisplayAmount(costTyped, currency),
+      selling_price: fromDisplayAmount(priceTyped, currency),
+      supplier: editSupplier.trim(),
       branch_id: editBranchId || undefined
     };
 
@@ -271,7 +513,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   };
 
   const handleDelete = async (sku: string, itemName: string) => {
-    if (!window.confirm(`Are you sure you want to delete SKU "${sku}" (${itemName})? This will permanently remove it from inventory.`)) {
+    if (!window.confirm(`Are you sure you want to delete "${itemName}" (code ${sku})? This will permanently remove it from your inventory.`)) {
       return;
     }
     try {
@@ -284,15 +526,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   };
 
   const totalValuationUSD = items.reduce((acc, item) => acc + (item.stockLevel * item.unitPriceUSD), 0);
+  const totalSalesValueUSD = items.reduce((acc, item) => acc + (item.stockLevel * (item.sellingPriceUSD || 0)), 0);
   
-  // Dynamic categories list from items + presets
+  // Category list: all friendly presets + anything the user already used
   const availableCategories = Array.from(new Set([
     'ALL',
-    'Hardware & Devices',
-    'Finished Goods & Products',
-    'Raw Materials & Parts',
-    'Office Equipment & Facilities',
-    'Packaging & Logistics',
+    ...INVENTORY_CATEGORIES.map(c => c.value),
     ...items.map(i => i.category)
   ]));
 
@@ -325,7 +564,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             Inventory
           </h2>
           <p className="subtitle" style={{ color: 'var(--text-muted, #9ca3af)', marginTop: '0.25rem' }}>
-            Item stock levels, valuation, and automated low-stock reorder alerts
+            Your items, how many are left, what they are worth, and low-stock warnings
           </p>
         </div>
 
@@ -399,7 +638,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             onClick={() => {
               if (isFreeLimitReached) {
                 if (onOpenUpgrade) {
-                  onOpenUpgrade('Free tier is limited to 2 inventory items. Please upgrade your plan for unlimited SKU management.', 'Inventory Engine');
+                  onOpenUpgrade('Free tier is limited to 2 inventory items. Please upgrade your plan to add unlimited items.', 'Inventory Engine');
                 }
                 return;
               }
@@ -426,45 +665,45 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         </div>
       )}
 
-      {/* Top 4 Inventory Advisor Metric Highlights */}
+      {/* Top Inventory Highlights */}
       <div className="inventory-metrics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '1.25rem' }}>
         <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '1rem' }}>
-          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: 'var(--text-muted, #9ca3af)' }}>TOTAL STOCK VALUATION</div>
+          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: 'var(--text-muted, #9ca3af)' }}>VALUE OF YOUR STOCK</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main, #ffffff)', fontFamily: 'JetBrains Mono', marginTop: '0.25rem' }}>
             {formatCurrency(totalValuationUSD, currency)}
           </div>
           <span className="trend-pill positive" style={{ fontSize: '0.72rem', marginTop: '0.5rem', display: 'inline-flex' }}>
-            <i className="fa-solid fa-boxes-stacked"></i> {items.length} Items Tracked
+            <i className="fa-solid fa-boxes-stacked"></i> {items.length} {items.length === 1 ? 'Item' : 'Items'} (what you paid)
           </span>
         </div>
 
         <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '1rem' }}>
-          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: 'var(--text-muted, #9ca3af)' }}>STOCK TURNOVER RATE</div>
+          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: 'var(--text-muted, #9ca3af)' }}>EXPECTED SALES</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#00d4ff', fontFamily: 'JetBrains Mono', marginTop: '0.25rem' }}>
-            {items.length > 0 ? `${(items.reduce((acc, i) => acc + (parseFloat(i.turnoverRate) || 1.8), 0) / items.length).toFixed(1)}x / mo` : '--'}
+            {items.length > 0 ? formatCurrency(totalSalesValueUSD, currency) : '--'}
           </div>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #9ca3af)', marginTop: '0.5rem', display: 'block' }}>
-            {items.length > 0 ? 'Stock Movement: Active' : 'No inventory items logged'}
+            {items.length > 0 ? `Profit if you sell it all: ${formatCurrency(totalSalesValueUSD - totalValuationUSD, currency)}` : 'No items added yet'}
           </span>
         </div>
 
         <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '1rem' }}>
-          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: 'var(--text-muted, #9ca3af)' }}>ACTIVE UNITS IN STOCK</div>
+          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: 'var(--text-muted, #9ca3af)' }}>TOTAL ITEMS IN STOCK</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--primary-lilac-glow, #cebdff)', fontFamily: 'JetBrains Mono', marginTop: '0.25rem' }}>
-            {items.reduce((acc, item) => acc + item.stockLevel, 0).toLocaleString()} Units
+            {items.reduce((acc, item) => acc + item.stockLevel, 0).toLocaleString()}
           </div>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #9ca3af)', marginTop: '0.5rem', display: 'block' }}>
-            Across {items.length} Tracked Item(s)
+            Across {items.length} different {items.length === 1 ? 'product' : 'products'}
           </span>
         </div>
 
         <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '1rem' }}>
-          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: 'var(--text-muted, #9ca3af)' }}>WAREHOUSE & STOCK HEALTH</div>
+          <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: 'var(--text-muted, #9ca3af)' }}>STOCK HEALTH</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--tertiary-pink-glow, #ffafd3)', fontFamily: 'JetBrains Mono', marginTop: '0.25rem' }}>
-            {items.length ? `${(Math.round((items.filter(i => i.stockLevel > i.minThreshold).length / items.length) * 1000) / 10).toFixed(1)}%` : '--'}
+            {items.length ? `${Math.round((items.filter(i => i.stockLevel > i.minThreshold).length / items.length) * 100)}%` : '--'}
           </div>
           <span style={{ fontSize: '0.75rem', color: items.some(i => i.stockLevel <= i.minThreshold) ? '#ff8e8e' : '#4ade80', marginTop: '0.5rem', display: 'block' }}>
-            {items.length ? `${items.filter(i => i.stockLevel <= i.minThreshold).length} Low Stock Alert(s)` : 'No items recorded'}
+            {items.length ? `${items.filter(i => i.stockLevel <= i.minThreshold).length} ${items.filter(i => i.stockLevel <= i.minThreshold).length === 1 ? 'item is' : 'items are'} running low` : 'No items added yet'}
           </span>
         </div>
       </div>
@@ -474,7 +713,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
           <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
             <i className="fa-solid fa-list-check" style={{ color: '#00d4ff' }}></i>
-            Stock Inventory & Status
+            Your Items & Stock Levels
           </h3>
 
           <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -498,12 +737,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             <thead>
               <tr>
                 <th>Item Code</th>
-                <th>Item Description</th>
+                <th>Item Name</th>
                 <th>Category</th>
-                <th>Stock Units</th>
-                <th>Unit Value</th>
-                <th>Total Valuation</th>
-                <th>Turnover</th>
+                <th>In Stock</th>
+                <th>Buying Cost (each)</th>
+                <th>Selling Price (each)</th>
+                <th>Total Stock Value</th>
                 <th>Status</th>
                 <th style={{ textAlign: 'center', width: '90px' }}>Actions</th>
               </tr>
@@ -523,7 +762,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                     <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-muted, #94a3b8)', marginBottom: '0.35rem' }}>
                       {filterCategory !== 'ALL' ? `No items in "${filterCategory}" category` : 'No inventory items yet'}
                     </div>
-                    <div style={{ fontSize: '0.8rem' }}>Click <strong>Add Inventory Item</strong> to log your first SKU.</div>
+                    <div style={{ fontSize: '0.8rem' }}>Click <strong>Add Inventory Item</strong> to add your first item.</div>
                   </td>
                 </tr>
               ) : (
@@ -541,20 +780,21 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                         </div>
                       </td>
                       <td style={{ color: 'var(--text-muted, #9ca3af)' }}>{item.category}</td>
-                      <td style={{ fontFamily: 'JetBrains Mono', fontWeight: 600, color: item.stockLevel < item.minThreshold ? '#ff8e8e' : 'var(--text-main, #e5e2e1)' }}>
-                        {item.stockLevel} units (Min: {item.minThreshold})
+                      <td style={{ fontFamily: 'JetBrains Mono', fontWeight: 600, color: item.stockLevel <= item.minThreshold ? '#ff8e8e' : 'var(--text-main, #e5e2e1)' }}>
+                        {item.stockLevel.toLocaleString()} {item.stockLevel === 1 ? 'item' : 'items'}
+                        <div style={{ fontSize: '0.68rem', fontWeight: 400, color: 'var(--text-dim, #64748b)' }}>Warn me at {item.minThreshold}</div>
                       </td>
                       <td style={{ fontFamily: 'JetBrains Mono' }}>
                         {formatCurrency(item.unitPriceUSD, currency)}
                       </td>
+                      <td style={{ fontFamily: 'JetBrains Mono', color: '#00d4ff' }}>
+                        {formatCurrency(item.sellingPriceUSD || 0, currency)}
+                      </td>
                       <td style={{ fontFamily: 'JetBrains Mono', fontWeight: 700, color: 'var(--primary-lilac-glow, #cebdff)' }}>
                         {formatCurrency(totalVal, currency)}
                       </td>
-                      <td style={{ fontFamily: 'JetBrains Mono', color: '#00d4ff' }}>
-                        {item.turnoverRate}
-                      </td>
                       <td>
-                        <span className={`status-badge ${item.status === 'Reorder Soon' ? 'status-pending' : item.status === 'Optimal' ? 'status-cleared' : 'status-processing'}`}>
+                        <span className={`status-badge ${item.status === 'In Stock' ? 'status-cleared' : 'status-pending'}`}>
                           {item.status}
                         </span>
                       </td>
@@ -572,7 +812,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                               cursor: 'pointer',
                               transition: 'all 0.2s'
                             }}
-                            title="Edit inventory SKU"
+                            title="Edit this item"
                           >
                             <i className="fa-solid fa-pen-to-square"></i>
                           </button>
@@ -588,7 +828,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                               cursor: 'pointer',
                               transition: 'all 0.2s'
                             }}
-                            title="Delete SKU"
+                            title="Delete this item"
                           >
                             <i className="fa-solid fa-trash"></i>
                           </button>
@@ -650,12 +890,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                   </div>
                   <div>
                     <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '2px' }}>
-                      Subscription Requirement
+                      {isUpgradeMessage(createError) ? 'Subscription Requirement' : 'Please check this'}
                     </div>
                     <div style={{ fontSize: '0.86rem', color: 'var(--text-main, #0f172a)', lineHeight: 1.5, fontWeight: 600 }}>
                       {createError}
                     </div>
-                    {onOpenUpgrade && (
+                    {onOpenUpgrade && isUpgradeMessage(createError) && (
                       <button
                         type="button"
                         onClick={() => onOpenUpgrade(createError, 'Inventory Engine')}
@@ -774,155 +1014,30 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                 </div>
               )}
 
-              <div className="form-row">
-                <div className="form-group" style={{ flex: 1.3 }}>
-                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Item Name / Description *
-                  </label>
-                  <input 
-                    type="text" 
-                    className="input-text" 
-                    placeholder="e.g. Server Rack Mount / Display Unit"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
-                  />
-                </div>
-
-                <div className="form-group" style={{ flex: 1 }}>
-                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Item Code / SKU <span style={{ color: '#9ca3af', fontWeight: 400, textTransform: 'none' }}>(Optional)</span>
-                  </label>
-                  <input 
-                    type="text" 
-                    className="input-text" 
-                    placeholder="Auto-assigned if empty (e.g. HW-1042)"
-                    value={customSKU}
-                    onChange={(e) => setCustomSKU(e.target.value)}
-                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Category
-                  </label>
-                  <select 
-                    className="select-text"
-                    value={isCustomCategory ? '__CUSTOM__' : category}
-                    onChange={handleCategorySelectChange}
-                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
-                  >
-                    <option value="Hardware & Devices">Hardware & Devices</option>
-                    <option value="Finished Goods & Products">Finished Goods & Products</option>
-                    <option value="Raw Materials & Parts">Raw Materials & Parts</option>
-                    <option value="Office Equipment & Facilities">Office Equipment & Facilities</option>
-                    <option value="Packaging & Logistics">Packaging & Logistics</option>
-                    <option value="__CUSTOM__">+ Custom Category...</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Initial Stock Units
-                  </label>
-                  <input 
-                    type="number" 
-                    className="input-text" 
-                    placeholder="0"
-                    value={stockQuantity}
-                    onChange={(e) => setStockQuantity(e.target.value)}
-                    required
-                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
-                  />
-                </div>
-              </div>
-
-              {isCustomCategory && (
-                <div className="form-group" style={{ marginTop: '-4px' }}>
-                  <label style={{ fontSize: '0.75rem', color: '#00d4ff', fontWeight: 600, textTransform: 'uppercase' }}>
-                    Enter Custom Category Name
-                  </label>
-                  <input 
-                    type="text" 
-                    className="input-text" 
-                    placeholder="e.g. Spare Parts, Electronics, Retail Stock"
-                    value={customCategory}
-                    onChange={(e) => setCustomCategory(e.target.value)}
-                    required={isCustomCategory}
-                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid #00d4ff', borderRadius: '10px', padding: '10px' }}
-                  />
-                </div>
-              )}
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Reorder Alert Threshold
-                  </label>
-                  <input 
-                    type="number" 
-                    className="input-text" 
-                    placeholder="50"
-                    value={reorderPoint}
-                    onChange={(e) => setReorderPoint(e.target.value)}
-                    required
-                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Unit Cost ($)
-                  </label>
-                  <input 
-                    type="number" 
-                    step="0.01"
-                    className="input-text" 
-                    placeholder="0.00"
-                    value={unitCost}
-                    onChange={(e) => setUnitCost(e.target.value)}
-                    required
-                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Selling Price ($)
-                  </label>
-                  <input 
-                    type="number" 
-                    step="0.01"
-                    className="input-text" 
-                    placeholder="0.00"
-                    value={sellingPrice}
-                    onChange={(e) => setSellingPrice(e.target.value)}
-                    required
-                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Supplier / Vendor
-                  </label>
-                  <input 
-                    type="text" 
-                    className="input-text" 
-                    placeholder="e.g. Apex Supply Co. / Global Tech"
-                    value={supplier}
-                    onChange={(e) => setSupplier(e.target.value)}
-                    required
-                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid var(--search-border, rgba(255, 255, 255, 0.15))', borderRadius: '10px', padding: '12px' }}
-                  />
-                </div>
-              </div>
+              <ItemFormFields
+                currency={currency}
+                showItemCode
+                name={name}
+                setName={setName}
+                itemCode={customSKU}
+                setItemCode={setCustomSKU}
+                category={category}
+                isCustomCategory={isCustomCategory}
+                onCategoryChange={handleCategorySelectChange}
+                customCategory={customCategory}
+                setCustomCategory={setCustomCategory}
+                stockLabel="How many do you have right now?"
+                stockQuantity={stockQuantity}
+                setStockQuantity={setStockQuantity}
+                reorderPoint={reorderPoint}
+                setReorderPoint={setReorderPoint}
+                unitCost={unitCost}
+                setUnitCost={setUnitCost}
+                sellingPrice={sellingPrice}
+                setSellingPrice={setSellingPrice}
+                supplier={supplier}
+                setSupplier={setSupplier}
+              />
 
               </div>
 
@@ -946,7 +1061,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             <div className="modal-header" style={{ borderBottom: '1px solid var(--header-border, rgba(255, 255, 255, 0.1))', paddingBottom: '12px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
               <div>
                 <h3 style={{ margin: 0, color: 'var(--text-main, #ffffff)', fontFamily: 'Plus Jakarta Sans', fontSize: '1.25rem', fontWeight: 800 }}>
-                  Edit Inventory SKU
+                  Edit Item
                 </h3>
                 <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#00d4ff' }}>
                   {editingItem.id}
@@ -990,12 +1105,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                   </div>
                   <div>
                     <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '2px' }}>
-                      Subscription Requirement
+                      {isUpgradeMessage(editError) ? 'Subscription Requirement' : 'Please check this'}
                     </div>
                     <div style={{ fontSize: '0.86rem', color: '#f3f4f6', lineHeight: 1.5, fontWeight: 600 }}>
                       {editError}
                     </div>
-                    {onOpenUpgrade && (
+                    {onOpenUpgrade && isUpgradeMessage(editError) && (
                       <button
                         type="button"
                         onClick={() => onOpenUpgrade(editError, 'Inventory Engine')}
@@ -1052,135 +1167,28 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                   </div>
                 )}
 
-                <div className="form-group" style={{ marginBottom: '14px' }}>
-                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
-                    Item Name / Description *
-                  </label>
-                  <input
-                    type="text"
-                    className="input-text"
-                    value={editName}
-                    onChange={e => setEditName(e.target.value)}
-                    required
-                    style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '10px' }}
-                  />
-                </div>
-
-                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
-                  <div className="form-group">
-                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
-                      Category
-                    </label>
-                    <select
-                      className="select-text"
-                      value={isEditCustomCategory ? '__CUSTOM__' : editCategory}
-                      onChange={handleEditCategorySelectChange}
-                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '10px' }}
-                    >
-                      <option value="Hardware & Devices">Hardware & Devices</option>
-                      <option value="Finished Goods & Products">Finished Goods & Products</option>
-                      <option value="Raw Materials & Parts">Raw Materials & Parts</option>
-                      <option value="Office Equipment & Facilities">Office Equipment & Facilities</option>
-                      <option value="Packaging & Logistics">Packaging & Logistics</option>
-                      <option value="__CUSTOM__">+ Custom Category...</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
-                      Stock Quantity Units *
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      className="input-text"
-                      value={editStockQuantity}
-                      onChange={e => setEditStockQuantity(e.target.value)}
-                      required
-                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '10px' }}
-                    />
-                  </div>
-                </div>
-
-                {isEditCustomCategory && (
-                  <div className="form-group" style={{ marginBottom: '14px' }}>
-                    <label style={{ fontSize: '0.75rem', color: '#00d4ff', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>
-                      Custom Category Name
-                    </label>
-                    <input
-                      type="text"
-                      className="input-text"
-                      value={editCustomCategory}
-                      onChange={e => setEditCustomCategory(e.target.value)}
-                      required={isEditCustomCategory}
-                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid #00d4ff', borderRadius: '10px', padding: '10px' }}
-                    />
-                  </div>
-                )}
-
-                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
-                  <div className="form-group">
-                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
-                      Reorder Alert Point
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      className="input-text"
-                      value={editReorderPoint}
-                      onChange={e => setEditReorderPoint(e.target.value)}
-                      required
-                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '10px' }}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
-                      Supplier / Vendor
-                    </label>
-                    <input
-                      type="text"
-                      className="input-text"
-                      value={editSupplier}
-                      onChange={e => setEditSupplier(e.target.value)}
-                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '10px' }}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
-                  <div className="form-group">
-                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
-                      Unit Cost ($)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      className="input-text"
-                      value={editUnitCost}
-                      onChange={e => setEditUnitCost(e.target.value)}
-                      required
-                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '10px' }}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #9ca3af)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
-                      Selling Price ($)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      className="input-text"
-                      value={editSellingPrice}
-                      onChange={e => setEditSellingPrice(e.target.value)}
-                      required
-                      style={{ background: 'var(--search-bg, #1a1a22)', color: 'var(--text-main, #ffffff)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '10px' }}
-                    />
-                  </div>
-                </div>
+                <ItemFormFields
+                  currency={currency}
+                  showItemCode={false}
+                  name={editName}
+                  setName={setEditName}
+                  category={editCategory}
+                  isCustomCategory={isEditCustomCategory}
+                  onCategoryChange={handleEditCategorySelectChange}
+                  customCategory={editCustomCategory}
+                  setCustomCategory={setEditCustomCategory}
+                  stockLabel="How many are in stock now?"
+                  stockQuantity={editStockQuantity}
+                  setStockQuantity={setEditStockQuantity}
+                  reorderPoint={editReorderPoint}
+                  setReorderPoint={setEditReorderPoint}
+                  unitCost={editUnitCost}
+                  setUnitCost={setEditUnitCost}
+                  sellingPrice={editSellingPrice}
+                  setSellingPrice={setEditSellingPrice}
+                  supplier={editSupplier}
+                  setSupplier={setEditSupplier}
+                />
               </div>
 
               <div className="modal-actions" style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--header-border, rgba(255, 255, 255, 0.08))', flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
@@ -1189,7 +1197,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                 </button>
                 <button type="submit" className="action-btn-primary" disabled={isSavingEdit} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                   {isSavingEdit ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-check"></i>}
-                  {isSavingEdit ? 'Saving...' : 'Update SKU'}
+                  {isSavingEdit ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>

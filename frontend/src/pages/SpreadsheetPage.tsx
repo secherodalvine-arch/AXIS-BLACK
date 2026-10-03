@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Currency, Transaction } from '../types';
-import { formatCurrency } from '../utils/currencyUtils';
+import { formatCurrency, toDisplayAmount, fromDisplayAmount, getCurrencySymbol } from '../utils/currencyUtils';
+import { ALL_LEDGER_CATEGORIES, INVENTORY_CATEGORIES, getDefaultLedgerCategory, DEFAULT_INVENTORY_CATEGORY } from '../utils/categories';
 import { 
   getTransactionsApi, 
   createTransactionApi, 
@@ -298,37 +299,32 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
   // Matching "Add Transaction" fields exactly
   const ledgerColumns: ColumnDef[] = useMemo(() => [
     { key: 'date', letter: 'A', label: 'Date', type: 'date', width: 120 },
-    { key: 'counterparty', letter: 'B', label: 'Description / Counterparty', type: 'text', width: 230 },
-    { key: 'type', letter: 'C', label: 'Flow Type', type: 'select', options: ['Expense', 'Revenue'], width: 120 },
-    { key: 'accountType', letter: 'D', label: 'Account Ledger', type: 'select', options: ['Cash', 'Bank', 'Accounts Receivable', 'Accounts Payable', 'Revenue', 'Expense'], width: 160 },
-    { key: 'category', letter: 'E', label: 'Category', type: 'select', options: [
-      'Operations & Logistics', 'Revenue & Sales', 'Software & Subscriptions', 
-      'Cloud & Infrastructure', 'Payroll & Compensation', 'Marketing & Growth', 
-      'Office & Facilities', 'Professional Services', 'Equipment & Assets', 'Treasury & Capital'
-    ], width: 190 },
-    { key: 'amount', letter: 'F', label: `Amount (${currency})`, type: 'currency', width: 130 },
+    { key: 'counterparty', letter: 'B', label: 'Description / Who Paid / Who You Paid', type: 'text', width: 230 },
+    { key: 'type', letter: 'C', label: 'Money In or Out', type: 'select', options: ['Expense', 'Revenue'], width: 140 },
+    { key: 'accountType', letter: 'D', label: 'Account Type', type: 'select', options: ['Cash', 'Bank', 'Accounts Receivable', 'Accounts Payable', 'Revenue', 'Expense'], width: 160 },
+    { key: 'category', letter: 'E', label: 'Category', type: 'select', options: ALL_LEDGER_CATEGORIES.map(c => c.value), width: 200 },
+    { key: 'amount', letter: 'F', label: `Amount (${getCurrencySymbol(currency)})`, type: 'currency', width: 140 },
     { key: 'status', letter: 'G', label: 'Status', type: 'select', options: ['Cleared', 'Pending', 'Processing'], width: 110 },
-    { key: 'notes', letter: 'H', label: 'Notes / Memo', type: 'text', width: 220 },
-    { key: 'branch_id', letter: 'I', label: 'Branch Location', type: 'select', options: branches.map(b => b.name), width: 150 },
-    { key: 'id', letter: 'J', label: 'Ref Code (ID)', type: 'code', readOnly: false, width: 140 }
+    { key: 'notes', letter: 'H', label: 'Notes / Details', type: 'text', width: 220 },
+    { key: 'branch_id', letter: 'I', label: 'Branch / Location', type: 'select', options: branches.map(b => b.name), width: 150 },
+    { key: 'id', letter: 'J', label: 'Reference Code', type: 'code', readOnly: false, width: 140 }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [currency, branches]);
 
   // Matching "Add Inventory Item" modal fields exactly
   const inventoryColumns: ColumnDef[] = useMemo(() => [
-    { key: 'name', letter: 'A', label: 'Item Name / Description', type: 'text', width: 230 },
-    { key: 'category', letter: 'B', label: 'Category', type: 'select', options: [
-      'Hardware & Devices', 'Finished Goods & Products', 'Raw Materials & Parts', 
-      'Office Equipment & Facilities', 'Packaging & Logistics', 'General Stock'
-    ], width: 190 },
-    { key: 'stock_quantity', letter: 'C', label: 'Initial Stock Units', type: 'number', width: 140 },
-    { key: 'reorder_point', letter: 'D', label: 'Reorder Alert Threshold', type: 'number', width: 140 },
-    { key: 'unit_cost', letter: 'E', label: `Unit Cost ($)`, type: 'currency', width: 120 },
-    { key: 'selling_price', letter: 'F', label: `Selling Price ($)`, type: 'currency', width: 130 },
-    { key: 'margin', letter: 'G', label: 'Gross Margin %', type: 'formula', readOnly: true, width: 120 },
-    { key: 'supplier', letter: 'H', label: 'Supplier / Vendor', type: 'text', width: 180 },
-    { key: 'branch_id', letter: 'I', label: 'Assign to Branch', type: 'select', options: branches.map(b => b.name), width: 150 },
-    { key: 'sku', letter: 'J', label: 'Item Code (SKU)', type: 'code', readOnly: false, width: 140 }
-  ], [branches]);
+    { key: 'name', letter: 'A', label: 'Item Name', type: 'text', width: 230 },
+    { key: 'category', letter: 'B', label: 'Item Type / Category', type: 'select', options: INVENTORY_CATEGORIES.map(c => c.value), width: 200 },
+    { key: 'stock_quantity', letter: 'C', label: 'Quantity in Stock', type: 'number', width: 140 },
+    { key: 'reorder_point', letter: 'D', label: 'Alert Me When Below', type: 'number', width: 150 },
+    { key: 'unit_cost', letter: 'E', label: `Buying Cost (${getCurrencySymbol(currency)})`, type: 'currency', width: 140 },
+    { key: 'selling_price', letter: 'F', label: `Selling Price (${getCurrencySymbol(currency)})`, type: 'currency', width: 140 },
+    { key: 'margin', letter: 'G', label: 'Profit Margin %', type: 'formula', readOnly: true, width: 130 },
+    { key: 'supplier', letter: 'H', label: 'Supplier / Where You Buy', type: 'text', width: 200 },
+    { key: 'branch_id', letter: 'I', label: 'Branch / Location', type: 'select', options: branches.map(b => b.name), width: 150 },
+    { key: 'sku', letter: 'J', label: 'Item Code', type: 'code', readOnly: false, width: 140 }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [currency, branches]);
 
   // Generate blank columns beyond Z (52 columns: A..Z, AA..AZ)
   const generateBlankColumns = useCallback((count: number = 52): ColumnDef[] => {
@@ -611,8 +607,15 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
       filteredRecords = [...liveInventory];
     }
 
+    // Convert stored USD amounts to display currency so user sees e.g. KSh values
+    const convertedRecords = filteredRecords.map(item => ({
+      ...item,
+      unit_cost: item.unit_cost != null ? toDisplayAmount(Number(item.unit_cost), currency) : '',
+      selling_price: item.selling_price != null ? toDisplayAmount(Number(item.selling_price), currency) : ''
+    }));
+
     // Padded clean empty rows without fake SKUs
-    const rows = [...filteredRecords];
+    const rows = [...convertedRecords];
     while (rows.length < 80) {
       const emptyRow: any = { _id: `empty-inv-${rows.length + 1}` };
       inventoryColumns.forEach(c => { emptyRow[c.key] = ''; });
@@ -654,7 +657,13 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
       filteredRecords = [...liveLedger];
     }
 
-    const rows = [...filteredRecords];
+    // Convert stored USD amounts to display currency
+    const convertedLedger = filteredRecords.map(txn => ({
+      ...txn,
+      amount: txn.amount != null ? toDisplayAmount(Math.abs(Number(txn.amount)), currency) : ''
+    }));
+
+    const rows = [...convertedLedger];
     while (rows.length < 80) {
       const emptyRow: any = { _id: `empty-txn-${rows.length + 1}` };
       ledgerColumns.forEach(c => { emptyRow[c.key] = ''; });
@@ -931,7 +940,11 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     if (computed === null || computed === undefined || computed === '') return '';
     if (col.type === 'currency') {
       const num = Number(computed);
-      return isNaN(num) ? computed : formatCurrency(num, currency);
+      if (isNaN(num)) return computed;
+      // Values in rows are already in display currency (converted at open time).
+      // For new/blank rows, user types in display currency too. Render as-is with symbol.
+      const sym = getCurrencySymbol(currency);
+      return `${sym} ${Math.abs(num).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
     }
     if (col.type === 'number') {
       const num = Number(computed);
@@ -998,15 +1011,18 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
           const finalSku = userCode || generateSmartItemCode(row.category, row.name);
           row.sku = finalSku; // Synchronize row in worksheet state
 
+          const rawCost = parseFloat(String(row.unit_cost).replace(/[^0-9.-]/g, '')) || 0;
+          const rawPrice = parseFloat(String(row.selling_price).replace(/[^0-9.-]/g, '')) || 0;
           const updates = {
             sku: finalSku,
             name: row.name || 'New Item',
-            category: row.category || 'Hardware & Devices',
+            category: row.category || DEFAULT_INVENTORY_CATEGORY,
             stock_quantity: parseInt(row.stock_quantity) || 0,
             reorder_point: parseInt(row.reorder_point) || 5,
-            unit_cost: parseFloat(row.unit_cost) || 0,
-            selling_price: parseFloat(row.selling_price) || 0,
-            supplier: row.supplier || 'Global Supplier',
+            // Values in the sheet are in display currency — convert back to USD for storage
+            unit_cost: fromDisplayAmount(rawCost, currency),
+            selling_price: fromDisplayAmount(rawPrice, currency),
+            supplier: row.supplier || '',
             branch_id: row.branch_id || currentUser?.branch_id || undefined
           };
 
@@ -1045,15 +1061,17 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
           const finalRef = userRef || `TXN-${Math.floor(1000 + Math.random() * 9000)}`;
           row.id = finalRef; // Synchronize row in worksheet state
 
-          const numAmount = parseFloat(row.amount) || 0;
+          const rawAmt = parseFloat(String(row.amount).replace(/[^0-9.-]/g, '')) || 0;
+          // Values in the sheet are in display currency — convert back to USD for storage
+          const amountUSD = fromDisplayAmount(rawAmt, currency);
           const updates = {
             id: finalRef,
             counterparty: row.counterparty || 'New Record',
             type: row.type || 'Expense',
             accountType: row.accountType || 'Expense',
-            category: row.category || 'Operations & Logistics',
+            category: row.category || getDefaultLedgerCategory(row.type),
             date: row.date || new Date().toISOString().split('T')[0],
-            amount: row.type === 'Expense' ? -Math.abs(numAmount) : Math.abs(numAmount),
+            amount: row.type === 'Expense' ? -Math.abs(amountUSD) : Math.abs(amountUSD),
             status: row.status || 'Cleared',
             notes: row.notes || '',
             branch_id: row.branch_id || currentUser?.branch_id || undefined
@@ -1429,17 +1447,19 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const col = activeColumns[colIdx];
       if (col && !col.readOnly && col.type !== 'select') {
+        // Start editing with the pressed key as initial value.
+        // Do NOT call updateCellValue here — that triggers a row re-render which
+        // remounts the input and kills focus before the user can continue typing.
         setIsEditing(true);
         setEditValue(e.key);
         setFormulaBarValue(e.key);
-        updateCellValue(rowIdx, colKey, e.key);
         setTimeout(() => {
           if (cellInputRef.current) {
             cellInputRef.current.focus();
             cellInputRef.current.selectionStart = cellInputRef.current.value.length;
             cellInputRef.current.selectionEnd = cellInputRef.current.value.length;
           }
-        }, 30);
+        }, 20);
       }
     }
   };
@@ -2402,9 +2422,10 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                 const val = e.target.value;
                 setFormulaBarValue(val);
                 if (selectedCell) {
+                  // Only update local edit state — the cell input's onBlur/Enter will commit.
+                  // Calling updateCellValue here would re-render the grid and steal focus.
                   setEditValue(val);
                   setIsEditing(true);
-                  updateCellValue(selectedCell.rowIdx, selectedCell.colKey, val);
                 }
               }}
               onKeyDown={e => {
@@ -2479,7 +2500,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
 
                 return (
                   <tr 
-                    key={row._id || row.id || row.sku || `row-${rowIdx}`}
+                    key={`row-${rowIdx}`}
                     style={{ height: `${currentRowHeight}px` }}
                   >
                     {/* Sticky Row Number (1, 2, 3... end-to-end) */}
@@ -2564,11 +2585,16 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                               value={editValue}
                               onChange={e => {
                                 const val = e.target.value;
+                                // Only update local state while typing — no row re-render on every keystroke.
+                                // The row data is committed once when the user leaves the cell.
                                 setEditValue(val);
                                 setFormulaBarValue(val);
-                                updateCellValue(rowIdx, col.key, val);
                               }}
-                              onBlur={commitEdit}
+                              onBlur={e => {
+                                // Don't commit if focus is moving to the formula bar (same logical cell)
+                                if (formulaInputRef.current && e.relatedTarget === formulaInputRef.current) return;
+                                commitEdit();
+                              }}
                               onKeyDown={e => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
