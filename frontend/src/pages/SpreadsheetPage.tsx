@@ -405,6 +405,23 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     fetchPlatformData();
   }, [fetchPlatformData]);
 
+  // One-time cleanup: purge any legacy fake seed entries (h-ledger, h-inventory) that may
+  // have been persisted to localStorage before this fix was applied. Runs once on mount.
+  useEffect(() => {
+    const FAKE_IDS = ['h-ledger', 'h-inventory'];
+    setHistoryItems(prev => {
+      const cleaned = prev.filter(h => !FAKE_IDS.includes(h.id));
+      if (cleaned.length !== prev.length) {
+        // Write cleaned list back to localStorage immediately
+        try {
+          localStorage.setItem('axis_sheets_history', JSON.stringify(cleaned));
+        } catch {}
+      }
+      return cleaned;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const handleRemoteUpdate = () => fetchPlatformData();
     window.addEventListener('axis-data-updated', handleRemoteUpdate);

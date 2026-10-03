@@ -731,20 +731,12 @@ async def initiate_payment(
     # 1. Card Checkout via Paystack
     if body.channel == "card":
         if not PAYSTACK_SECRET:
-            # Resilient development fallback: activate directly in dev if no key configured
-            doc["status"] = "paid"
-            doc["paid_at"] = _now().isoformat()
-            doc["expires_at"] = (_now() + datetime.timedelta(days=plan["duration_days"])).isoformat()
-            await _update_payment(pid, doc)
-            return {
-                "status": "success",
-                "channel": "card",
-                "reference": ref,
-                "payment_id": pid,
-                "amount_kes": amount_kes,
-                "authorization_url": f"{FRONTEND_URL}/?tab=billing&ref={ref}&auto=true",
-                "message": "Payment initialized successfully."
-            }
+            # Payment gateway not configured — never grant free access to paid plans.
+            # The admin must configure PAYSTACK_SECRET_KEY in the .env file.
+            raise HTTPException(
+                status_code=503,
+                detail="Payment gateway is not configured on this server. Please contact support to complete your upgrade."
+            )
 
         payload = {
             "email": user_email,
@@ -804,15 +796,11 @@ async def initiate_payment(
             phone = "+254" + phone
 
         if not PAYSTACK_SECRET:
-            # Resilient development fallback
-            return {
-                "status": "success",
-                "channel": "mobile_money",
-                "reference": ref,
-                "payment_id": pid,
-                "amount_kes": amount_kes,
-                "message": f"M-Pesa STK prompt sent to {phone}. Enter your PIN to complete."
-            }
+            # Payment gateway not configured — never grant free access to paid plans.
+            raise HTTPException(
+                status_code=503,
+                detail="Payment gateway is not configured on this server. Please contact support to complete your upgrade."
+            )
 
         payload = {
             "email": user_email,
