@@ -155,6 +155,7 @@ export function Users() {
               <tr className="bg-white/2 border-b border-white/8 text-slate-400 font-medium">
                 <th className="py-3.5 px-4 font-semibold">User Identity</th>
                 <th className="py-3.5 px-4 font-semibold">Business &amp; Role</th>
+                <th className="py-3.5 px-4 font-semibold">Plan</th>
                 <th className="py-3.5 px-4 font-semibold">Device Footprint</th>
                 <th className="py-3.5 px-4 font-semibold">Last IP &amp; Location</th>
                 <th className="py-3.5 px-4 font-semibold">Registration (Local Time)</th>
@@ -165,7 +166,7 @@ export function Users() {
             <tbody className="divide-y divide-white/5">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500">
+                  <td colSpan={8} className="py-12 text-center text-slate-500">
                     <div className="flex items-center justify-center gap-2">
                       <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
                       <span>Loading user records...</span>
@@ -174,7 +175,7 @@ export function Users() {
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500">
+                  <td colSpan={8} className="py-12 text-center text-slate-500">
                     No user accounts match current search or filters.
                   </td>
                 </tr>
@@ -198,6 +199,23 @@ export function Users() {
                         <div className="text-[10px] text-cyan-300 uppercase font-mono mt-0.5">
                           {u.role || (u.is_sub_user ? 'Team Member' : 'Business Owner')}
                         </div>
+                      </td>
+
+                      <td className="py-3.5 px-4">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                          u.plan === 'pro'
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                            : u.plan === 'starter'
+                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+                            : 'bg-slate-500/20 text-slate-400 border-slate-500/30'
+                        }`}>
+                          {u.plan === 'pro' ? '👑 PRO' : u.plan === 'starter' ? '⚡ STARTER' : '🌐 FREE'}
+                        </span>
+                        {u.is_paid && u.days_left != null && (
+                          <div className="text-[10px] text-slate-500 mt-0.5 font-mono">
+                            {u.days_left}d remaining
+                          </div>
+                        )}
                       </td>
 
                       <td className="py-3.5 px-4 text-slate-300">

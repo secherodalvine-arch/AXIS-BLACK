@@ -254,7 +254,7 @@ class AxisDataStore:
             return []
 
         user_txns = db_manager.memory_store["transactions"].get(user_id, [])
-        return user_txns
+        return [{k: v for k, v in t.items() if k != "_id"} for t in user_txns]
 
     @staticmethod
     async def add_transaction(user_id: str, txn_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -283,7 +283,7 @@ class AxisDataStore:
             if existing:
                 await db_manager.db.transactions.update_one({"user_id": user_id, "id": target_id}, {"$set": doc})
                 return {k: v for k, v in doc.items() if k != "_id"}
-            await db_manager.db.transactions.insert_one(doc)
+            await db_manager.db.transactions.insert_one(dict(doc))
         
         if user_id not in db_manager.memory_store["transactions"]:
             db_manager.memory_store["transactions"][user_id] = []
@@ -309,7 +309,7 @@ class AxisDataStore:
             return []
 
         user_items = db_manager.memory_store["inventory"].get(user_id, [])
-        return user_items
+        return [{k: v for k, v in i.items() if k != "_id"} for i in user_items]
 
     @staticmethod
     async def add_inventory_item(user_id: str, item_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -336,7 +336,7 @@ class AxisDataStore:
             if existing:
                 await db_manager.db.inventory.update_one({"user_id": user_id, "sku": target_sku}, {"$set": doc})
                 return {k: v for k, v in doc.items() if k != "_id"}
-            await db_manager.db.inventory.insert_one(doc)
+            await db_manager.db.inventory.insert_one(dict(doc))
 
         if user_id not in db_manager.memory_store["inventory"]:
             db_manager.memory_store["inventory"][user_id] = []

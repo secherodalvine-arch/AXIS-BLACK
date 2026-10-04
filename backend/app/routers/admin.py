@@ -1152,6 +1152,22 @@ async def list_users(
         filtered.sort(key=lambda x: x.get("created_at", ""), reverse=True)
         users_list = filtered[skip:skip + limit]
 
+    from app.routers.payments import get_user_subscription
+    for u in users_list:
+        uid = u.get("user_id") or u.get("id") or u.get("email")
+        if uid:
+            try:
+                sub = await get_user_subscription(uid)
+                u["plan"] = sub.get("plan_key", "free")
+                u["plan_name"] = sub.get("plan_name", "Free Plan")
+                u["is_paid"] = sub.get("is_paid", False)
+                u["days_left"] = sub.get("days_left", 0)
+                u["expires_at"] = sub.get("expires_at")
+            except Exception:
+                u["plan"] = "free"
+                u["plan_name"] = "Free Plan"
+                u["is_paid"] = False
+
     return clean_mongo_doc({
         "success": True,
         "data": users_list,
@@ -1194,10 +1210,18 @@ async def get_user_detail(
     else:
         session = db_manager.memory_store.get("live_sessions", {}).get(target_uid)
 
+    sub = {}
+    try:
+        from app.routers.payments import get_user_subscription
+        sub = await get_user_subscription(target_uid)
+    except Exception:
+        pass
+
     return clean_mongo_doc({
         "success": True,
         "data": {
             "user": user_doc,
+            "subscription": sub,
             "session": session,
             "transactions_count": len(txns),
             "spreadsheets_count": len(sheets),
@@ -1217,6 +1241,14 @@ async def execute_user_action(
     action = body.action.lower()
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
     upd: Dict[str, Any] = {}
+
+    if action == "assign_plan" and body.value:
+        from app.routers.payments import assign_user_plan, AssignPlanPayload
+        res = await assign_user_plan(
+            AssignPlanPayload(user_id=user_id, plan=body.value, notes=body.reason or f"Admin action by {admin.get('email')}"),
+            current_admin=admin
+        )
+        return {"success": True, "message": f"Plan '{body.value}' assigned successfully to user"}
 
     if action in ("activate", "restore"):
         upd["status"] = "active"

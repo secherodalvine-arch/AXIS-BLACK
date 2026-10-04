@@ -119,7 +119,7 @@ function AssignPlanModal({ users, onClose, onDone }: {
 }) {
   const { toast } = useToastStore();
   const [userId, setUserId] = useState('');
-  const [plan, setPlan] = useState('starter');
+  const [plan, setPlan] = useState<'free' | 'starter' | 'pro'>('starter');
   const [notes, setNotes] = useState('Manual assignment by administrator');
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -127,6 +127,16 @@ function AssignPlanModal({ users, onClose, onDone }: {
   const filtered = users.filter(u =>
     !search || `${u.name || ''} ${u.email || ''}`.toLowerCase().includes(search.toLowerCase())
   );
+
+  const selectedUser = users.find(u => (u.user_id || u.id) === userId);
+
+  const handleUserSelect = (uid: string) => {
+    setUserId(uid);
+    const u = users.find(x => (x.user_id || x.id) === uid);
+    if (u?.plan && (u.plan === 'starter' || u.plan === 'pro' || u.plan === 'free')) {
+      setPlan(u.plan);
+    }
+  };
 
   const submit = async () => {
     if (!userId) {
@@ -136,7 +146,12 @@ function AssignPlanModal({ users, onClose, onDone }: {
     setLoading(true);
     try {
       await api.post('/payments/assign', { user_id: userId, plan, notes });
-      toast({ type: 'success', message: `Plan ${plan.toUpperCase()} provisioned successfully!` });
+      toast({ 
+        type: 'success', 
+        message: plan === 'free' 
+          ? 'User subscription reset to Free Tier.' 
+          : `Plan ${plan.toUpperCase()} provisioned successfully!` 
+      });
       onDone();
       onClose();
     } catch (e: any) {
@@ -164,7 +179,14 @@ function AssignPlanModal({ users, onClose, onDone }: {
 
         <div className="space-y-4 pt-4">
           <div>
-            <label className="text-xs font-semibold text-slate-300 mb-1.5 block">Search &amp; Select User</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-slate-300">Search &amp; Select User</label>
+              {selectedUser && (
+                <span className="text-[11px] text-slate-400">
+                  Current: <strong className="text-cyan-400 uppercase font-mono">{selectedUser.plan || 'free'}</strong>
+                </span>
+              )}
+            </div>
             <input
               type="text"
               placeholder="Filter by name or email..."
@@ -174,13 +196,13 @@ function AssignPlanModal({ users, onClose, onDone }: {
             />
             <select
               value={userId}
-              onChange={e => setUserId(e.target.value)}
+              onChange={e => handleUserSelect(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-xl bg-navy-800 border border-white/10 text-white focus:outline-none focus:border-cyan-500"
             >
               <option value="">-- Choose User ({filtered.length}) --</option>
               {filtered.map(u => (
                 <option key={u.user_id || u.id} value={u.user_id || u.id}>
-                  {u.name} — {u.email}
+                  {u.name} — {u.email} ({u.plan || 'free'})
                 </option>
               ))}
             </select>
@@ -188,39 +210,56 @@ function AssignPlanModal({ users, onClose, onDone }: {
 
           <div>
             <label className="text-xs font-semibold text-slate-300 mb-1.5 block">Package Tier</label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setPlan('free')}
+                className={`p-2.5 rounded-xl border text-left flex flex-col gap-1 transition-all ${
+                  plan === 'free'
+                    ? 'border-slate-400 bg-slate-500/20 text-white'
+                    : 'border-white/10 bg-white/5 text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-slate-300">Free Tier</span>
+                  <Globe size={13} className="text-slate-400" />
+                </div>
+                <div className="text-[11px] font-mono text-slate-400">KES 0</div>
+                <div className="text-[10px] text-slate-500">Revert / Reset</div>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setPlan('starter')}
-                className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all ${
+                className={`p-2.5 rounded-xl border text-left flex flex-col gap-1 transition-all ${
                   plan === 'starter'
-                    ? 'border-cyan-400 bg-cyan-500/10 text-white'
+                    ? 'border-cyan-400 bg-cyan-500/20 text-white'
                     : 'border-white/10 bg-white/5 text-slate-400 hover:text-white'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-xs text-cyan-300">Starter</span>
-                  <Zap size={14} className="text-cyan-400" />
+                  <Zap size={13} className="text-cyan-400" />
                 </div>
-                <div className="text-[11px] font-mono text-slate-300">KES 899 / mo</div>
-                <div className="text-[10px] text-slate-500">30 days validity</div>
+                <div className="text-[11px] font-mono text-slate-300">KES 899</div>
+                <div className="text-[10px] text-slate-500">30 days</div>
               </button>
 
               <button
                 type="button"
                 onClick={() => setPlan('pro')}
-                className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all ${
+                className={`p-2.5 rounded-xl border text-left flex flex-col gap-1 transition-all ${
                   plan === 'pro'
-                    ? 'border-amber-400 bg-amber-500/10 text-white'
+                    ? 'border-amber-400 bg-amber-500/20 text-white'
                     : 'border-white/10 bg-white/5 text-slate-400 hover:text-white'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-xs text-amber-300">Pro Tier</span>
-                  <Crown size={14} className="text-amber-400" />
+                  <Crown size={13} className="text-amber-400" />
                 </div>
                 <div className="text-[11px] font-mono text-slate-300">KES 2,299</div>
-                <div className="text-[10px] text-slate-500">90 days (3 Months)</div>
+                <div className="text-[10px] text-slate-500">90 days</div>
               </button>
             </div>
           </div>
@@ -295,7 +334,7 @@ function PaymentModal({ payment, onClose, onRefresh }: {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const planStyle = PLAN_STYLE[payment.plan] || PLAN_STYLE.starter;
+  const planStyle = PLAN_STYLE[payment.plan] || PLAN_STYLE.free;
   const isPending = payment.status === 'pending';
   const isPaid = payment.status === 'paid';
 
@@ -676,6 +715,7 @@ export function Payments() {
             className="px-3 py-2 text-xs rounded-xl bg-navy-800 border border-white/10 text-slate-300 focus:outline-none focus:border-cyan-500"
           >
             <option value="">All Packages</option>
+            <option value="free">Free Tier</option>
             <option value="starter">Starter (KES 899)</option>
             <option value="pro">Pro (KES 2,299)</option>
           </select>
@@ -721,7 +761,7 @@ export function Payments() {
                 </tr>
               ) : (
                 payments.map(p => {
-                  const planStyle = PLAN_STYLE[p.plan] || PLAN_STYLE.starter;
+                  const planStyle = PLAN_STYLE[p.plan] || PLAN_STYLE.free;
                   const subStat = getSubStatus(p);
 
                   return (

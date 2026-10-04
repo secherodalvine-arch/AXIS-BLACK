@@ -269,7 +269,16 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
           // Filter out any legacy fake seed entries that may have been stored before this fix
-          const real = parsed.filter((item: any) => item.id !== 'h-ledger' && item.id !== 'h-inventory');
+          const isFake = (item: any) =>
+            item.id === 'h-ledger' ||
+            item.id === 'h-inventory' ||
+            item.title === 'Ledger & Cashflow Records' ||
+            item.title === 'Inventory & Stock Catalog' ||
+            (typeof item.title === 'string' && (
+              item.title.includes('Ledger & Cashflow Records') ||
+              item.title.includes('Inventory & Stock Catalog')
+            ));
+          const real = parsed.filter((item: any) => !isFake(item));
           return real.map((item: any, idx: number) => ({
             ...item,
             timestamp: item.timestamp || (Date.now() - (idx + 1) * 3600000)
@@ -405,12 +414,21 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
     fetchPlatformData();
   }, [fetchPlatformData]);
 
-  // One-time cleanup: purge any legacy fake seed entries (h-ledger, h-inventory) that may
+  // One-time cleanup: purge any legacy fake seed entries that may
   // have been persisted to localStorage before this fix was applied. Runs once on mount.
   useEffect(() => {
-    const FAKE_IDS = ['h-ledger', 'h-inventory'];
+    const isFake = (h: any) =>
+      h.id === 'h-ledger' ||
+      h.id === 'h-inventory' ||
+      h.title === 'Ledger & Cashflow Records' ||
+      h.title === 'Inventory & Stock Catalog' ||
+      (typeof h.title === 'string' && (
+        h.title.includes('Ledger & Cashflow Records') ||
+        h.title.includes('Inventory & Stock Catalog')
+      ));
+
     setHistoryItems(prev => {
-      const cleaned = prev.filter(h => !FAKE_IDS.includes(h.id));
+      const cleaned = prev.filter(h => !isFake(h));
       if (cleaned.length !== prev.length) {
         // Write cleaned list back to localStorage immediately
         try {
@@ -2584,10 +2602,19 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                         <td
                           key={col.key}
                           className={classes}
-                          onClick={() => handleSelectCell(rowIdx, col.key)}
-                          onMouseDown={() => handleCellMouseDown(rowIdx, col.key)}
+                          onClick={() => {
+                            if (isCellEditingNow) return;
+                            handleSelectCell(rowIdx, col.key);
+                          }}
+                          onMouseDown={() => {
+                            if (isCellEditingNow) return;
+                            handleCellMouseDown(rowIdx, col.key);
+                          }}
                           onMouseEnter={() => handleCellMouseEnter(rowIdx, col.key)}
-                          onDoubleClick={() => handleDoubleClickCell(rowIdx, col.key)}
+                          onDoubleClick={() => {
+                            if (isCellEditingNow) return;
+                            handleDoubleClickCell(rowIdx, col.key);
+                          }}
                           onContextMenu={(e) => handleContextMenu(e, rowIdx, col.key)}
                         >
                           {col.type === 'select' && col.options ? (
@@ -2612,6 +2639,9 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                               step={col.type === 'currency' ? '0.01' : 'any'}
                               className="cell-inline-input"
                               value={editValue}
+                              onMouseDown={e => e.stopPropagation()}
+                              onClick={e => e.stopPropagation()}
+                              onDoubleClick={e => e.stopPropagation()}
                               onChange={e => {
                                 const val = e.target.value;
                                 // Only update local state while typing — no row re-render on every keystroke.
@@ -2625,6 +2655,7 @@ export const SpreadsheetPage: React.FC<SpreadsheetPageProps> = ({
                                 commitEdit();
                               }}
                               onKeyDown={e => {
+                                e.stopPropagation();
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
                                   commitEdit();

@@ -330,27 +330,32 @@ async def _resolve_user_identifiers(user_id: str) -> List[str]:
     """
     Returns every identifier a payment may have been recorded under for this user
     (user_id, id, Mongo _id, email) so admin-assigned plans are always matched.
+    Rejects blank, None, null, undefined, or default_user values so free users never match.
     """
-    ids = {str(user_id)} if user_id else set()
+    cleaned_id = str(user_id or "").strip()
+    if not cleaned_id or cleaned_id.lower() in ("none", "null", "undefined", "default_user"):
+        return []
+
+    ids = {cleaned_id}
     user = None
     try:
         if db_manager.is_connected and db_manager.db is not None:
             user = await db_manager.db.users.find_one(
-                {"$or": [{"user_id": user_id}, {"id": user_id}, {"email": user_id}]}
+                {"$or": [{"user_id": cleaned_id}, {"id": cleaned_id}, {"email": cleaned_id}]}
             )
         else:
             for u in db_manager.memory_store.get("users", {}).values():
-                if user_id in (u.get("user_id"), u.get("id"), u.get("email")):
+                if cleaned_id in (u.get("user_id"), u.get("id"), u.get("email")):
                     user = u
                     break
     except Exception as e:
         logger.warning(f"Could not resolve alternate identifiers for {user_id}: {e}")
     if user:
         for key in ("user_id", "id", "_id", "email"):
-            val = user.get(key)
-            if val:
-                ids.add(str(val))
-    return list(ids)
+            val = str(user.get(key) or "").strip()
+            if val and val.lower() not in ("none", "null", "undefined", "default_user"):
+                ids.add(val)
+    return [i for i in ids if i and i.lower() not in ("none", "null", "undefined", "default_user")]
 
 
 async def _get_active_paid_payment(user_id: str) -> Optional[dict]:
@@ -472,7 +477,7 @@ async def get_user_subscription(user_id: str) -> dict:
     payment_id = None
 
     if active_pay:
-        plan_key = active_pay.get("plan", "free")
+        raw_plan = str(active_pay.get("plan") or "free").lower().strip()
         raw_exp = active_pay.get("expires_at")
         if isinstance(raw_exp, str):
             exp_dt = datetime.datetime.fromisoformat(raw_exp.replace("Z", "+00:00"))
@@ -481,7 +486,8 @@ async def get_user_subscription(user_id: str) -> dict:
         if exp_dt and exp_dt.tzinfo is None:
             exp_dt = exp_dt.replace(tzinfo=datetime.timezone.utc)
 
-        if exp_dt and exp_dt > now:
+        if exp_dt and exp_dt > now and raw_plan in ("starter", "pro"):
+            plan_key = raw_plan
             is_active = True
             expires_at = _iso(exp_dt)
             diff = (exp_dt - now).total_seconds()
@@ -489,6 +495,9 @@ async def get_user_subscription(user_id: str) -> dict:
             receipt_no = active_pay.get("receipt_number") or _receipt_number(active_pay.get("reference", ""))
             payment_mode = active_pay.get("payment_mode") or active_pay.get("channel", "Card")
             payment_id = active_pay.get("_id")
+        else:
+            plan_key = "free"
+            is_active = False
 
     plan_info = PLANS.get(plan_key, PLANS["free"])
     usage_info = await _get_user_usage(user_id)
@@ -1587,10 +1596,10 @@ async def assign_user_plan(
     body: AssignPlanReq,
     current_admin: dict = Depends(get_current_admin)
 ):
-    """Admin manually provisions a Starter or Pro package to any registered user."""
+    """Admin manually provisions a Free, Starter, or Pro package to any registered user."""
     plan_key = body.plan.lower().strip()
-    if plan_key not in ("starter", "pro"):
-        raise HTTPException(400, "Invalid plan. Choose 'starter' or 'pro'.")
+    if plan_key not in ("free", "starter", "pro"):
+        raise HTTPException(400, "Invalid plan. Choose 'free', 'starter', or 'pro'.")
 
     # Look up user
     user = None
@@ -1606,6 +1615,42 @@ async def assign_user_plan(
         raise HTTPException(404, f"User '{body.user_id}' not found.")
 
     target_uid = user.get("user_id") or user.get("id") or str(user.get("_id", ""))
+
+    if plan_key == "free":
+        # Cancel any active paid subscriptions for this user so they immediately revert to free
+        identifiers = await _resolve_user_identifiers(target_uid)
+        if identifiers:
+            if db_manager.is_connected and db_manager.db is not None:
+                await db_manager.db.payments.update_many(
+                    {
+                        "status": {"$in": ["paid", "PAID", "success"]},
+                        "$or": [{"user_id": {"$in": identifiers}}, {"user_email": {"$in": identifiers}}]
+                    },
+                    {"$set": {"status": "cancelled", "notes": body.notes or f"Reverted to Free Tier by admin {current_admin.get('email')}", "updated_at": _now().isoformat()}}
+                )
+            else:
+                for p in db_manager.memory_store.get("payments", {}).values():
+                    if str(p.get("status", "")).lower() in ("paid", "success") and (p.get("user_id") in identifiers or p.get("user_email") in identifiers):
+                        p["status"] = "cancelled"
+                        p["notes"] = body.notes or f"Reverted to Free Tier by admin {current_admin.get('email')}"
+                        p["updated_at"] = _now().isoformat()
+                db_manager.save_memory_store()
+
+        try:
+            await AxisDataStore.record_admin_notification(
+                title="User Reverted to Free Tier",
+                message=f"Admin {current_admin.get('email')} reverted {user.get('email')} to Free Tier.",
+                notif_type="info",
+                meta={"user_id": target_uid, "plan": "free"}
+            )
+        except Exception:
+            pass
+
+        return {
+            "status": "success",
+            "message": f"User {user.get('email')} successfully reset to Free Tier."
+        }
+
     plan = PLANS[plan_key]
     ref = f"ADMIN-{uuid.uuid4().hex[:8].upper()}"
     expires_at = _now() + datetime.timedelta(days=plan["duration_days"])

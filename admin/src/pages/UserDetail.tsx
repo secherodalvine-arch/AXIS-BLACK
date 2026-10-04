@@ -4,7 +4,7 @@ import {
   User, Shield, Mail, Phone, Building2, MapPin,
   Clock, Monitor, Smartphone, Globe, Receipt, FileSpreadsheet,
   Boxes, Activity, ArrowLeft, Ban, CheckCircle, Trash2, KeyRound,
-  Send, RefreshCw
+  Send, RefreshCw, Crown, Zap, Lock
 } from 'lucide-react';
 import api from '@/api/client';
 import { useToastStore } from '@/store';
@@ -68,8 +68,10 @@ export function UserDetail() {
     );
   }
 
-  const { user, session, transactions_count, spreadsheets_count, inventory_count, recent_activities, recent_transactions, spreadsheets } = data;
+  const { user, subscription, session, transactions_count, spreadsheets_count, inventory_count, recent_activities, recent_transactions, spreadsheets } = data;
   const isSuspended = user.status === 'suspended' || user.status === 'blocked';
+  const planKey = subscription?.plan_key || 'free';
+  const isPaid = subscription?.is_paid || false;
 
   return (
     <div className="space-y-6 animate-fade max-w-6xl mx-auto">
@@ -94,6 +96,15 @@ export function UserDetail() {
                   user.status === 'active' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
                 }`}>
                   {user.status || 'active'}
+                </span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                  planKey === 'pro'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                    : planKey === 'starter'
+                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+                    : 'bg-slate-500/20 text-slate-400 border-slate-500/30'
+                }`}>
+                  {planKey === 'pro' ? '👑 PRO' : planKey === 'starter' ? '⚡ STARTER' : '🌐 FREE TIER'}
                 </span>
               </div>
               <div className="text-xs text-slate-400 font-mono mt-0.5">{user.email}</div>
@@ -143,6 +154,116 @@ export function UserDetail() {
             >
               <Trash2 size={15} />
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Subscription & Entitlements Management Card */}
+      <div className="p-5 rounded-2xl bg-navy-900 border border-white/8 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/8">
+          <div>
+            <div className="flex items-center gap-2">
+              {planKey === 'pro' ? (
+                <Crown size={18} className="text-amber-400" />
+              ) : planKey === 'starter' ? (
+                <Zap size={18} className="text-cyan-400" />
+              ) : (
+                <Globe size={18} className="text-slate-400" />
+              )}
+              <h3 className="text-sm font-bold text-white">Subscription &amp; Entitlements Guard</h3>
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                planKey === 'pro'
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                  : planKey === 'starter'
+                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+                  : 'bg-slate-500/20 text-slate-400 border-slate-500/30'
+              }`}>
+                {subscription?.plan_name || 'Free Tier'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">
+              {isPaid
+                ? `Active paid subscription (${subscription?.days_left || 0} days remaining until ${subscription?.expires_at?.split('T')[0] || 'expiry'}).`
+                : 'Account is strictly on Free Tier. Paid features (Spreadsheet, unlimited branches, high AI limits) are locked.'}
+            </p>
+          </div>
+
+          {/* Quick Plan Reassign / Revoke Controls */}
+          <div className="flex items-center gap-2">
+            {planKey !== 'free' && (
+              <button
+                onClick={() => handleAction('assign_plan', 'free')}
+                disabled={actionLoading}
+                className="px-3 py-1.5 rounded-xl bg-slate-500/15 border border-slate-500/30 hover:bg-slate-500/25 text-xs text-slate-300 font-semibold transition-all"
+              >
+                Revert to Free
+              </button>
+            )}
+            {planKey !== 'starter' && (
+              <button
+                onClick={() => handleAction('assign_plan', 'starter')}
+                disabled={actionLoading}
+                className="px-3 py-1.5 rounded-xl bg-cyan-500/15 border border-cyan-500/30 hover:bg-cyan-500/25 text-xs text-cyan-300 font-semibold transition-all flex items-center gap-1"
+              >
+                <Zap size={12} /> Assign Starter
+              </button>
+            )}
+            {planKey !== 'pro' && (
+              <button
+                onClick={() => handleAction('assign_plan', 'pro')}
+                disabled={actionLoading}
+                className="px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 hover:bg-amber-500/25 text-xs text-amber-300 font-semibold transition-all flex items-center gap-1"
+              >
+                <Crown size={12} /> Assign Pro
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Feature Entitlement Checks */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 text-xs">
+          <div className="p-3 rounded-xl bg-white/4 border border-white/6">
+            <span className="text-slate-400 block text-[10px] uppercase font-semibold">Spreadsheet Engine</span>
+            <div className="mt-1 flex items-center gap-1.5 font-bold">
+              {subscription?.entitlements?.spreadsheet ? (
+                <span className="text-emerald-400 flex items-center gap-1"><CheckCircle size={12} /> Unlocked</span>
+              ) : (
+                <span className="text-rose-400 flex items-center gap-1"><Lock size={12} /> Locked</span>
+              )}
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-white/4 border border-white/6">
+            <span className="text-slate-400 block text-[10px] uppercase font-semibold">Team Roles &amp; Multi-Branch</span>
+            <div className="mt-1 flex items-center gap-1.5 font-bold">
+              {subscription?.entitlements?.team_roles ? (
+                <span className="text-emerald-400 flex items-center gap-1"><CheckCircle size={12} /> Unlocked</span>
+              ) : (
+                <span className="text-rose-400 flex items-center gap-1"><Lock size={12} /> Locked (1 Branch)</span>
+              )}
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-white/4 border border-white/6">
+            <span className="text-slate-400 block text-[10px] uppercase font-semibold">Runway Simulator</span>
+            <div className="mt-1 flex items-center gap-1.5 font-bold">
+              {subscription?.entitlements?.runway_simulator ? (
+                <span className="text-emerald-400 flex items-center gap-1"><CheckCircle size={12} /> Unlocked</span>
+              ) : (
+                <span className="text-rose-400 flex items-center gap-1"><Lock size={12} /> Locked</span>
+              )}
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-white/4 border border-white/6">
+            <span className="text-slate-400 block text-[10px] uppercase font-semibold">Voice Agent Support</span>
+            <div className="mt-1 flex items-center gap-1.5 font-bold">
+              {subscription?.entitlements?.voice_agent ? (
+                <span className="text-emerald-400 flex items-center gap-1"><CheckCircle size={12} /> Unlocked</span>
+              ) : (
+                <span className="text-rose-400 flex items-center gap-1"><Lock size={12} /> Locked</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
