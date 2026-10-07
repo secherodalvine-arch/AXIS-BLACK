@@ -32,7 +32,7 @@ async def query_axis_agent(
 ):
     """
     Query Axis Agent powered by Gemini GenAI SDK.
-    Processes business telemetry data and user strategic inquiries.
+    Processes business data and user strategic inquiries.
     """
     if current_user.get("is_sub_user"):
         perms = current_user.get("permissions") or []
@@ -114,7 +114,7 @@ async def get_advisor_skill_telemetry(
         raise HTTPException(status_code=404, detail=f"Advisor subagent skill '{advisor_type}' not found.")
 
     target_metric = next((m for m in metrics if m.get("id") == advisor_type.lower()), metrics[0])
-    return skill.analyze(target_metric, f"Telemetry check for {advisor_type}")
+    return skill.analyze(target_metric, f"Advisory check for {advisor_type}")
 
 # ── MongoDB Chat Sessions CRUD Endpoints ──
 @router.get("/sessions", response_model=List[Dict[str, Any]])

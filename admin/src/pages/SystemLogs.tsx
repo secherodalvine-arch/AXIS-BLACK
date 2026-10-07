@@ -135,7 +135,7 @@ export function SystemLogs() {
             <ShieldAlert size={24} className="text-cyan-400" /> System Logs &amp; Platform Health Monitor
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Real-time error tracking and telemetry across Backend API, Frontend Client, Email Dispatcher, and Integrated APIs
+            Real-time error tracking and system activity across Backend API, Frontend Client, Email Dispatcher, and Integrated APIs
           </p>
         </div>
 
@@ -295,7 +295,7 @@ export function SystemLogs() {
               {loading && logs.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-16 text-slate-500">
-                    Loading platform logs and telemetry...
+                    Loading platform logs and system activity...
                   </td>
                 </tr>
               ) : logs.length === 0 ? (

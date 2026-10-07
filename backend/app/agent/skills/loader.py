@@ -57,7 +57,7 @@ class MarkdownAdvisorSkill:
             val = metrics.get("value", "$4.28M")
             return {
                 "advisor": adv_name,
-                "focus": "Capital Efficiency & ARR Trajectory (Business Telemetry)",
+                "focus": "Capital Efficiency & ARR Trajectory (Financial Metrics)",
                 "insight": f"Analysis for query '{query}': Current ARR stands at {val} (+18.4% YoY). Treasury yield on $450k T-Bills is yielding 4.85% net.",
                 "recommendations": [
                     "Deploy $150k idle cash into 3-month T-Bills for 4.85% risk-free yield.",
@@ -68,10 +68,10 @@ class MarkdownAdvisorSkill:
         elif self.advisor_id == "inventory":
             return {
                 "advisor": adv_name,
-                "focus": "Stock Velocity & Reorder Readiness (Business Telemetry)",
-                "insight": f"Analysis for query '{query}': Telemetry Node Alpha (SKU-3128) is at 85 units (reorder point: 90). Immediate purchase order required.",
+                "focus": "Stock Velocity & Reorder Readiness (Inventory Metrics)",
+                "insight": f"Analysis for query '{query}': Sensor Unit Alpha (SKU-3128) is at 85 units (reorder point: 90). Immediate purchase order required.",
                 "recommendations": [
-                    "Issue Purchase Order PO-892 for 250 units of Telemetry Node Alpha to Apex Components.",
+                    "Issue Purchase Order PO-892 for 250 units of Sensor Unit Alpha to Apex Components.",
                     "Maintain 1.8x turnover velocity across all warehouse hubs."
                 ],
                 "skill_md_source": os.path.basename(self.file_path)
@@ -79,7 +79,7 @@ class MarkdownAdvisorSkill:
         elif self.advisor_id == "operations":
             return {
                 "advisor": adv_name,
-                "focus": "Infrastructure Efficiency & OpEx Optimization (Business Telemetry)",
+                "focus": "Infrastructure Efficiency & OpEx Optimization (Operations Metrics)",
                 "insight": f"Analysis for query '{query}': Cluster compute latency is optimized at 24ms. AWS US-East-1 reserved instance coverage reduced cloud spend by 14.2%.",
                 "recommendations": [
                     "Convert 4 on-demand worker nodes to 3-year Savings Plans.",
@@ -90,7 +90,7 @@ class MarkdownAdvisorSkill:
         elif self.advisor_id == "growth":
             return {
                 "advisor": adv_name,
-                "focus": "CAC Expansion & Account Expansion (Business Telemetry)",
+                "focus": "CAC Expansion & Account Expansion (Growth Metrics)",
                 "insight": f"Analysis for query '{query}': Added +1,240 enterprise accounts (+28% growth in EMEA). CAC ratio remains healthy at 3.2x LTV.",
                 "recommendations": [
                     "Expand outbound sales force in UK and DACH regions.",
@@ -102,8 +102,8 @@ class MarkdownAdvisorSkill:
             return {
                 "advisor": adv_name,
                 "focus": "Business Data Analysis",
-                "insight": f"Analysis for query '{query}' based on business telemetry.",
-                "recommendations": ["Optimize business metrics telemetry."],
+                "insight": f"Analysis for query '{query}' based on business data.",
+                "recommendations": ["Optimize key business metrics."],
                 "skill_md_source": os.path.basename(self.file_path)
             }
 

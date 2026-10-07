@@ -83,7 +83,7 @@ export function Auth({ mode: initialMode = 'login' }: { mode?: 'login' | 'regist
             AXIS<span className="text-cyan-400">BLACK</span> ADMIN
           </h1>
           <p className="text-xs text-slate-400 mt-1 font-mono">
-            Executive Command &amp; Telemetry Platform
+            Executive Command &amp; Monitoring Platform
           </p>
         </div>
 

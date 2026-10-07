@@ -402,7 +402,7 @@ def _get_role_highlights(role_name: str, permissions: Optional[List[str]] = None
     if "analytics" in perms or "forecast" in perms or any(k in r_lower for k in ["analyst", "manager", "cfo", "director"]):
         highlights.append("📈 <strong>Business Intelligence &amp; Runway:</strong> Access financial margin metrics, burn rate models, and strategic runway forecasts.")
     if "agent" in perms or any(k in r_lower for k in ["advisor", "lead", "officer", "executive"]):
-        highlights.append("🤖 <strong>Axis AI Advisor:</strong> Query business telemetry, financial KPIs, and get real-time operational insights.")
+        highlights.append("🤖 <strong>Axis AI Advisor:</strong> Query business metrics, financial KPIs, and get real-time operational insights.")
     if "dashboard" in perms:
         highlights.append("📊 <strong>Executive Dashboard:</strong> Real-time overview of business revenue, profit margins, and key performance indicators.")
     if "activities" in perms:

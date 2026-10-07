@@ -61,7 +61,7 @@ app.add_middleware(
 )
 
 
-# ── Global Exception Handler & Real-Time Error Telemetry ──────
+# ── Global Exception Handler & Real-Time Error Logging ──────
 import traceback
 import uuid
 import datetime

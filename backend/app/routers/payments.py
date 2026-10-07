@@ -5,7 +5,7 @@ Supports:
   - Paystack Gateway: Card Checkout & Safaricom M-Pesa STK Push
   - Manual M-Pesa Till Verification with Admin Approval
   - Paystack Webhook Handler with HMAC-SHA512 Signature Verification
-  - Usage Telemetry & Daily/Monthly Quota Tracking with Pro Extensions
+  - Usage Tracking & Daily/Monthly Quota Tracking with Pro Extensions
   - Admin Platform Revenue, Statistics & Plan Provisioning
 """
 
@@ -398,7 +398,7 @@ async def _get_active_paid_payment(user_id: str) -> Optional[dict]:
     return dict(candidates[0][2])
 
 
-# ── Telemetry & Usage Tracking ────────────────────────────────────────────────
+# ── Usage & Activity Tracking ────────────────────────────────────────────────
 async def _get_user_usage(user_id: str) -> dict:
     today = _today_str()
     month = _month_str()

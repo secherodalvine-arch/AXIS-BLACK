@@ -1,6 +1,6 @@
 // ==========================================================================
 // AXIS BLACK — SERVICE WORKER (PWA)
-// Autonomous Financial & Inventory Telemetry Platform
+// Autonomous Financial & Inventory Platform
 // ==========================================================================
 
 const CACHE_NAME = 'axis-black-v1';

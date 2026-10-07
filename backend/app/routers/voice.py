@@ -12,7 +12,7 @@ PLATFORM_GUIDE_KNOWLEDGE = {
     "dashboard": {
         "name": "Executive Dashboard",
         "route": "dashboard",
-        "description": "Provides real-time visibility into total portfolio yield, ARR growth, liquidity turnover, server telemetry, and live AI advisory alerts."
+        "description": "Provides real-time visibility into total portfolio yield, ARR growth, liquidity turnover, server health, and live AI advisory alerts."
     },
     "transactions": {
         "name": "Ledger",
@@ -68,7 +68,7 @@ async def get_voice_config(current_user: dict = Depends(get_optional_current_use
             "Platform Navigation & Feature Walkthroughs",
             "Voice-Activated Transaction Guidance",
             "Burn Rate & Cash Runway Explanations",
-            "Inventory & Asset Telemetry Guidance"
+            "Inventory & Asset Stock Guidance"
         ]
     }
 

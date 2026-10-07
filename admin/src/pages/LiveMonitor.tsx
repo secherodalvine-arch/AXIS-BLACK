@@ -338,7 +338,7 @@ export function LiveMonitor() {
             Live Traffic Monitor &amp; History
           </h1>
           <p className="text-xs text-[var(--text-muted)] mt-1">
-            Real-time connected sessions, homepage visitors, and historical telemetry performance
+            Real-time connected sessions, homepage visitors, and historical activity performance
           </p>
         </div>
 
@@ -560,7 +560,7 @@ export function LiveMonitor() {
                       <td colSpan={6} className="py-16 text-center text-[var(--text-subtle)]">
                         <Globe size={28} className="mx-auto text-slate-600 mb-2" />
                         <div>No homepage visitors recorded yet.</div>
-                        <div className="text-[11px] text-slate-500 mt-1">Visit the landing page to capture visitor telemetry.</div>
+                        <div className="text-[11px] text-slate-500 mt-1">Visit the landing page to record visitor activity.</div>
                       </td>
                     </tr>
                   ) : (
@@ -793,7 +793,7 @@ export function LiveMonitor() {
                     <tr>
                       <td colSpan={7} className="py-16 text-center text-[var(--text-muted)]">
                         <RefreshCw size={22} className="animate-spin text-cyan-400 mx-auto mb-2" />
-                        <span>Loading historical telemetry records for {historyTimeframe}…</span>
+                        <span>Loading historical activity records for {historyTimeframe}…</span>
                       </td>
                     </tr>
                   ) : filteredHistoryRecords.length === 0 ? (

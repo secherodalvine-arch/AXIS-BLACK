@@ -192,7 +192,7 @@ export function AdminAgent() {
       const errorMsg: ChatMessage = {
         id: `agt-err-${Date.now()}`,
         sender: 'agent',
-        text: "I encountered a telemetry connection issue. Please verify backend connectivity.",
+        text: "I encountered a connection issue. Please verify backend connectivity.",
         timestamp: new Date().toISOString()
       };
       setSessions(prev => prev.map(s => {
@@ -293,7 +293,7 @@ export function AdminAgent() {
             <Bot size={24} className="text-cyan-400" /> Admin Strategic Agent
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Real-time platform telemetry synthesis, user retention heuristics, and operational analysis
+            Real-time platform activity analysis, user retention insights, and operational overview
           </p>
         </div>
 
@@ -404,7 +404,7 @@ export function AdminAgent() {
                 </h2>
                 <div className="flex items-center gap-2 text-[10px] text-slate-400">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Real-time platform telemetry active</span>
+                  <span>Real-time platform monitoring active</span>
                 </div>
               </div>
             </div>
@@ -436,7 +436,7 @@ export function AdminAgent() {
                     <span className="font-mono">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
                   <p className="leading-relaxed">
-                    Welcome back, Administrator. I am your platform strategic intelligence advisor. How can I assist you with platform telemetry, subscriptions, or system operations today?
+                    Welcome back, Administrator. I am your platform strategic intelligence advisor. How can I assist you with platform activity, subscriptions, or system operations today?
                   </p>
 
                   <div className="mt-3.5 pt-3 border-t border-white/5">
@@ -521,7 +521,7 @@ export function AdminAgent() {
                 </div>
                 <div className="p-3.5 rounded-2xl bg-navy-950/80 border border-white/8 text-xs text-cyan-300 flex items-center gap-2.5">
                   <div className="w-3.5 h-3.5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-                  <span>Axis Agent is analyzing telemetry...</span>
+                  <span>Axis Agent is analyzing platform data...</span>
                 </div>
               </div>
             )}

@@ -48,7 +48,7 @@ export function Dashboard() {
     return (
       <div className="flex items-center justify-center h-80 text-cyan-400 gap-3">
         <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
-        <span className="text-sm font-semibold text-slate-300">Synchronizing Platform Telemetry...</span>
+        <span className="text-sm font-semibold text-slate-300">Synchronizing Platform Data...</span>
       </div>
     );
   }
@@ -76,7 +76,7 @@ export function Dashboard() {
             Command Center Overview
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Real-time multi-branch financial intelligence &amp; user telemetry (auto-refreshes every 20s)
+            Real-time multi-branch financial intelligence &amp; user activity (auto-refreshes every 20s)
           </p>
         </div>
 
@@ -168,7 +168,7 @@ export function Dashboard() {
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <TrendingUp size={16} className="text-cyan-400" /> Platform Traffic &amp; Page Views (Last 14 Days)
               </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">Continuous user navigations and telemetry heartbeats</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Continuous user navigations and activity updates</p>
             </div>
             <Link to="/analytics" className="text-xs text-cyan-400 hover:underline">
               Deep Analytics &rarr;

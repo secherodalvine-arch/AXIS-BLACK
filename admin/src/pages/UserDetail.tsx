@@ -303,10 +303,10 @@ export function UserDetail() {
         </div>
       </div>
 
-      {/* Device & Session Telemetry Card */}
+      {/* Device & Session Info Card */}
       <div className="p-5 rounded-2xl bg-navy-900 border border-white/8 shadow-xl">
         <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-4">
-          <Monitor size={16} className="text-cyan-400" /> Device Telemetry &amp; Location Footprint
+          <Monitor size={16} className="text-cyan-400" /> Device Info &amp; Location Footprint
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">

@@ -16,12 +16,12 @@ AXIS-BLACK/
 
 ### 1. Admin Platform (`/admin`)
 - Tech Stack: React 18, TypeScript, Vite, Tailwind CSS, Lucide Icons, Recharts, Zustand.
-- Function: Executive Command Center for managing user accounts, live traffic telemetry, active visitor devices, system audit logs, database collections, and broadcasts.
+- Function: Executive Command Center for managing user accounts, live traffic activity, active visitor devices, system audit logs, database collections, and broadcasts.
 - Admin Credentials: Fully configurable in `backend/.env` via `ADMIN_DEFAULT_EMAIL`, `ADMIN_DEFAULT_PASSWORD`, and `ADMIN_INVITE_CODE`.
 
 ### 2. Frontend (`/frontend`)
 - Tech Stack: React 18, TypeScript, Vite, Chart.js, Lucide Icons, ElevenLabs React SDK.
-- Function: Interactive UI dashboard for financial analytics, agent interactions, and voice controls. Accurately synchronizes with user device local time and streams client telemetry.
+- Function: Interactive UI dashboard for financial analytics, agent interactions, and voice controls. Accurately synchronizes with user device local time and streams client activity.
 
 ### 3. Backend (`/backend`)
 - Tech Stack: Python 3.9+, FastAPI, Motor (Async MongoDB), PyJWT, Google GenAI, ElevenLabs.

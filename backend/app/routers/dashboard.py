@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 from app.database import AxisDataStore
 from app.auth.dependencies import get_current_user
 
-router = APIRouter(prefix="/api/dashboard", tags=["Dashboard Telemetry"])
+router = APIRouter(prefix="/api/dashboard", tags=["Dashboard Metrics"])
 
 from typing import List, Dict, Any, Optional
 
@@ -14,7 +14,7 @@ async def get_dashboard_data(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Get live dashboard metrics and advisor telemetry for the business, with optional branch filter.
+    Get live dashboard metrics and business analytics, with optional branch filter.
     """
     is_sub_user = bool(current_user.get("is_sub_user"))
     if is_sub_user:

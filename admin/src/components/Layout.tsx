@@ -21,10 +21,10 @@ const NAV_ITEMS = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard, section: 'CORE' },
   { path: '/users', label: 'Users & Accounts', icon: Users, section: 'CORE' },
   { path: '/payments', label: 'Payments & Revenue', icon: CreditCard, section: 'CORE' },
-  { path: '/live', label: 'Live Traffic Monitor', icon: Radio, section: 'TELEMETRY' },
-  { path: '/analytics', label: 'Analytics & Trends', icon: BarChart2, section: 'TELEMETRY' },
-  { path: '/audit', label: 'Activity & Audit Log', icon: ScrollText, section: 'TELEMETRY' },
-  { path: '/database', label: 'Database Explorer', icon: Database, section: 'TELEMETRY' },
+  { path: '/live', label: 'Live Traffic Monitor', icon: Radio, section: 'MONITORING' },
+  { path: '/analytics', label: 'Analytics & Trends', icon: BarChart2, section: 'MONITORING' },
+  { path: '/audit', label: 'Activity & Audit Log', icon: ScrollText, section: 'MONITORING' },
+  { path: '/database', label: 'Database Explorer', icon: Database, section: 'MONITORING' },
   { path: '/agent-usage', label: 'Admin Agent', icon: Bot, section: 'INTELLIGENCE' },
   { path: '/messages', label: 'Customer Support', icon: MessageSquare, section: 'INTELLIGENCE' },
   { path: '/logs', label: 'System Logs', icon: ShieldAlert, section: 'SYSTEM' },
@@ -237,7 +237,7 @@ function AdminNotifDrawer({
             {loading && notifs.length === 0 ? (
               <div className="text-center py-16 text-slate-500 text-xs flex flex-col items-center gap-2">
                 <RefreshCw size={22} className="animate-spin text-cyan-400 mb-1" />
-                <span>Loading live telemetry alerts...</span>
+                <span>Loading live alerts...</span>
               </div>
             ) : filteredNotifs.length === 0 ? (
               <div className="text-center py-16 text-slate-500 text-xs flex flex-col items-center gap-2">
@@ -602,7 +602,7 @@ export function AdminLayout() {
             {/* Notification Bell with live unread counter */}
             <button
               onClick={() => setShowNotifs(true)}
-              title="Admin Alerts & Telemetry Notifications"
+              title="Admin Alerts & Notifications"
               className="relative p-2 text-slate-400 hover:text-white rounded-xl bg-white/5 border border-white/8 hover:border-cyan-500/30 transition-colors cursor-pointer"
             >
               <Bell size={18} />

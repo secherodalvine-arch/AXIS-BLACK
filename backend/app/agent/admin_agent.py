@@ -8,6 +8,7 @@ STRICT REQUIREMENT: 100% READ-ONLY. NEVER writes or updates database records.
 from __future__ import annotations
 import logging
 import datetime
+import re
 from typing import Dict, Any, List, Optional
 from app.config import settings
 from app.database import db_manager, AxisDataStore
@@ -278,12 +279,13 @@ class AdminPlatformAgent:
             "subscription revenue, feature adoption, and data-driven user retention strategies.\n\n"
             "CONVERSATIONAL & ADAPTIVE RULES:\n"
             "1. ADAPT TO USER INTENT & LENGTH:\n"
-            "   - GREETINGS & CASUAL TURNS: If the user says 'hi', 'hello', 'hey', 'good morning', etc., respond warmly and concisely in 1-2 sentences (e.g. 'Hello Administrator! How can I assist you with platform telemetry, traffic, subscriptions, or system performance today?'). DO NOT output a massive platform report on a greeting.\n"
+            "   - GREETINGS & CASUAL TURNS: If the user says 'hi', 'hello', 'hey', 'good morning', etc., respond warmly and concisely in 1-2 sentences (e.g. 'Hello Administrator! How can I assist you with platform activity, traffic, subscriptions, or system performance today?'). DO NOT output a massive platform report on a greeting.\n"
             "   - FOCUSED QUESTIONS: If the user asks a specific question (e.g., 'how many users do we have?', 'is there any critical error?'), provide a direct, concise answer highlighting only the requested metric.\n"
             "   - EXECUTIVE OVERVIEWS: Only provide a comprehensive structured Markdown summary when the administrator explicitly requests a general summary or audit (e.g., 'summarize platform status', 'give me an ARR report').\n"
-            "2. Ground all numbers strictly in the provided real-time Platform Snapshot telemetry. Never fabricate numbers.\n"
-            "3. Keep advice clear, actionable, professional, and dynamic.\n"
-            "4. You operate in strict READ-ONLY mode."
+            "2. Ground all numbers strictly in the provided real-time Platform Snapshot data. Never fabricate numbers.\n"
+            "3. Use standard, clear, plain business language. AVOID complex technical jargon or confusing words like 'telemetry', 'heuristic', 'acquisition velocity'. Explain numbers simply and clearly using terms like 'activity', 'traffic', 'usage', 'metrics', or 'data' so anyone can understand instantly.\n"
+            "4. Keep advice clear, actionable, professional, and dynamic.\n"
+            "5. You operate in strict READ-ONLY mode."
         )
 
         prompt_content = (
@@ -337,13 +339,13 @@ class AdminPlatformAgent:
         if clean_q in ["hi", "hello", "hey", "good morning", "good afternoon", "good evening", "howdy", "greetings", "hi there", "hello there", "what's up", "yo"]:
             return (
                 "Hello Administrator! I am your Axis Platform Strategic Agent. "
-                "How can I assist you with platform telemetry, user metrics, subscriptions, or system performance today?"
+                "How can I assist you with platform activity, user metrics, subscriptions, or system performance today?"
             )
 
         if any(w in q for w in ["retention", "retain", "churn", "engage"]):
             return (
                 f"### Strategic User Retention & Engagement Analysis\n\n"
-                f"Based on real-time platform telemetry across **{users['total']} total accounts** and **{usage['activities_count']} recorded user actions**:\n\n"
+                f"Based on real-time platform activity across **{users['total']} total accounts** and **{usage['activities_count']} recorded user actions**:\n\n"
                 f"1. **Core Feature Activation Velocity**:\n"
                 f"   - **Spreadsheets ({usage['spreadsheets_count']} created)**: Users who launch a financial model within their first 72 hours exhibit an **84% higher 30-day retention**.\n"
                 f"   - **Inventory Ledger ({usage['inventory_items_count']} items tracked)**: High-retention accounts actively manage SKU turnover. Send prompt notifications when inventory reaches reorder thresholds.\n"
@@ -356,7 +358,7 @@ class AdminPlatformAgent:
         elif any(w in q for w in ["traffic", "visitor", "homepage", "page"]):
             return (
                 f"### Platform Traffic & Homepage Engagement Brief\n\n"
-                f"- **Total Recorded Telemetry Events**: **{traffic['total_events']}**\n"
+                f"- **Total Recorded Activity Events**: **{traffic['total_events']}**\n"
                 f"- **Homepage Visits**: **{traffic['homepage_views']}**\n"
                 f"- **Unique Tracked Visitors**: **{traffic['unique_visitors']}**\n"
                 f"- **Device Breakdown**:\n"
@@ -368,7 +370,7 @@ class AdminPlatformAgent:
             )
         elif any(w in q for w in ["payment", "revenue", "mrr", "arr", "subscription", "plan"]):
             return (
-                f"### Revenue & Subscription Telemetry\n\n"
+                f"### Revenue & Subscription Overview\n\n"
                 f"- **Monthly Recurring Revenue (MRR)**: **${subs['total_mrr_usd']:,.2f}**\n"
                 f"- **Annual Run-Rate (ARR)**: **${subs['total_arr_usd']:,.2f}**\n"
                 f"- **Plan Distribution**:\n"
@@ -394,7 +396,7 @@ class AdminPlatformAgent:
             return (
                 f"### User Growth & Account Snapshot\n\n"
                 f"- **Total Registered Users**: **{users['total']}**\n"
-                f"- **Active Users (Telemetry)**: **{users['active']}**\n"
+                f"- **Active Users**: **{users['active']}**\n"
                 f"- **New Signups (Last 7 Days)**: **{users['new_7d']}**\n"
                 f"- **New Signups (Last 30 Days)**: **{users['new_30d']}**\n"
                 f"- **Suspended Accounts**: **{users['suspended']}**\n\n"
@@ -402,7 +404,7 @@ class AdminPlatformAgent:
             )
         else:
             return (
-                f"### Axis Black Executive Telemetry Summary\n\n"
+                f"### Axis Black Executive Platform Summary\n\n"
                 f"- **Total Registered Accounts**: **{users['total']}** ({users['new_7d']} new in last 7 days)\n"
                 f"- **Platform MRR**: **${subs['total_mrr_usd']:,.2f}** ({subs['plans'].get('pro', 0)} Pro, {subs['plans'].get('starter', 0)} Starter)\n"
                 f"- **Core Data Volume**: **{usage['spreadsheets_count']}** sheets, **{usage['inventory_items_count']}** SKUs, **{usage['ledger_transactions_count']}** ledger entries\n"

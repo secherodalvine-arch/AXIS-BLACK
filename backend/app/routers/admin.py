@@ -479,7 +479,7 @@ async def update_admin_avatar(
     return {"success": True, "avatar_url": body.avatar_url}
 
 
-# ── CAPTURE & TELEMETRY (Called by user frontend) ──
+# ── CAPTURE & USER ACTIVITY (Called by user frontend) ──
 
 @router.post("/capture")
 async def capture_traffic_event(
@@ -488,7 +488,7 @@ async def capture_traffic_event(
     background_tasks: BackgroundTasks
 ):
     """
-    Captures user page navigations, action telemetry, local device date/time,
+    Captures user page navigations, action activity, local device date/time,
     and resolves client IP geolocation.
     """
     # ── Drop admin platform traffic immediately (User platform only) ──
@@ -765,7 +765,7 @@ async def get_traffic_history(
     admin: Dict[str, Any] = Depends(get_current_admin)
 ):
     """
-    Returns historical traffic sessions, visits, and telemetry events with
+    Returns historical traffic sessions, visits, and activity events with
     aggregated performance metrics filtered by timeframe (today, yesterday, 7d, 30d, all).
     """
     admin_filter = get_user_traffic_mongo_filter()
@@ -1605,7 +1605,7 @@ async def query_admin_agent(
 ):
     """
     Queries the Axis Admin Strategic Agent.
-    Grounded in real-time platform telemetry (users, payments, traffic, usage, system health).
+    Grounded in real-time platform data (users, payments, traffic, usage, system health).
     STRICT CONSTRAINT: 100% READ-ONLY. Never modifies or writes database records.
     """
     from app.agent.admin_agent import AdminPlatformAgent
@@ -2017,7 +2017,7 @@ async def create_new_support_thread(
 @router.get("/traffic/homepage")
 async def get_homepage_traffic_metrics(admin: Dict[str, Any] = Depends(get_current_admin)):
     """
-    Returns dedicated analytics and telemetry breakdown for the Axis Black landing homepage
+    Returns dedicated analytics and traffic activity breakdown for the Axis Black landing homepage
     and public landing routes, showing complete client device details, browsers, OS footprints,
     screen resolutions, local device clocks, and recent visitor logs.
     """
