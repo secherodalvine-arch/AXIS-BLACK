@@ -487,7 +487,7 @@ export const AxisAgentWorkspace: React.FC<AxisAgentWorkspaceProps> = ({
                 <div className="msg-bubble" style={{ background: 'transparent', border: 'none', padding: 0 }}>
                   <div className="axis-spinner-container">
                     <div className="axis-spinner-ring"></div>
-                    <span>Axis is thinking<span className="thinking-dots"></span></span>
+                    <span>Thinking<span className="thinking-dots"></span></span>
                   </div>
                 </div>
               </div>

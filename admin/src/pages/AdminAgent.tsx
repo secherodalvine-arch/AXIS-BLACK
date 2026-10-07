@@ -28,9 +28,9 @@ const STORAGE_KEY = 'axis_admin_chat_sessions';
 const PROMPT_SUGGESTIONS = [
   "Summarize active platform traffic and user signups",
   "What is our current ARR/MRR and subscription plan breakdown?",
+  "Suggest creative alternative platform names or branding directions",
   "How can we improve user retention based on platform usage?",
-  "Analyze platform usage: which features are most engaged?",
-  "Are there any payment or API anomalies detected recently?"
+  "Recommend next high-priority features for our product roadmap"
 ];
 
 const createDefaultSession = (): ChatSession => ({
@@ -521,7 +521,7 @@ export function AdminAgent() {
                 </div>
                 <div className="p-3.5 rounded-2xl bg-navy-950/80 border border-white/8 text-xs text-cyan-300 flex items-center gap-2.5">
                   <div className="w-3.5 h-3.5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-                  <span>Axis Agent is analyzing platform data...</span>
+                  <span>Thinking...</span>
                 </div>
               </div>
             )}

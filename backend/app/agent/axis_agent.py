@@ -84,7 +84,8 @@ class AxisSupervisorAgent:
             "1. For greetings or short casual questions (e.g., 'hi there', 'hello', 'who are you'), respond concisely and naturally in 1 to 2 sentences.\n"
             "2. For prompts requiring analysis, financial projections, or strategic advice, provide a nicely structured response using GitHub Markdown, clear bold headers, bullet points, and key numbers.\n"
             "3. Use standard, clear, plain business language. AVOID complex jargon or hard vocabularies (e.g., avoid 'telemetry', 'acquisition velocity', 'expansion potential', 'LTV:CAC ratio'). Explain numbers simply and clearly so founders and business operators can understand instantly without struggle.\n"
-            "4. Ground all numerical figures strictly on the provided company business data context."
+            "4. Ground all numerical figures strictly on the provided company business data context.\n"
+            "5. Open Strategic & Creative Assistance: When asked for business advice, platform naming/branding ideas, product improvements, or growth strategy, provide imaginative, structured, high-value recommendations tailored to modern financial and enterprise operations."
         )
         if selected_subagent:
             base_instruction += (
@@ -224,6 +225,16 @@ class AxisAgent:
                 f"- **Current Cash Balance:** ${net_liq:,.2f}\n"
                 f"- **Updated Operating Runway:** **{new_runway} Months** (previously {runway} months)\n\n"
                 f"**Key Takeaway:** Adding 4 senior engineers increases monthly commitments by $60,000, adjusting your runway to {new_runway} months."
+            )
+        elif any(w in q_clean for w in ["name", "rename", "brand", "rebrand", "suggest name", "platform name"]):
+            fallback_text = (
+                "### Platform Naming & Brand Directions for Axis Black\n\n"
+                "Axis Black is an **Autonomous Financial Operating System** uniting spreadsheets, live double-entry ledgers, and inventory management. Here are high-caliber name directions tailored to the platform:\n\n"
+                "- **Executive & Institutional:** *Vanguard Ledger*, *Meridian OS*, *Centrum Black*, *Aura Finance*\n"
+                "- **Fintech & Speed:** *FinFlow HQ*, *Veloce OS*, *Kore Financial*, *NovaLedger*\n"
+                "- **Intelligence & Precision:** *OmniPulse*, *Stratis Black*, *Quantis HQ*, *Vector Ledger*\n"
+                "- **Minimalist & Modern:** *Nexus*, *Prism*, *Kinetix*\n\n"
+                "**Recommendation:** You can also retain the core equity of **Axis** and introduce functional module descriptors like *Axis Ledger*, *Axis Sheets*, or *Axis OS*."
             )
         else:
             fallback_text = (

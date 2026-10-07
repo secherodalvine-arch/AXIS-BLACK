@@ -274,18 +274,29 @@ class AdminPlatformAgent:
         client = cls._get_genai_client()
 
         system_instruction = (
-            "You are the Axis Admin Strategic Agent, an executive AI platform advisor for Axis Black.\n"
-            "Your role is to advise the platform administrator on system performance, live traffic, user growth, "
-            "subscription revenue, feature adoption, and data-driven user retention strategies.\n\n"
+            "You are the Axis Admin Strategic Agent, an executive AI platform advisor, strategist, and brainstorming partner for Axis Black.\n\n"
+            "ABOUT THE PLATFORM (AXIS BLACK):\n"
+            "- Core Identity: An enterprise-grade Autonomous Financial Operating System and Executive Command Center for modern founders, CFOs, business operators, and financial teams.\n"
+            "- Primary Features: Interactive financial spreadsheets (formulas, models, CSV import/export), real-time multi-branch ledger & cashflow management, inventory SKU tracking & warehouse health, autonomous AI financial advisors (Axis Agent), runway/burn simulator, voice commands, and comprehensive executive admin monitoring.\n"
+            "- Target Audience: High-growth startups, SMEs, CFOs, financial controllers, ecommerce operators, and enterprise executives.\n"
+            "- Brand Tone: Sleek, high-precision, executive, intelligent, dark luminous aesthetics ('Axis Black').\n\n"
+            "YOUR ROLE & ADVISORY CAPABILITIES:\n"
+            "You are a versatile, senior executive strategic advisor to the administrator. You assist with:\n"
+            "1. Real-time platform data & metrics analysis (users, revenue/MRR/ARR, spreadsheets, inventory, traffic, system health).\n"
+            "2. Creative brand strategy, naming ideas, rebranding proposals, taglines, and marketing positioning.\n"
+            "3. Product roadmap planning, feature prioritization, UX/UI improvements, and monetization strategies.\n"
+            "4. Business growth, user onboarding velocity, retention, churn reduction, and market expansion.\n"
+            "5. Open-ended strategic questions, brainstorming, competitor differentiation, and executive problem-solving.\n\n"
             "CONVERSATIONAL & ADAPTIVE RULES:\n"
-            "1. ADAPT TO USER INTENT & LENGTH:\n"
-            "   - GREETINGS & CASUAL TURNS: If the user says 'hi', 'hello', 'hey', 'good morning', etc., respond warmly and concisely in 1-2 sentences (e.g. 'Hello Administrator! How can I assist you with platform activity, traffic, subscriptions, or system performance today?'). DO NOT output a massive platform report on a greeting.\n"
+            "1. NEVER REFUSE OR DEFLECT CREATIVE OR STRATEGIC QUERIES: If the administrator asks for platform name suggestions, rebranding ideas, marketing taglines, feature concepts, or strategic advice, NEVER say 'my function is only to analyze metrics' or 'I need additional context about the platform'. You have full context about Axis Black! Answer proactively, creatively, and constructively with high-caliber, structured recommendations.\n"
+            "2. PLATFORM NAMING REQUESTS: If asked to suggest names for the platform, deliver curated, high-impact options organized by thematic categories (e.g., Executive/Institutional, Modern Fintech, Data-Driven/Intelligence, Minimalist) with brand rationales and taglines.\n"
+            "3. ADAPT TO USER INTENT & LENGTH:\n"
+            "   - GREETINGS & CASUAL TURNS: If the user says 'hi', 'hello', 'hey', 'good morning', etc., respond warmly and concisely in 1-2 sentences.\n"
             "   - FOCUSED QUESTIONS: If the user asks a specific question (e.g., 'how many users do we have?', 'is there any critical error?'), provide a direct, concise answer highlighting only the requested metric.\n"
-            "   - EXECUTIVE OVERVIEWS: Only provide a comprehensive structured Markdown summary when the administrator explicitly requests a general summary or audit (e.g., 'summarize platform status', 'give me an ARR report').\n"
-            "2. Ground all numbers strictly in the provided real-time Platform Snapshot data. Never fabricate numbers.\n"
-            "3. Use standard, clear, plain business language. AVOID complex technical jargon or confusing words like 'telemetry', 'heuristic', 'acquisition velocity'. Explain numbers simply and clearly using terms like 'activity', 'traffic', 'usage', 'metrics', or 'data' so anyone can understand instantly.\n"
-            "4. Keep advice clear, actionable, professional, and dynamic.\n"
-            "5. You operate in strict READ-ONLY mode."
+            "   - STRATEGIC OVERVIEWS & BRAINSTORMS: Provide a structured Markdown summary with clear bold headers, bullet points, and key insights.\n"
+            "4. GROUND DATA NUMBERS: When citing platform statistics, ground all numbers strictly in the provided real-time Platform Snapshot data. Never fabricate data metrics.\n"
+            "5. LANGUAGE & CLARITY: Use standard, clear, plain business language. AVOID unnecessary technical jargon like 'telemetry', 'heuristic', etc.\n"
+            "6. STRICT READ-ONLY: You advise and brainstorm, but never modify database records."
         )
 
         prompt_content = (
@@ -340,6 +351,56 @@ class AdminPlatformAgent:
             return (
                 "Hello Administrator! I am your Axis Platform Strategic Agent. "
                 "How can I assist you with platform activity, user metrics, subscriptions, or system performance today?"
+            )
+
+        # Platform Naming & Rebranding Proposals
+        if any(w in q for w in ["name", "rename", "brand", "rebrand", "call it", "naming", "suggest a name", "suggest names", "different name"]):
+            return (
+                "### Strategic Platform Naming & Brand Architecture Proposals\n\n"
+                "Axis Black is positioned as an **Autonomous Financial Operating System & Executive Command Center** — uniting real-time ledger accounting, spreadsheet modeling, SKU inventory tracking, and autonomous AI advisory for modern founders and CFOs.\n\n"
+                "Here are high-impact, curated platform name directions tailored to the product's identity and market positioning:\n\n"
+                "#### 1. Institutional & Executive (Authority, Power, Trust)\n"
+                "- **Vanguard Ledger** — Evokes institutional stability and leadership in financial control.\n"
+                "- **Meridian OS** — Suggests prime orientation, navigation, and central business coordination.\n"
+                "- **Centrum Black** — Preserves the elite dark-executive aesthetic while emphasizing the single source of truth.\n"
+                "- **Aura Finance** — Elegant, luminous, and premium executive feel.\n\n"
+                "#### 2. Modern Fintech & Velocity (Agile, High-Growth, Scalable)\n"
+                "- **FinFlow HQ** — Directly conveys cash flow agility, liquidity velocity, and unified control.\n"
+                "- **Veloce OS** — Emphasizes rapid decision-making and real-time execution.\n"
+                "- **Kore Financial** — Short, punchy, signifying core financial infrastructure.\n"
+                "- **NovaLedger** — Contemporary, tech-forward, and modern.\n\n"
+                "#### 3. Intelligence & Precision (Data-Driven, Autonomous AI)\n"
+                "- **OmniPulse** — Reflects real-time visibility across all business branches, cashflows, and inventory.\n"
+                "- **Stratis Black** — Strategic, deep intelligence for founders and enterprise operators.\n"
+                "- **Quantis HQ** — Highlights analytical rigor, spreadsheet formula modeling, and autonomous forecasting.\n"
+                "- **Vector Ledger** — Mathematical precision and forward financial trajectory.\n\n"
+                "#### 4. Minimalist & Memorable (Single-Word Tech Brands)\n"
+                "- **Nexus** — The central hub connecting finance, inventory, and operations.\n"
+                "- **Prism** — Refracting raw financial data into clear, actionable insights.\n"
+                "- **Kinetix** — Financial energy, active momentum, and autonomous workflow.\n\n"
+                "---\n"
+                "💡 **Brand Strategy Recommendation**:\n"
+                "If retaining brand equity from **Axis Black**, consider evolving rather than abandoning:\n"
+                "- Keep **Axis** as the master brand and introduce specialized module descriptors (e.g. *Axis Ledger*, *Axis Sheets*, *Axis AI*, *Axis Inventory*).\n"
+                "- Or transition to **Axis OS** or **Axis HQ** to emphasize the unified operating system identity."
+            )
+
+        # Feature Roadmap & Product Improvement
+        if any(w in q for w in ["feature", "roadmap", "improve", "build next", "priority"]):
+            return (
+                "### Strategic Product Roadmap & Feature Recommendations\n\n"
+                "Based on current platform usage and competitive positioning for Axis Black:\n\n"
+                "1. **Spreadsheet Power Enhancements**:\n"
+                "   - **AI Formula Copilot**: Natural language formula generator (e.g. 'calculate profit margin for Column D').\n"
+                "   - **Multi-Tab Sync**: Link cells across multiple sheets to automatically update summary models.\n\n"
+                "2. **Ledger & Cash Flow Automation**:\n"
+                "   - **Automated Bank Feeds & Payment Sync**: Auto-categorize recurring income and expense transactions from Paystack and M-Pesa.\n"
+                "   - **Scenario Simulation**: 'What-if' toggle for hiring, price adjustments, or inventory restocks against runway.\n\n"
+                "3. **Inventory & Supply Chain Velocity**:\n"
+                "   - **Barcode / QR Scanning**: Quick mobile scanning for SKU audits and warehouse receiving.\n"
+                "   - **Automated Reorder Dispatch**: One-click PO generation and email dispatch to suppliers upon threshold triggers.\n\n"
+                "4. **Monetization & Conversion Optimization**:\n"
+                f"   - Introduce gentle trial upgrades when free tier users ({subs['plans'].get('free', 0)} accounts) reach daily feature limits."
             )
 
         if any(w in q for w in ["retention", "retain", "churn", "engage"]):

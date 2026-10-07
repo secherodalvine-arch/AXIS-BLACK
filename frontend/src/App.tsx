@@ -756,7 +756,7 @@ export const App: React.FC = () => {
   };
 
   const [isAgentProcessing, setIsAgentProcessing] = useState(false);
-  const [agentStep, setAgentStep] = useState('Step 1/3: Analyzing financial parameters...');
+  const [agentStep, setAgentStep] = useState('Thinking...');
 
   const handleQuickAISubmit = async (query: string) => {
     const nowIso = new Date().toISOString();
@@ -770,19 +770,10 @@ export const App: React.FC = () => {
     setCurrentTab('agent');
 
     setIsAgentProcessing(true);
-    setAgentStep('Step 1/3: Parsing financial query & parameters...');
+    setAgentStep('Thinking...');
 
-    setTimeout(() => {
-      setAgentStep('Step 2/3: Querying ledger, cash flow & inventory database...');
-    }, 450);
-
-    setTimeout(() => {
-      setAgentStep('Step 3/3: Synthesizing executive report & recommendations...');
-    }, 950);
-
-    setTimeout(async () => {
-      try {
-        const res = await queryAxisAgentApi(query);
+    try {
+      const res = await queryAxisAgentApi(query);
         const aiReply: ChatMessage = {
           id: `ai-${Date.now()}`,
           sender: 'ai',
@@ -808,8 +799,7 @@ export const App: React.FC = () => {
       } finally {
         setIsAgentProcessing(false);
       }
-    }, 1400);
-  };
+    };
 
   const handleExportCSV = (txnsToExport?: Transaction[]) => {
     const list = (txnsToExport && Array.isArray(txnsToExport) && txnsToExport.length > 0) ? txnsToExport : transactions;
